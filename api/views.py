@@ -10,7 +10,7 @@ from .serializers import GameSerializer, CoverRequestSerializer, EventSerializer
 
 
 
-
+# EVENT VIEW SET
 class EventViewSet(viewsets.ModelViewSet):
     queryset = Event.objects.all().order_by('start_date')
     serializer_class = EventSerializer
@@ -19,6 +19,8 @@ class EventViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(uploaded_by=None)
 
+
+# GAME VIEW SET
 class GameViewSet(viewsets.ModelViewSet):
     queryset = Game.objects.all().order_by('date', 'time')
     serializer_class = GameSerializer
@@ -252,9 +254,8 @@ class GameViewSet(viewsets.ModelViewSet):
 
 
 
-# -------------------------------------------------------
-# COVER REQUEST VIEWSET (TOP-LEVEL, NOT INSIDE GameViewSet)
-# -------------------------------------------------------
+
+# COVER REQUEST VIEWSET 
 class CoverRequestViewSet(viewsets.ModelViewSet):
     queryset = CoverRequest.objects.all().order_by('-created_at')
     serializer_class = CoverRequestSerializer
