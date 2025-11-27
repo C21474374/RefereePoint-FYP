@@ -57,7 +57,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'refereepoint.urls'
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = True # for development purposes only
+# for deployment only allow fronteend origins
 
 TEMPLATES = [
     {

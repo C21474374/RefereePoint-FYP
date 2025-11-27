@@ -17,9 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('api.urls')),
+    path("admin/", admin.site.urls),
 
+    # API ROUTES (match frontend EXACTLY)
+    path("api/games/", include("api.urls.game_urls")),
+    path("api/events/", include("api.urls.event_urls")),
+    path("api/cover_requests/", include("api.urls.cover_urls")),
 ]
+
