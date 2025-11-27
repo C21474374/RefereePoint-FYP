@@ -51,13 +51,7 @@ class GameViewSet(viewsets.ModelViewSet):
     # -------------------------
     # UPCOMING GAMES
     # -------------------------
-    @action(detail=False, methods=['get'])
-    def upcoming(self, request):
-        today = now().date()
 
-        games = Game.objects.filter(date__gte=today).order_by('date', 'time')
-
-        return Response(GameSerializer(games, many=True).data)
 
     @action(detail=False, methods=['get'])
     def my_upcoming(self, request):
