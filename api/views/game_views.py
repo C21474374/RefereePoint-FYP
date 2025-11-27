@@ -7,7 +7,8 @@ from django.utils.timezone import now
 from games.models import Game, CoverRequest
 from users.models import RefereeProfile
 from ..serializers import GameSerializer, CoverRequestSerializer
-
+from django.utils.timezone import now
+from django.db.models import Q
 
 
 
@@ -16,26 +17,35 @@ class GameViewSet(viewsets.ModelViewSet):
     queryset = Game.objects.all().order_by('date', 'time')
     serializer_class = GameSerializer
 
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
 
-        # Filter by category
+
+    def list(self, request, *args, **kwargs):
+        current_date = now().date()
+        current_time = now().time()
+
+        # Only show games in the future OR later today
+        queryset = self.get_queryset().filter(
+            Q(date__gt=current_date) |
+            Q(date=current_date, time__gte=current_time)
+        )
+
+        # Optional filters
         category_id = request.query_params.get('category')
         if category_id:
             queryset = queryset.filter(category_id=category_id)
 
-        # Filter by competition
         competition_id = request.query_params.get('competition')
         if competition_id:
             queryset = queryset.filter(competition_id=competition_id)
 
-        # Filter by date
         date = request.query_params.get('date')
         if date:
             queryset = queryset.filter(date=date)
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+
 
 
     # -------------------------

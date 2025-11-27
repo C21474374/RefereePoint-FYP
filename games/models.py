@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from users.models import RefereeProfile
 
 class GameCategory(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -139,7 +139,7 @@ class Event(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     contact_info = models.CharField(max_length=255)
-    referees_required = models.IntegerField()
+    referees_required = models.PositiveIntegerField(default=1)
     payment_type = models.CharField(max_length=50)  # per referee | per game
     payment_amount = models.DecimalField(max_digits=6, decimal_places=2)
 
@@ -153,3 +153,20 @@ class Event(models.Model):
 
     def __str__(self):
         return self.event_name
+
+class EventParticipation(models.Model):
+    STATUS_CHOICES = [
+        ("confirmed", "Confirmed"),
+        ("waitlist", "Waitlist"),
+    ]
+
+    event = models.ForeignKey("Event", on_delete=models.CASCADE, related_name="participants")
+    referee = models.ForeignKey(RefereeProfile, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="confirmed")
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("event", "referee")
+
+    def __str__(self):
+        return f"{self.referee} → {self.event} ({self.status})"
