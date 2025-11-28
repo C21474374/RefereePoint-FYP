@@ -115,6 +115,56 @@
         <div id="coverRequests">Loading...</div>
     </div>
 
+    <!-- UPLOAD GAME -->
+<!-- UPLOAD GAME -->
+    <div class="card p-3 mb-4">
+        <h4>Upload a Game</h4>
+
+        <form id="uploadGameForm" onsubmit="event.preventDefault(); submitGame();">
+
+            <div class="mb-2">
+                <label class="form-label">Home Team</label>
+                <select id="teamHome" class="form-control"></select>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Away Team</label>
+                <select id="teamAway" class="form-control"></select>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Category</label>
+                <select id="category" class="form-control"></select>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Competition</label>
+                <select id="competition" class="form-control"></select>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Location Name</label>
+                <input type="text" id="locationName" class="form-control" placeholder="Hall / Court name">
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">Date</label>
+                <input type="date" id="gameDate" class="form-control">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Time</label>
+                <input type="time" id="gameTime" class="form-control">
+            </div>
+
+            <button type="submit" class="btn btn-success w-100 fw-bold">
+                Upload Game
+            </button>
+        </form>
+    </div>
+
+
+
     <!-- EVENTS -->
     <div class="card p-3 mb-4">
         <h4>Tournaments / Events</h4>

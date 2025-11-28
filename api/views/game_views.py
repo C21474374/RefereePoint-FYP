@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from django.db import models
 from django.utils.timezone import now
 
-from games.models import Game, CoverRequest
+from games.models import Game, CoverRequest, GameCategory
 from users.models import RefereeProfile
 from ..serializers import GameSerializer, CoverRequestSerializer
 from django.utils.timezone import now
@@ -115,6 +115,85 @@ class GameViewSet(viewsets.ModelViewSet):
 
         return Response(GameSerializer(games, many=True).data)
 
+    # UPLOAD GAME
+    @action(detail=False, methods=['post'])
+    def upload(self, request):
+        data = request.data
+
+        required = [
+            "team_home", "team_away", "date", "time",
+            "location_name", "competition", "category",
+            "referee_id",
+        ]
+
+        for f in required:
+            if f not in data or data[f] in ("", None):
+                return Response({"error": f"{f} is required"}, status=400)
+
+        # Validate referee
+        try:
+            referee = RefereeProfile.objects.get(id=data["referee_id"])
+        except RefereeProfile.DoesNotExist:
+            return Response({"error": "Referee not found"}, status=404)
+
+        # Validate category
+        try:
+            category = GameCategory.objects.get(id=data["category"])
+        except GameCategory.DoesNotExist:
+            return Response({"error": "Invalid category"}, status=400)
+
+        # 🚫 Block categories where refs are NOT allowed to cancel
+        if not category.can_ref_cancel:
+            return Response(
+                {"error": "You cannot upload games for this category."},
+                status=403,
+            )
+
+        game = Game.objects.create(
+            team_home_id=data["team_home"],
+            team_away_id=data["team_away"],
+            date=data["date"],
+            time=data["time"],
+            location_name=data["location_name"],
+            competition_id=data["competition"],
+            category=category,
+            uploaded_by=referee.user,
+            
+        )
+
+        return Response(GameSerializer(game).data, status=201)
+        data = request.data
+
+        required = [
+            "team_home", "team_away",
+            "date", "time",
+            "location_name",
+            "competition", "category",
+            "referee_id"
+        ]
+
+        for field in required:
+            if field not in data:
+                return Response({"error": f"{field} is required"}, status=400)
+
+        try:
+            referee = RefereeProfile.objects.get(id=data["referee_id"])
+        except RefereeProfile.DoesNotExist:
+            return Response({"error": "Referee not found"}, status=404)
+
+        game = Game.objects.create(
+            team_home_id=data["team_home"],
+            team_away_id=data["team_away"],
+            date=data["date"],
+            time=data["time"],
+            location_name=data["location_name"],
+            competition_id=data["competition"],
+            category_id=data["category"],
+            crew_chief=referee,
+            uploaded_by=referee.user
+        )
+
+        return Response(GameSerializer(game).data, status=201)
 
     # -------------------------
     # TAKE GAME (assign referee)
@@ -169,11 +248,12 @@ class GameViewSet(viewsets.ModelViewSet):
             return Response({"error": "Referee not found"}, status=404)
 
         # Must be allowed
-        if not game.competition.can_ref_cancel:
+        if not game.category.can_ref_cancel:
             return Response(
-                {"error": "Referee cancellation not allowed for this competition."},
+                {"error": "Referee cancellation not allowed for this game category."},
                 status=403
             )
+
 
         changed = False
 

@@ -39,11 +39,12 @@ class TeamSerializer(serializers.ModelSerializer):
 class GameCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = GameCategory
-        fields = ["id", "name"]
+        fields = ["id", "name", "can_ref_cancel"]
+
 
 
 # COMPETITION
 class CompetitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Competition
-        fields = ["id", "name", "can_ref_cancel"]
+        fields = ["id", "name"]

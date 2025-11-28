@@ -4,13 +4,15 @@ from users.models import RefereeProfile
 
 class GameCategory(models.Model):
     name = models.CharField(max_length=50, unique=True)
+    can_ref_cancel = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
 
+
 class Competition(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    can_ref_cancel = models.BooleanField(default=False)  
+ 
 
     def __str__(self):
         return self.name

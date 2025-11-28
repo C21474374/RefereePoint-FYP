@@ -13,12 +13,21 @@ async function loadAvailableGames() {
     const games = await apiGet("/games/");
     const container = document.getElementById("gamesList");
 
-    if (!games.length) {
+    if (!games || !games.length) {
         container.innerHTML = "<p>No available games right now.</p>";
         return;
     }
 
-    container.innerHTML = games.map(g => `
+    // FINAL RULE:
+    // ✔ Show only games where Umpire 1 is NOT assigned
+    const available = games.filter(g => g.umpire1 === null);
+
+    if (!available.length) {
+        container.innerHTML = "<p>No available games right now.</p>";
+        return;
+    }
+
+    container.innerHTML = available.map(g => `
         <div class="border rounded p-3 mb-2">
             <strong>${g.team_home?.name} vs ${g.team_away?.name}</strong><br>
             📅 ${g.date} - ⏰ ${g.time}<br>
@@ -30,6 +39,8 @@ async function loadAvailableGames() {
         </div>
     `).join("");
 }
+
+
 
 async function takeGame(id) {
     const res = await apiPost(`/games/${id}/take/`, { referee_id: REFEREE_ID });

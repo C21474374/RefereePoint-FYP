@@ -24,5 +24,7 @@ urlpatterns = [
     path("api/games/", include("api.urls.game_urls")),
     path("api/events/", include("api.urls.event_urls")),
     path("api/cover_requests/", include("api.urls.cover_urls")),
+    path("api/shared/", include("api.urls.shared_urls")),
+
 ]
 
