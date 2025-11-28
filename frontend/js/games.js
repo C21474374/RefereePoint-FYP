@@ -1,4 +1,4 @@
-const REFEREE_ID = 1;
+const REFEREE_ID = 5;
 
 document.addEventListener("DOMContentLoaded", async () => {
     loadAvailableGames();
@@ -33,11 +33,17 @@ async function loadAvailableGames() {
             📅 ${g.date} - ⏰ ${g.time}<br>
             🏟 ${g.location_name}<br><br>
 
+            <strong>Referees:</strong><br>
+            • Crew Chief: ${g.crew_chief?.user?.first_name || "(empty)"} ${g.crew_chief?.user?.last_name || ""}<br>
+            • Umpire 1: ${g.umpire1?.user?.first_name || "(empty)"} ${g.umpire1?.user?.last_name || ""}<br>
+            • Umpire 2: ${g.umpire2?.user?.first_name || "(empty)"} ${g.umpire2?.user?.last_name || ""}<br><br>
+
             <button class="btn btn-success" onclick="takeGame(${g.id})">
                 Take Game
             </button>
         </div>
     `).join("");
+
 }
 
 

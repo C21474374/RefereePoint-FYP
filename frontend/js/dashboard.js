@@ -1,4 +1,4 @@
-const REFEREE_ID = 1;
+const REFEREE_ID = 5;
 
 document.addEventListener("DOMContentLoaded", () => {
     loadProfile();
@@ -102,7 +102,6 @@ function renderGameList(id, games) {
         if (g.umpire1?.id === REFEREE_ID) role = "Umpire 1";
         if (g.umpire2?.id === REFEREE_ID) role = "Umpire 2";
 
-        // Check cancellation rules
         const canCancel = g.category?.can_ref_cancel === true && role !== null;
 
         return `
@@ -110,7 +109,11 @@ function renderGameList(id, games) {
             <strong>${g.team_home?.name} vs ${g.team_away?.name}</strong><br>
             📅 ${g.date}, ${g.time}<br>
             🏟 ${g.location_name}<br>
-            <span class="badge bg-primary mt-2">${role ?? "Not Assigned"}</span><br>
+
+            <br><strong>Referees:</strong><br>
+            • Crew Chief: ${g.crew_chief?.user?.first_name || "(empty)"} ${g.crew_chief?.user?.last_name || ""}<br>
+            • Umpire 1: ${g.umpire1?.user?.first_name || "(empty)"} ${g.umpire1?.user?.last_name || ""}<br>
+            • Umpire 2: ${g.umpire2?.user?.first_name || "(empty)"} ${g.umpire2?.user?.last_name || ""}<br><br>
 
             ${canCancel ? `
                 <button class="btn btn-danger btn-sm mt-2" onclick="cancelGame(${g.id})">
