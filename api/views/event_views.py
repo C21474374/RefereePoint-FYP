@@ -1,3 +1,8 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django viewsets for managing events and referee participation.
+# Prompt2: Implement logic to allow referees to join and leave events with conflict checks and waitlisting.
+
+
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response

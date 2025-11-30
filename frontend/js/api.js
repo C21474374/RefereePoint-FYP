@@ -1,3 +1,9 @@
+// Chatgpt Prompts used to assist the creation of this file:
+// Prompt1: Create a simple JavaScript API module to handle GET and POST requests to a REST API.
+// Prompt2: Use Fetch API for making requests and handle JSON responses.
+// Prompt3: Implement error handling for network requests.
+
+
 const API_BASE = "http://127.0.0.1:8000/api";
 
 async function apiGet(endpoint) {

@@ -1,3 +1,7 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django viewsets for managing cover requests including accepting cover requests.
+# Prompt2: Implement logic to update game referee assignments upon accepting a cover request.
+
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response

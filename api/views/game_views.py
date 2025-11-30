@@ -1,3 +1,8 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django viewsets for managing games including listing, uploading, and assigning referees.
+# Prompt2: Implement logic for referees to view their upcoming and past games, request cover, and cancel assignments.
+
+
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response

@@ -1,3 +1,6 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django serializers for cover requests including referee and game details.
+
 from rest_framework import serializers
 from games.models import CoverRequest
 from api.serializers.shared_serializers import RefereeProfileSerializer

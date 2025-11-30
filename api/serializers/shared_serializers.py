@@ -1,3 +1,6 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django serializers for shared models like users, referees, teams, game categories, and competitions.
+
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from users.models import RefereeProfile

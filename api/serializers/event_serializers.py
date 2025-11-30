@@ -1,3 +1,6 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django serializers for events including uploaded by user and event participation details.
+
 from rest_framework import serializers
 from games.models import Event, EventParticipation
 from api.serializers.shared_serializers import UserSerializer

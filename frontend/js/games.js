@@ -1,3 +1,10 @@
+// Chatgpt Prompts used to assist the creation of this file:
+// Prompt1: Create a simple JavaScript file to handle the referee dashboard functionalities.
+// Prompt2: Use Fetch API to interact with a REST API for games, events, and referee profile.
+
+// logged in referee ID for testing purposes
+// In production, this should be dynamically set based on the logged-in user
+// For now, we use a hardcoded value for testing
 const REFEREE_ID = 5;
 
 document.addEventListener("DOMContentLoaded", async () => {

@@ -1,3 +1,7 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django serializers for games including referee assignments, teams, categories, competitions, and uploaded by user.
+
+
 from rest_framework import serializers
 from games.models import Game
 from api.serializers.shared_serializers import (

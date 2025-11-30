@@ -1,3 +1,9 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django models for game categories, competitions, teams, and games with referee assignments
+# Prompt2: Include models for cover requests and event participation for referees.
+# Prompt3: Ensure relationships between models are properly defined using ForeignKey and ManyToManyField where appropriate.
+# Prompt4: Add upload games tracking by user.
+
 from django.db import models
 from django.contrib.auth.models import User
 from users.models import RefereeProfile

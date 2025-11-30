@@ -1,3 +1,7 @@
+# Chatgpt Prompts used to assist the creation of this file:
+# Prompt1: Create Django models for user roles and referee profiles with availability. 
+# Prompt2: Include models for weekly availability and specific unavailable dates with time windows.
+
 from django.db import models
 from django.contrib.auth.models import User
 
