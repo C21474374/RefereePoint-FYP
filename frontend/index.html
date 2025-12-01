@@ -3,7 +3,6 @@
 <!-- Add a navigation bar to the games and events page. -->
 
 
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -47,6 +46,7 @@
     <script src="js/api.js"></script>
     <script src="js/dashboard.js" defer></script>
 </head>
+
 <nav class="navbar navbar-expand-lg" style="background-color: #1A1A1A;">
     <div class="container-fluid">
 
@@ -80,7 +80,8 @@
                         Games
                     </a>
                 </li>
-                                <li class="nav-item">
+
+                <li class="nav-item">
                     <a class="nav-link" id="nav-profile" href="index.html" style="color: #ffffff;">
                         Dashboard
                     </a>
@@ -121,9 +122,13 @@
         <div id="coverRequests">Loading...</div>
     </div>
 
-    <!-- UPLOAD GAME -->
-<!-- UPLOAD GAME -->
-    <div class="card p-3 mb-4">
+    <!-- TOGGLE BUTTON FOR UPLOAD GAME -->
+    <button class="btn btn-success mb-3 fw-bold" onclick="toggleUploadGame()">
+        Upload Game ▼
+    </button>
+
+    <!-- UPLOAD GAME (HIDDEN BY DEFAULT) -->
+    <div class="card p-3 mb-4" id="uploadGameSection" style="display: none;">
         <h4>Upload a Game</h4>
 
         <form id="uploadGameForm" onsubmit="event.preventDefault(); submitGame();">
@@ -169,8 +174,6 @@
         </form>
     </div>
 
-
-
     <!-- EVENTS -->
     <div class="card p-3 mb-4">
         <h4>Tournaments / Events</h4>
@@ -182,5 +185,22 @@
     </a>
 
 </div>
+
+<!-- Toggle Script -->
+<script>
+function toggleUploadGame() {
+    const section = document.getElementById("uploadGameSection");
+    const button = event.target;
+
+    if (section.style.display === "none") {
+        section.style.display = "block";
+        button.innerHTML = "Upload Game ▲";
+    } else {
+        section.style.display = "none";
+        button.innerHTML = "Upload Game ▼";
+    }
+}
+</script>
+
 </body>
 </html>

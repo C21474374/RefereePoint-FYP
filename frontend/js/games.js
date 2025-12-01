@@ -36,14 +36,14 @@ async function loadAvailableGames() {
 
     container.innerHTML = available.map(g => `
         <div class="border rounded p-3 mb-2">
-            <strong>${g.team_home?.name} vs ${g.team_away?.name}</strong><br>
-            📅 ${g.date} - ⏰ ${g.time}<br>
-            🏟 ${g.location_name}<br><br>
+            <strong>Team:</strong> ${g.team_home?.name} vs ${g.team_away?.name}<br>
+            <strong>Date/Time:</strong> ${g.date}, ${g.time}<br>
+            <strong>Venue:</strong> ${g.location_name}<br>
 
-            <strong>Referees:</strong><br>
-            • Crew Chief: ${g.crew_chief?.user?.first_name || "(empty)"} ${g.crew_chief?.user?.last_name || ""}<br>
-            • Umpire 1: ${g.umpire1?.user?.first_name || "(empty)"} ${g.umpire1?.user?.last_name || ""}<br>
-            • Umpire 2: ${g.umpire2?.user?.first_name || "(empty)"} ${g.umpire2?.user?.last_name || ""}<br><br>
+            <br><strong>Referees:</strong><br>
+            <strong>Crew Chief:</strong> ${g.crew_chief?.user?.first_name || "(empty)"} ${g.crew_chief?.user?.last_name || ""}<br>
+            <strong>Umpire 1:</strong> ${g.umpire1?.user?.first_name || "(empty)"} ${g.umpire1?.user?.last_name || ""}<br>
+            <strong>Umpire 2:</strong> ${g.umpire2?.user?.first_name || "(empty)"} ${g.umpire2?.user?.last_name || ""}<br><br>
 
             <button class="btn btn-success" onclick="takeGame(${g.id})">
                 Take Game
@@ -95,9 +95,10 @@ async function loadEvents() {
         return `
             <div class="border rounded p-3 mb-3">
 
-                <strong>${e.event_name}</strong><br>
-                📅 ${e.start_date} → ${e.end_date}<br>
-                💰 €${e.payment_amount}<br><br>
+                
+                <strong>Name: </strong>${e.event_name}<br>
+                <strong>Date: </strong> ${e.start_date} until ${e.end_date}<br>
+                <strong>Payment: </strong> €${e.payment_amount}<br><br>
 
                 <p><strong>Referees needed:</strong> ${e.referees_required}</p>
                 <p><strong>Confirmed:</strong> ${confirmed.length}</p>
@@ -105,8 +106,9 @@ async function loadEvents() {
                 <p><strong>Spots left:</strong> ${spotsLeft}</p>
 
                 ${isConfirmed ? `
+                    <p><strong>You are confirmed for this event.</strong></p>
                     <button class="btn btn-danger mt-2" onclick="leaveEvent(${e.id})">
-                        Leave Event (Confirmed)
+                        Leave Event
                     </button>
                 ` : isWaitlisted ? `
                     <button class="btn btn-danger mt-2" onclick="leaveEvent(${e.id})">

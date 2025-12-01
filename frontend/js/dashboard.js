@@ -16,10 +16,14 @@ document.addEventListener("DOMContentLoaded", () => {
     loadDropdowns();
 });
 
-function loadProfile() {
+async function loadProfile() {
+    const referee = await apiGet(`/shared/referees/${REFEREE_ID}/`);
+
+
     document.getElementById("profileCard").innerHTML = `
-        <p><strong>Referee ID:</strong> ${REFEREE_ID}</p>
-        <p>Profile features coming in next iteration.</p>
+        <p><strong>Name:</strong> ${referee.user.first_name} ${referee.user.last_name}</p>
+        <p><strong>Email:</strong> ${referee.user.email}</p>
+        <p><strong>Grade:</strong> ${referee.grade}</p>
     `;
 }
 
@@ -30,7 +34,7 @@ async function loadUpcomingGames() {
 
 async function loadPastGames() {
     const games = await apiGet(`/games/my_past/?referee_id=${REFEREE_ID}`);
-    renderGameList("pastGames", games);
+    renderPastGameList("pastGames", games);
 }
 
 async function loadCoverRequests() {
@@ -113,20 +117,57 @@ function renderGameList(id, games) {
 
         return `
         <div class="border rounded p-2 mb-2">
-            <strong>${g.team_home?.name} vs ${g.team_away?.name}</strong><br>
-            📅 ${g.date}, ${g.time}<br>
-            🏟 ${g.location_name}<br>
+            <strong>Team:</strong> ${g.team_home?.name} vs ${g.team_away?.name}<br>
+            <strong>Date/Time:</strong> ${g.date}, ${g.time}<br>
+            <strong>Venue:</strong> ${g.location_name}<br>
 
             <br><strong>Referees:</strong><br>
-            • Crew Chief: ${g.crew_chief?.user?.first_name || "(empty)"} ${g.crew_chief?.user?.last_name || ""}<br>
-            • Umpire 1: ${g.umpire1?.user?.first_name || "(empty)"} ${g.umpire1?.user?.last_name || ""}<br>
-            • Umpire 2: ${g.umpire2?.user?.first_name || "(empty)"} ${g.umpire2?.user?.last_name || ""}<br><br>
-
+            <strong>Crew Chief:</strong> ${g.crew_chief?.user?.first_name || "(empty)"} ${g.crew_chief?.user?.last_name || ""}<br>
+            <strong>Umpire 1:</strong> ${g.umpire1?.user?.first_name || "(empty)"} ${g.umpire1?.user?.last_name || ""}<br>
+            <strong>Umpire 2:</strong> ${g.umpire2?.user?.first_name || "(empty)"} ${g.umpire2?.user?.last_name || ""}<br><br>
+            <button class="btn btn-primary btn-sm mt-2">
+                    View more (Coming Soon)
+            </button>
             ${canCancel ? `
                 <button class="btn btn-danger btn-sm mt-2" onclick="cancelGame(${g.id})">
                     Cancel Game
                 </button>
             ` : ``}
+        </div>
+        `;
+    }).join("");
+}
+
+function renderPastGameList(id, games) {
+    const container = document.getElementById(id);
+
+    if (!games || !games.length) {
+        container.innerHTML = "No games.";
+        return;
+    }
+
+    container.innerHTML = games.map(g => {
+        let role = null;
+
+        if (g.crew_chief?.id === REFEREE_ID) role = "Crew Chief";
+        if (g.umpire1?.id === REFEREE_ID) role = "Umpire 1";
+        if (g.umpire2?.id === REFEREE_ID) role = "Umpire 2";
+
+        const canCancel = g.category?.can_ref_cancel === true && role !== null;
+
+        return `
+        <div class="border rounded p-2 mb-2">
+            <strong>Team:</strong> ${g.team_home?.name} vs ${g.team_away?.name}<br>
+            <strong>Date/Time:</strong> ${g.date}, ${g.time}<br>
+            <strong>Venue:</strong> ${g.location_name}<br>
+
+            <br><strong>Referees:</strong><br>
+            <strong>Crew Chief:</strong> ${g.crew_chief?.user?.first_name || "(empty)"} ${g.crew_chief?.user?.last_name || ""}<br>
+            <strong>Umpire 1:</strong> ${g.umpire1?.user?.first_name || "(empty)"} ${g.umpire1?.user?.last_name || ""}<br>
+            <strong>Umpire 2:</strong> ${g.umpire2?.user?.first_name || "(empty)"} ${g.umpire2?.user?.last_name || ""}<br><br>
+            <button class="btn btn-primary btn-sm mt-2">
+                    View more (Coming Soon)
+            </button>
         </div>
         `;
     }).join("");
@@ -155,9 +196,10 @@ function renderEventList(events) {
     }
     container.innerHTML = events.map(e => `
         <div class="border rounded p-2 mb-2">
-            <strong>${e.event_name}</strong><br>
-            📅 ${e.start_date} → ${e.end_date}<br>
-            💰 €${e.payment_amount}
+            
+            <strong>Name: </strong>${e.event_name}<br>
+            <strong>Date: </strong> ${e.start_date} until ${e.end_date}<br>
+            <strong>Payment: </strong> €${e.payment_amount}
         </div>
     `).join("");
 }
