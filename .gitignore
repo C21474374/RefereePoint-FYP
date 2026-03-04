@@ -1,1 +1,47 @@
+# Virtual environment
 venv/
+.venv/
+env/
+
+# Database
+*.sqlite3
+db.sqlite3
+
+# GeoPackage files
+*.gpkg
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Static files (if collected)
+staticfiles/
+
+# Media uploads
+media/
