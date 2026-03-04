@@ -41,6 +41,16 @@ INSTALLED_APPS = [
     'corsheaders',
 
     # created apps
+    # List of apps that should be added
+    # Users (for authentication, registration, etc.)
+    # Games (for managing game details, scheduling, etc.)
+    # Venues (for managing venue details, locations, etc.)
+    # Events (for managing events, which are specific instances of games at venues)
+    # Teams (for managing teams that participate in games/events)
+    # Cover Requests (for managing requests from referees to cover games/events)
+    # Financials (for managing payments, invoices, etc.)
+    # Reports (for generating various reports related to games/events/referees)
+    # Claim forms (for managing forms that referees fill out to claim games/events)
     'users',
     'games',
     'venues',
