@@ -2,6 +2,7 @@ import json
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.db import connection
 from .models import Venue
 
 VENUE_NOT_FOUND_ERROR = "Venue not found"
@@ -149,3 +150,52 @@ def delete_venue(request, venue_id):
 
     venue.delete()
     return _json_message("Venue deleted", status=200)
+
+
+# List nearby venues (GET)
+# Params: lat, lon, radius_km (optional, default 10)
+def nearby_venues(request):
+    if request.method != "GET":
+        return _json_error(METHOD_NOT_ALLOWED_ERROR, 405)
+
+    try:
+        user_lat = float(request.GET.get("lat", ""))
+        user_lon = float(request.GET.get("lon", ""))
+    except (ValueError, TypeError):
+        return _json_error("Missing or invalid lat/lon params", 400)
+
+    try:
+        radius_km = float(request.GET.get("radius_km", 10))
+    except ValueError:
+        radius_km = 10
+
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT fid, name, address, lat, lon,
+                   ST_Distance(
+                       geom::geography,
+                       ST_SetSRID(ST_Point(%s, %s), 4326)::geography
+                   ) / 1000 AS distance_km
+            FROM venues_venue
+            WHERE ST_DWithin(
+                geom::geography,
+                ST_SetSRID(ST_Point(%s, %s), 4326)::geography,
+                %s
+            )
+            ORDER BY distance_km
+        """, [user_lon, user_lat, user_lon, user_lat, radius_km * 1000])
+        
+        rows = cursor.fetchall()
+    
+    data = [
+        {
+            "id": row[0],
+            "name": row[1],
+            "address": row[2],
+            "lat": row[3],
+            "lon": row[4],
+            "distance_km": round(row[5], 2) if row[5] else None
+        }
+        for row in rows
+    ]
+    return JsonResponse(data, safe=False, status=200)
