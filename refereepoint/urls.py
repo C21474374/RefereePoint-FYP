@@ -19,15 +19,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-
-    # API ROUTES (match frontend EXACTLY)
-    path("api/games/", include("api.urls.game_urls")),
-    path("api/events/", include("api.urls.event_urls")),
-    path("api/cover_requests/", include("api.urls.cover_urls")),
-    path("api/shared/", include("api.urls.shared_urls")),
-
-    # Venue routes
-    path("api/", include("venues.urls")), 
-
+    path("api/", include("venues.urls")),
 ]
 
