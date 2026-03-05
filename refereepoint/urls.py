@@ -26,5 +26,8 @@ urlpatterns = [
     path("api/cover_requests/", include("api.urls.cover_urls")),
     path("api/shared/", include("api.urls.shared_urls")),
 
+    # Venue routes
+    path("api/", include("venues.urls")), 
+
 ]
 
