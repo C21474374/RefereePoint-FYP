@@ -42,11 +42,15 @@ INSTALLED_APPS = [
 
     # created apps
     # List of apps that should be added
+
+    # Core apps that are essential for the platform's functionality:
     # Users (for authentication, registration, etc.)
     # Games (for managing game details, scheduling, etc.)
     # Venues (for managing venue details, locations, etc.)
     # Events (for managing events, which are specific instances of games at venues)
     # Teams (for managing teams that participate in games/events)
+    
+    #Extra apps that can be added later:
     # Cover Requests (for managing requests from referees to cover games/events)
     # Financials (for managing payments, invoices, etc.)
     # Reports (for generating various reports related to games/events/referees)
