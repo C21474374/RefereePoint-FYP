@@ -5,7 +5,7 @@ class Venue(models.Model):
     """Venues for managing venue details and locations."""
     
     name = models.CharField(max_length=255)
-    address = models.CharField(max_length=255, blank=True, null=True)
+    address = models.CharField(max_length=255, blank=True)
     lat = models.FloatField(null=True, blank=True)
     lon = models.FloatField(null=True, blank=True)
     club = models.ForeignKey(
