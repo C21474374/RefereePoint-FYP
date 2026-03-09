@@ -42,7 +42,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
     
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    REQUIRED_FIELDS = ['first_name', 'last_name','bipin_number']
     
     class Meta:
         db_table = 'users_user'
@@ -58,12 +58,12 @@ class RefereeProfile(models.Model):
     """Profile for users who are referees."""
     
     GRADE_CHOICES = [
-        ('TRAINEE', 'Trainee'),
-        ('LEVEL_1', 'Level 1'),
-        ('LEVEL_2', 'Level 2'),
-        ('LEVEL_3', 'Level 3'),
-        ('NATIONAL', 'National'),
-        ('INTERNATIONAL', 'International'),
+        ('INTRO', 'Intro'),
+        ('GRADE_3', 'Grade 3'),
+        ('GRADE_2', 'Grade 2'),
+        ('GRADE_1', 'Grade 1'),
+        ('FIBA', 'Fiba'),
+        
     ]
     
     user = models.OneToOneField(
@@ -71,32 +71,49 @@ class RefereeProfile(models.Model):
         on_delete=models.CASCADE,
         related_name='referee_profile'
     )
-    referee_number = models.CharField(max_length=50, unique=True)
+    
     grade = models.CharField(max_length=20, choices=GRADE_CHOICES, default='TRAINEE')
+    
     
     class Meta:
         db_table = 'users_referee_profile'
     
     def __str__(self):
-        return f"{self.user.get_full_name()} - {self.referee_number}"
+        return f"{self.user.get_full_name()} - {self.user.bipin_number}"
 
 
 class RefereeAvailability(models.Model):
     """Availability slots for referees."""
+    
+    DAY_CHOICES = [
+        ('MON', 'Monday'),
+        ('TUE', 'Tuesday'),
+        ('WED', 'Wednesday'),
+        ('THU', 'Thursday'),
+        ('FRI', 'Friday'),
+        ('SAT', 'Saturday'),
+        ('SUN', 'Sunday'),
+    ]
     
     referee = models.ForeignKey(
         RefereeProfile,
         on_delete=models.CASCADE,
         related_name='availabilities'
     )
-    date = models.DateField()
+    day_of_week = models.CharField(max_length=3, choices=DAY_CHOICES, default='MON')
     start_time = models.TimeField()
     end_time = models.TimeField()
     
     class Meta:
         db_table = 'users_referee_availability'
         verbose_name_plural = 'Referee availabilities'
-        ordering = ['date', 'start_time']
+        ordering = ['day_of_week', 'start_time']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['referee', 'day_of_week'],
+                name='unique_referee_availability'
+            )
+        ]
     
     def __str__(self):
-        return f"{self.referee} - {self.date} ({self.start_time} - {self.end_time})"
+        return f"{self.referee} - {self.get_day_of_week_display()} ({self.start_time} - {self.end_time})"

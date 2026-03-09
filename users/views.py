@@ -26,7 +26,7 @@ def _referee_profile_to_dict(profile: RefereeProfile) -> dict:
         "id": profile.id,
         "user_id": profile.user_id,
         "user_name": profile.user.get_full_name(),
-        "referee_number": profile.referee_number,
+        "bipin_number": profile.user.bipin_number,
         "grade": profile.grade,
     }
 

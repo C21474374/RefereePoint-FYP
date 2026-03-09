@@ -25,7 +25,7 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2'),
+            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'bipin_number'),
         }),
     )
     inlines = [RefereeProfileInline]
@@ -33,16 +33,15 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(RefereeProfile)
 class RefereeProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'referee_number', 'grade')
+    list_display = ('user', 'grade')
     list_filter = ('grade',)
-    search_fields = ('user__email', 'user__first_name', 'user__last_name', 'referee_number')
+    search_fields = ('user__email', 'user__first_name', 'user__last_name', 'user__bipin_number')
     raw_id_fields = ('user',)
 
 
 @admin.register(RefereeAvailability)
 class RefereeAvailabilityAdmin(admin.ModelAdmin):
-    list_display = ('referee', 'date', 'start_time', 'end_time')
-    list_filter = ('date',)
+    list_display = ('referee', 'day_of_week', 'start_time', 'end_time')
+    list_filter = ('day_of_week',)
     search_fields = ('referee__user__email', 'referee__user__first_name', 'referee__user__last_name')
-    date_hierarchy = 'date'
     raw_id_fields = ('referee',)
