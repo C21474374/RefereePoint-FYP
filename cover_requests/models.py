@@ -38,6 +38,14 @@ class CoverRequest(models.Model):
         related_name='cover_requests',
         help_text='The assignment being replaced'
     )
+    replaced_by = models.ForeignKey(
+        'users.RefereeProfile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cover_assignments',
+        help_text='The referee covering the game'
+    )
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,

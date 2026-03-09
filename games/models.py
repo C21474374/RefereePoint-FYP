@@ -9,6 +9,7 @@ class Game(models.Model):
         ('NL', 'National League'),
         ('SCHOOL', 'School'),
         ('CLUB', 'Club'),
+        ('FRIENDLY', 'Friendly'),
     ]
     
     game_type = models.CharField(max_length=20, choices=GAME_TYPE_CHOICES)
@@ -46,6 +47,12 @@ class Game(models.Model):
     class Meta:
         db_table = 'games_game'
         ordering = ['date', 'time']
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(home_team=models.F('away_team')),
+                name='home_away_different'
+            )
+        ]
     
     def __str__(self):
         home = self.home_team.club.name if self.home_team else 'TBD'
