@@ -9,6 +9,7 @@ class CoverRequest(models.Model):
         ('NL', 'National League'),
         ('CLUB', 'Club'),
         ('SCHOOL', 'School'),
+        ('FRIENDLY', 'Friendly'),
     ]
     
     STATUS_CHOICES = [
@@ -32,11 +33,9 @@ class CoverRequest(models.Model):
     request_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     referee_slot = models.ForeignKey(
         'games.RefereeAssignment',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         related_name='cover_requests',
-        help_text='The assignment being replaced'
+        help_text='The assignment being replaced (required - cover requests need an existing referee to replace)'
     )
     replaced_by = models.ForeignKey(
         'users.RefereeProfile',
