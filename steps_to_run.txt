@@ -1,2 +1,2 @@
 start virtual environment
-- .\venv\Scripts\Activate
+- venv\Scripts\Activate.ps1

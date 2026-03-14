@@ -8,17 +8,15 @@ type GameCardProps = {
 export default function GameCard({ game }: GameCardProps) {
   return (
     <div className="game-card">
-      {/* Main game title */}
       <h3 className="game-card-title">
-        {game.homeTeam} vs {game.awayTeam}
+        {game.home_team_name} vs {game.away_team_name}
       </h3>
 
-      {/* Game details */}
       <p>
-        <strong>Venue:</strong> {game.venue}
+        <strong>Venue:</strong> {game.venue_name || "TBD"}
       </p>
       <p>
-        <strong>Competition:</strong> {game.competition}
+        <strong>Competition:</strong> {game.division_display || "TBD"}
       </p>
       <p>
         <strong>Date:</strong> {game.date}
@@ -27,13 +25,9 @@ export default function GameCard({ game }: GameCardProps) {
         <strong>Time:</strong> {game.time}
       </p>
       <p>
-        <strong>Status:</strong>{" "}
-        <span className={`status-badge status-${game.status.toLowerCase()}`}>
-          {game.status}
-        </span>
+        <strong>Type:</strong> {game.game_type_display}
       </p>
 
-      {/* Action buttons */}
       <div className="game-card-actions">
         <button className="game-btn-secondary">View Details</button>
         <button className="game-btn-primary">Open on Map</button>

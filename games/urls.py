@@ -1,9 +1,12 @@
 from django.urls import path
-from . import views
+from .views import (
+    GameListAPIView,
+    GameDetailAPIView,
+    RefereeAssignmentListAPIView,
+)
 
 urlpatterns = [
-    path('', views.list_games, name='list_games'),
-    path('<int:game_id>/', views.game_detail, name='game_detail'),
-    path('upcoming/', views.upcoming_games, name='upcoming_games'),
-    path('needing-referees/', views.games_needing_referees, name='games_needing_referees'),
+    path("", GameListAPIView.as_view(), name="game-list"),
+    path("<int:pk>/", GameDetailAPIView.as_view(), name="game-detail"),
+    path("assignments/", RefereeAssignmentListAPIView.as_view(), name="assignment-list"),
 ]

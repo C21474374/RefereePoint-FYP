@@ -1,101 +1,95 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import GamesMap from "../components/GamesMap";
 import GamesList from "../components/Gameslist";
 import "../pages_css/Games.css";
 
-// Define the shape of a game object
 export type Game = {
   id: number;
-  homeTeam: string;
-  awayTeam: string;
-  venue: string;
-  competition: string;
+  game_type: string;
+  game_type_display: string;
+  division: number | null;
+  division_name: string | null;
+  division_gender: string | null;
+  division_display: string | null;
   date: string;
   time: string;
-  status: "Available" | "Assigned" | "Covered";
-  lat: number;
-  lng: number;
+  venue: number | null;
+  venue_name: string | null;
+  lat: number | null;
+  lng: number | null;
+  home_team: number | null;
+  home_team_name: string | null;
+  away_team: number | null;
+  away_team_name: string | null;
 };
 
 export default function Games() {
-  // Sample data for now
-  // Later replace this with data from your backend API
-  const [games] = useState<Game[]>([
-    {
-      id: 1,
-      homeTeam: "Dublin Lions",
-      awayTeam: "Templeogue Tigers",
-      venue: "National Basketball Arena",
-      competition: "Super League",
-      date: "2026-03-15",
-      time: "19:30",
-      status: "Available",
-      lat: 53.3208,
-      lng: -6.3189,
-    },
-    {
-      id: 2,
-      homeTeam: "Malahide Rockets",
-      awayTeam: "Tallaght Storm",
-      venue: "Malahide Community School",
-      competition: "Division 1",
-      date: "2026-03-16",
-      time: "18:00",
-      status: "Assigned",
-      lat: 53.4500,
-      lng: -6.154,
-    },
-    {
-      id: 3,
-      homeTeam: "Bray Falcons",
-      awayTeam: "Swords Heat",
-      venue: "Bray Sports Centre",
-      competition: "Schools Cup",
-      date: "2026-03-17",
-      time: "17:15",
-      status: "Available",
-      lat: 53.2022,
-      lng: -6.1118,
-    },
-    {
-      id: 4,
-      homeTeam: "Lucan Hawks",
-      awayTeam: "Blanch Panthers",
-      venue: "Lucan Leisure Centre",
-      competition: "Division 2",
-      date: "2026-03-18",
-      time: "20:00",
-      status: "Covered",
-      lat: 53.357,
-      lng: -6.4486,
-    },
-  ]);
+  // Games loaded from backend
+  const [games, setGames] = useState<Game[]>([]);
+
+  // Loading/error state for API call
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [competitionFilter, setCompetitionFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // Build competition dropdown options from the games array
+  // Fetch games from Django API when page loads
+  useEffect(() => {
+    async function fetchGames() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const response = await fetch("http://127.0.0.1:8000/api/games/");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch games");
+        }
+
+        const data = await response.json();
+        setGames(data);
+      } catch (err) {
+        console.error("Error fetching games:", err);
+        setError("Could not load games.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchGames();
+  }, []);
+
+  // Build filter options from backend data
   const competitionOptions = useMemo(() => {
-    const competitions = games.map((game) => game.competition);
-    return ["All", ...new Set(competitions)];
+    const divisions = games
+      .map((game) => game.division_display)
+      .filter((value): value is string => Boolean(value));
+
+    return ["All", ...new Set(divisions)];
   }, [games]);
 
-  // Filter the games once here
-  // Then pass the same filtered data to BOTH the map and the list
+  // Frontend filtering
   const filteredGames = useMemo(() => {
     return games.filter((game) => {
+      const homeTeam = game.home_team_name?.toLowerCase() || "";
+      const awayTeam = game.away_team_name?.toLowerCase() || "";
+      const venueName = game.venue_name?.toLowerCase() || "";
+      const divisionDisplay = game.division_display || "";
+
       const matchesSearch =
-        game.homeTeam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        game.awayTeam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        game.venue.toLowerCase().includes(searchTerm.toLowerCase());
+        homeTeam.includes(searchTerm.toLowerCase()) ||
+        awayTeam.includes(searchTerm.toLowerCase()) ||
+        venueName.includes(searchTerm.toLowerCase());
 
       const matchesCompetition =
-        competitionFilter === "All" || game.competition === competitionFilter;
+        competitionFilter === "All" || divisionDisplay === competitionFilter;
 
-      const matchesStatus =
-        statusFilter === "All" || game.status === statusFilter;
+      // You do not yet have a real status field in Game model,
+      // so leave this as All for now or remove it later
+      const matchesStatus = statusFilter === "All";
 
       return matchesSearch && matchesCompetition && matchesStatus;
     });
@@ -103,7 +97,6 @@ export default function Games() {
 
   return (
     <div className="games-page">
-      {/* Page heading */}
       <div className="games-header">
         <h1 className="games-title">Games</h1>
         <p className="games-subtitle">
@@ -111,7 +104,6 @@ export default function Games() {
         </p>
       </div>
 
-      {/* Filters affect both map and list */}
       <div className="games-filters">
         <input
           type="text"
@@ -139,17 +131,18 @@ export default function Games() {
           className="games-filter-select"
         >
           <option value="All">All Statuses</option>
-          <option value="Available">Available</option>
-          <option value="Assigned">Assigned</option>
-          <option value="Covered">Covered</option>
         </select>
       </div>
 
-      {/* Main layout: map left, list right */}
-      <div className="games-content">
-        <GamesMap games={filteredGames} />
-        <GamesList games={filteredGames} />
-      </div>
+      {loading && <p>Loading games...</p>}
+      {error && <p>{error}</p>}
+
+      {!loading && !error && (
+        <div className="games-content">
+          <GamesMap games={filteredGames} />
+          <GamesList games={filteredGames} />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,11 +1,25 @@
-import React from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import React, { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import type { Game } from "../pages/Games";
 import "leaflet/dist/leaflet.css";
 
-// Hooks
-import { useEffect } from "react";
-import { useMap } from "react-leaflet";
+delete (L.Icon.Default.prototype as L.Icon.Default & {
+  _getIconUrl?: () => string;
+})._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+type GamesMapProps = {
+  games: Game[];
+};
 
 function ResizeMap() {
   const map = useMap();
@@ -19,25 +33,23 @@ function ResizeMap() {
   return null;
 }
 
-type GamesMapProps = {
-  games: Game[];
-};
-
 export default function GamesMap({ games }: GamesMapProps) {
-  // Default map center = Dublin
-  // If there are filtered games, center on the first one
+  const gamesWithCoords = games.filter(
+    (game) => game.lat !== null && game.lng !== null
+  );
+
   const mapCenter: [number, number] =
-    games.length > 0 ? [games[0].lat, games[0].lng] : [53.3498, -6.2603];
+    gamesWithCoords.length > 0
+      ? [gamesWithCoords[0].lat as number, gamesWithCoords[0].lng as number]
+      : [53.3498, -6.2603];
 
   return (
     <div className="games-map-panel">
-      {/* Header above the map */}
       <div className="games-map-header">
         <h2>Map View</h2>
-        <span>{games.length} games shown</span>
+        <span>{gamesWithCoords.length} games shown</span>
       </div>
 
-      {/* Real React Leaflet map */}
       <div className="games-map-wrapper">
         <MapContainer
           center={mapCenter}
@@ -52,14 +64,23 @@ export default function GamesMap({ games }: GamesMapProps) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {games.map((game) => (
-            <Marker key={game.id} position={[game.lat, game.lng]}>
+          {gamesWithCoords.map((game) => (
+            <Marker
+              key={game.id}
+              position={[game.lat as number, game.lng as number]}
+            >
               <Popup>
-                <strong>
-                  {game.homeTeam} vs {game.awayTeam}
-                </strong>
-                <br />
-                {game.venue}
+                <div>
+                  <strong>
+                    {game.home_team_name} vs {game.away_team_name}
+                  </strong>
+                  <br />
+                  {game.venue_name}
+                  <br />
+                  {game.date} at {game.time}
+                  <br />
+                  {game.division_display}
+                </div>
               </Popup>
             </Marker>
           ))}
