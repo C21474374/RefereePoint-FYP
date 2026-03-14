@@ -1,39 +1,81 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 const navLinks = [
-  { name: 'Dashboard', path: '/dashboard' },
-  { name: 'Games', path: '/games' },
-  { name: 'Cover Requests', path: '/cover-requests' },
-  { name: 'Events', path: '/events' },
-  { name: 'Reports', path: '/reports' },
-  { name: 'Earnings', path: '/earnings' },
+  { name: "Dashboard", path: "/dashboard" },
+  { name: "Games", path: "/games" },
+  { name: "Cover Requests", path: "/cover-requests" },
+  { name: "Events", path: "/events" },
+  { name: "Reports", path: "/reports" },
+  { name: "Earnings", path: "/earnings" },
 ];
 
 const TopNavBar: React.FC = () => {
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement | null>(null);
+
+  const handleMenuToggle = () => {
+    setMenuOpen((prev) => !prev);
+  };
+
+  const handleLinkClick = () => {
+    setMenuOpen(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   return (
-    <nav className="top-nav-bar">
-      <div className="nav-left">
-        <span className="nav-title">RefereePoint</span>
-      </div>
-      <div className="nav-center">
-        {navLinks.map(link => (
+    <nav className="top-nav-bar" ref={navRef}>
+     <div className="nav-left">
+        <Link to="/dashboard" className="nav-title">RefereePoint</Link>
+     </div>
+
+      <button
+        className={`burger-button ${menuOpen ? "open" : ""}`}
+        onClick={handleMenuToggle}
+        aria-label="Toggle navigation menu"
+        aria-expanded={menuOpen}
+        type="button"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <div className={`nav-center ${menuOpen ? "open" : ""}`}>
+        {navLinks.map((link) => (
           <Link
             key={link.name}
             to={link.path}
-            className={
-              'nav-link' + (location.pathname === link.path ? ' active' : '')
-            }
+            onClick={handleLinkClick}
+            className={`nav-link ${
+              location.pathname === link.path ? "active" : ""
+            }`}
           >
             {link.name}
           </Link>
         ))}
       </div>
+
       <div className="nav-right">
         <span className="nav-user">Demet</span>
-        {/* Add avatar or notifications here if needed */}
       </div>
     </nav>
   );

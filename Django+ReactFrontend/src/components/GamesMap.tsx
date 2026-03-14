@@ -1,47 +1,70 @@
-import React from 'react';
+import React from "react";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import type { Game } from "../pages/Games";
+import "leaflet/dist/leaflet.css";
 
-// Example props: array of games with lat/lng, venue name, and game info
-interface Game {
-  id: string;
-  venue: string;
-  lat: number;
-  lng: number;
-  date: string;
-  teams: string;
+// Hooks
+import { useEffect } from "react";
+import { useMap } from "react-leaflet";
+
+function ResizeMap() {
+  const map = useMap();
+
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+  }, [map]);
+
+  return null;
 }
 
-interface GamesMapProps {
+type GamesMapProps = {
   games: Game[];
-}
-
-// This component uses Leaflet for mapping
-// To use: install leaflet and react-leaflet
-// npm install leaflet react-leaflet
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-
-const defaultPosition = { lat: 53.3498, lng: -6.2603 }; // Dublin center
-
-const GamesMap: React.FC<GamesMapProps> = ({ games }) => {
-  return (
-    <div style={{ height: '500px', width: '100%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px #0001' }}>
-      <MapContainer center={[defaultPosition.lat, defaultPosition.lng]} zoom={11} style={{ height: '100%', width: '100%' }}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {games.map(game => (
-          <Marker key={game.id} position={[game.lat, game.lng]}>
-            <Popup>
-              <strong>{game.venue}</strong><br />
-              {game.date}<br />
-              {game.teams}
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-    </div>
-  );
 };
 
-export default GamesMap;
+export default function GamesMap({ games }: GamesMapProps) {
+  // Default map center = Dublin
+  // If there are filtered games, center on the first one
+  const mapCenter: [number, number] =
+    games.length > 0 ? [games[0].lat, games[0].lng] : [53.3498, -6.2603];
+
+  return (
+    <div className="games-map-panel">
+      {/* Header above the map */}
+      <div className="games-map-header">
+        <h2>Map View</h2>
+        <span>{games.length} games shown</span>
+      </div>
+
+      {/* Real React Leaflet map */}
+      <div className="games-map-wrapper">
+        <MapContainer
+          center={mapCenter}
+          zoom={11}
+          scrollWheelZoom={true}
+          className="games-leaflet-map"
+        >
+          <ResizeMap />
+
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          {games.map((game) => (
+            <Marker key={game.id} position={[game.lat, game.lng]}>
+              <Popup>
+                <strong>
+                  {game.homeTeam} vs {game.awayTeam}
+                </strong>
+                <br />
+                {game.venue}
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
+    </div>
+  );
+}
