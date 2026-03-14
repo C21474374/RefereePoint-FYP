@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import GamesMap from "../components/GamesMap";
-import GamesList from "../components/Gameslist";
+import GamesList from "../components/GamesList";
 import "../pages_css/Games.css";
 
 export type Game = {
@@ -24,19 +24,17 @@ export type Game = {
 };
 
 export default function Games() {
-  // Games loaded from backend
   const [games, setGames] = useState<Game[]>([]);
-
-  // Loading/error state for API call
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [competitionFilter, setCompetitionFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // Fetch games from Django API when page loads
+  // New: selected venue from map click
+  const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
+
   useEffect(() => {
     async function fetchGames() {
       try {
@@ -62,7 +60,6 @@ export default function Games() {
     fetchGames();
   }, []);
 
-  // Build filter options from backend data
   const competitionOptions = useMemo(() => {
     const divisions = games
       .map((game) => game.division_display)
@@ -71,8 +68,8 @@ export default function Games() {
     return ["All", ...new Set(divisions)];
   }, [games]);
 
-  // Frontend filtering
-  const filteredGames = useMemo(() => {
+  // Base filters from search/dropdowns
+  const baseFilteredGames = useMemo(() => {
     return games.filter((game) => {
       const homeTeam = game.home_team_name?.toLowerCase() || "";
       const awayTeam = game.away_team_name?.toLowerCase() || "";
@@ -87,13 +84,20 @@ export default function Games() {
       const matchesCompetition =
         competitionFilter === "All" || divisionDisplay === competitionFilter;
 
-      // You do not yet have a real status field in Game model,
-      // so leave this as All for now or remove it later
       const matchesStatus = statusFilter === "All";
 
       return matchesSearch && matchesCompetition && matchesStatus;
     });
   }, [games, searchTerm, competitionFilter, statusFilter]);
+
+  // Right panel filter: if a venue marker is clicked, show only games from that venue
+  const visibleGames = useMemo(() => {
+    if (selectedVenueId === null) {
+      return baseFilteredGames;
+    }
+
+    return baseFilteredGames.filter((game) => game.venue === selectedVenueId);
+  }, [baseFilteredGames, selectedVenueId]);
 
   return (
     <div className="games-page">
@@ -109,13 +113,19 @@ export default function Games() {
           type="text"
           placeholder="Search by team or venue..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setSelectedVenueId(null);
+          }}
           className="games-filter-input"
         />
 
         <select
           value={competitionFilter}
-          onChange={(e) => setCompetitionFilter(e.target.value)}
+          onChange={(e) => {
+            setCompetitionFilter(e.target.value);
+            setSelectedVenueId(null);
+          }}
           className="games-filter-select"
         >
           {competitionOptions.map((competition) => (
@@ -127,20 +137,43 @@ export default function Games() {
 
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setSelectedVenueId(null);
+          }}
           className="games-filter-select"
         >
           <option value="All">All Statuses</option>
         </select>
       </div>
 
+      {/* Optional selected venue banner */}
+      {selectedVenueId !== null && (
+        <div className="games-selected-venue-bar">
+          <span>
+            Showing games for selected venue only
+          </span>
+          <button
+            type="button"
+            className="clear-venue-filter-btn"
+            onClick={() => setSelectedVenueId(null)}
+          >
+            Show all games
+          </button>
+        </div>
+      )}
+
       {loading && <p>Loading games...</p>}
       {error && <p>{error}</p>}
 
       {!loading && !error && (
         <div className="games-content">
-          <GamesMap games={filteredGames} />
-          <GamesList games={filteredGames} />
+          <GamesMap
+            games={baseFilteredGames}
+            selectedVenueId={selectedVenueId}
+            onVenueSelect={setSelectedVenueId}
+          />
+          <GamesList games={visibleGames} />
         </div>
       )}
     </div>
