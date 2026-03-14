@@ -4,17 +4,69 @@ from .models import CoverRequest
 
 @admin.register(CoverRequest)
 class CoverRequestAdmin(admin.ModelAdmin):
-    list_display = ('id', 'game', 'requested_by', 'replaced_by', 'request_type', 'status', 'created_at')
-    list_filter = ('status', 'request_type', 'created_at')
-    search_fields = ('game__home_team__club__name', 'requested_by__email', 'reason')
-    date_hierarchy = 'created_at'
-    raw_id_fields = ('game', 'requested_by', 'referee_slot', 'replaced_by', 'approver')
-    readonly_fields = ('created_at', 'updated_at')
-    ordering = ('-created_at',)
-    
+    list_display = (
+        "id",
+        "game",
+        "referee_slot",
+        "requested_by",
+        "replaced_by",
+        "approver",
+        "status",
+        "custom_fee",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = (
+        "status",
+        "game__game_type",
+        "game__status",
+        "created_at",
+        "updated_at",
+    )
+    search_fields = (
+        "game__home_team__name",
+        "game__away_team__name",
+        "game__venue__name",
+        "requested_by__email",
+        "replaced_by__user__email",
+        "approver__email",
+        "reason",
+    )
+    ordering = ("-created_at",)
+    autocomplete_fields = (
+        "game",
+        "requested_by",
+        "referee_slot",
+        "replaced_by",
+        "approver",
+    )
+    readonly_fields = ("created_at", "updated_at")
+
     fieldsets = (
-        (None, {'fields': ('game', 'requested_by', 'request_type', 'referee_slot', 'replaced_by')}),
-        ('Status', {'fields': ('status', 'approver', 'reason')}),
-        ('Fee', {'fields': ('custom_fee',)}),
-        ('Timestamps', {'fields': ('created_at', 'updated_at')}),
+        ("Core Info", {
+            "fields": (
+                "game",
+                "referee_slot",
+                "status",
+            )
+        }),
+        ("People", {
+            "fields": (
+                "requested_by",
+                "replaced_by",
+                "approver",
+            )
+        }),
+        ("Extra", {
+            "fields": (
+                "reason",
+                "custom_fee",
+            )
+        }),
+        ("Timestamps", {
+            "fields": (
+                "created_at",
+                "updated_at",
+            )
+        }),
     )

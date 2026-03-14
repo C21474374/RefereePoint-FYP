@@ -9,6 +9,7 @@ const navItems = [
   { path: '/events', label: 'Events' },
   { path: '/reports', label: 'Reports' },
   { path: '/earnings', label: 'Earnings' },
+  { path: '/upload-game', label: 'Upload Game' }
 ]
 
 export default function Layout() {

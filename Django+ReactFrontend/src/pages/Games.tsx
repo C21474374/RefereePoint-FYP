@@ -1,181 +1,147 @@
-import React, { useEffect, useMemo, useState } from "react";
-import GamesMap from "../components/GamesMap";
-import GamesList from "../components/GamesList";
+import { useEffect, useMemo, useState } from "react";
 import "../pages_css/Games.css";
+import GamesMap from "../components/GamesMap";
+import Gameslist from "../components/Gameslist";
 
-export type Game = {
+export type Opportunity = {
   id: number;
+  type: "NON_APPOINTED_SLOT" | "COVER_REQUEST";
+  game_id: number;
   game_type: string;
   game_type_display: string;
-  division: number | null;
-  division_name: string | null;
-  division_gender: string | null;
-  division_display: string | null;
   date: string;
   time: string;
-  venue: number | null;
+
+  venue_id: number | null;
   venue_name: string | null;
   lat: number | null;
   lng: number | null;
-  home_team: number | null;
+
   home_team_name: string | null;
-  away_team: number | null;
   away_team_name: string | null;
+
+  division_name: string | null;
+  division_gender: string | null;
+
+  payment_type: string | null;
+  payment_type_display: string | null;
+
+  role: string | null;
+  role_display: string | null;
+
+  status: string;
+  status_display: string;
+
+  source_type?: string | null;
+  source_type_display?: string | null;
+
+  posted_by_name?: string | null;
+  claimed_by_name?: string | null;
+
+  requested_by_name?: string | null;
+  original_referee_name?: string | null;
+  replaced_by_name?: string | null;
+
+  description?: string;
+  reason?: string;
+  custom_fee?: string | null;
+
+  created_at: string;
 };
 
-export default function Games() {
-  const [games, setGames] = useState<Game[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [competitionFilter, setCompetitionFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("All");
-
-  // New: selected venue from map click
+const Games = () => {
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
+  const [selectedType, setSelectedType] = useState<string>("ALL");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    async function fetchGames() {
+    const fetchOpportunities = async () => {
       try {
         setLoading(true);
         setError("");
 
-        const response = await fetch("http://127.0.0.1:8000/api/games/");
-
+        const response = await fetch("http://127.0.0.1:8000/api/games/opportunities/");
         if (!response.ok) {
-          throw new Error("Failed to fetch games");
+          throw new Error("Failed to fetch opportunities.");
         }
 
         const data = await response.json();
-        setGames(data);
+        setOpportunities(data);
       } catch (err) {
-        console.error("Error fetching games:", err);
-        setError("Could not load games.");
+        setError(err instanceof Error ? err.message : "Something went wrong.");
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    fetchGames();
+    fetchOpportunities();
   }, []);
 
-  const competitionOptions = useMemo(() => {
-    const divisions = games
-      .map((game) => game.division_display)
-      .filter((value): value is string => Boolean(value));
+  const filteredOpportunities = useMemo(() => {
+    let filtered = [...opportunities];
 
-    return ["All", ...new Set(divisions)];
-  }, [games]);
-
-  // Base filters from search/dropdowns
-  const baseFilteredGames = useMemo(() => {
-    return games.filter((game) => {
-      const homeTeam = game.home_team_name?.toLowerCase() || "";
-      const awayTeam = game.away_team_name?.toLowerCase() || "";
-      const venueName = game.venue_name?.toLowerCase() || "";
-      const divisionDisplay = game.division_display || "";
-
-      const matchesSearch =
-        homeTeam.includes(searchTerm.toLowerCase()) ||
-        awayTeam.includes(searchTerm.toLowerCase()) ||
-        venueName.includes(searchTerm.toLowerCase());
-
-      const matchesCompetition =
-        competitionFilter === "All" || divisionDisplay === competitionFilter;
-
-      const matchesStatus = statusFilter === "All";
-
-      return matchesSearch && matchesCompetition && matchesStatus;
-    });
-  }, [games, searchTerm, competitionFilter, statusFilter]);
-
-  // Right panel filter: if a venue marker is clicked, show only games from that venue
-  const visibleGames = useMemo(() => {
-    if (selectedVenueId === null) {
-      return baseFilteredGames;
+    if (selectedVenueId !== null) {
+      filtered = filtered.filter((item) => item.venue_id === selectedVenueId);
     }
 
-    return baseFilteredGames.filter((game) => game.venue === selectedVenueId);
-  }, [baseFilteredGames, selectedVenueId]);
+    if (selectedType !== "ALL") {
+      filtered = filtered.filter((item) => item.type === selectedType);
+    }
+
+    return filtered;
+  }, [opportunities, selectedVenueId, selectedType]);
 
   return (
     <div className="games-page">
       <div className="games-header">
-        <h1 className="games-title">Games</h1>
-        <p className="games-subtitle">
-          View games on the map and browse matching games in the list.
-        </p>
-      </div>
+        <div>
+          <h1>Opportunities</h1>
+          <p>Find non-appointed games and cover requests.</p>
+        </div>
 
-      <div className="games-filters">
-        <input
-          type="text"
-          placeholder="Search by team or venue..."
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value);
-            setSelectedVenueId(null);
-          }}
-          className="games-filter-input"
-        />
-
-        <select
-          value={competitionFilter}
-          onChange={(e) => {
-            setCompetitionFilter(e.target.value);
-            setSelectedVenueId(null);
-          }}
-          className="games-filter-select"
-        >
-          {competitionOptions.map((competition) => (
-            <option key={competition} value={competition}>
-              {competition}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setSelectedVenueId(null);
-          }}
-          className="games-filter-select"
-        >
-          <option value="All">All Statuses</option>
-        </select>
-      </div>
-
-      {/* Optional selected venue banner */}
-      {selectedVenueId !== null && (
-        <div className="games-selected-venue-bar">
-          <span>
-            Showing games for selected venue only
-          </span>
-          <button
-            type="button"
-            className="clear-venue-filter-btn"
-            onClick={() => setSelectedVenueId(null)}
+        <div className="games-filters">
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="games-filter-select"
           >
-            Show all games
+            <option value="ALL">All Opportunities</option>
+            <option value="NON_APPOINTED_SLOT">Non-Appointed Games</option>
+            <option value="COVER_REQUEST">Cover Requests</option>
+          </select>
+
+          <button
+            className="clear-venue-btn"
+            onClick={() => setSelectedVenueId(null)}
+            disabled={selectedVenueId === null}
+          >
+            Clear Venue
           </button>
         </div>
-      )}
+      </div>
 
-      {loading && <p>Loading games...</p>}
-      {error && <p>{error}</p>}
+      {loading && <p className="games-info-message">Loading opportunities...</p>}
+      {error && <p className="games-error-message">{error}</p>}
 
       {!loading && !error && (
         <div className="games-content">
-          <GamesMap
-            games={baseFilteredGames}
-            selectedVenueId={selectedVenueId}
-            onVenueSelect={setSelectedVenueId}
-          />
-          <GamesList games={visibleGames} />
+          <div className="games-map-panel">
+            <GamesMap
+              opportunities={filteredOpportunities}
+              selectedVenueId={selectedVenueId}
+              onVenueSelect={setSelectedVenueId}
+            />
+          </div>
+
+          <div className="games-list-panel">
+            <Gameslist opportunities={filteredOpportunities} />
+          </div>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default Games;

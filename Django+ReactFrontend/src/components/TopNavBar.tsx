@@ -8,6 +8,7 @@ const navLinks = [
   { name: "Events", path: "/events" },
   { name: "Reports", path: "/reports" },
   { name: "Earnings", path: "/earnings" },
+  { name: "Upload Game", path: "/upload-game" },
 ];
 
 const TopNavBar: React.FC = () => {

@@ -1,98 +1,234 @@
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
+
 from .models import CoverRequest
+from .serializers import CoverRequestSerializer, CoverRequestCreateSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from users.models import RefereeProfile
+
+class CoverRequestListAPIView(generics.ListAPIView):
+    serializer_class = CoverRequestSerializer
+
+    def get_queryset(self):
+        queryset = (
+            CoverRequest.objects.select_related(
+                "game",
+                "game__venue",
+                "game__division",
+                "game__home_team__club",
+                "game__away_team__club",
+                "requested_by",
+                "approver",
+                "replaced_by__user",
+                "referee_slot",
+                "referee_slot__referee__user",
+            )
+            .all()
+            .order_by("-created_at")
+        )
+
+        status_value = self.request.query_params.get("status")
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+
+        return queryset
 
 
-def _json_error(message: str, status: int) -> JsonResponse:
-    return JsonResponse({"error": message}, status=status)
+class CoverRequestDetailAPIView(generics.RetrieveAPIView):
+    queryset = (
+        CoverRequest.objects.select_related(
+            "game",
+            "game__venue",
+            "game__division",
+            "game__home_team__club",
+            "game__away_team__club",
+            "requested_by",
+            "approver",
+            "replaced_by__user",
+            "referee_slot",
+            "referee_slot__referee__user",
+        )
+        .all()
+    )
+    serializer_class = CoverRequestSerializer
 
 
-def _cover_request_to_dict(cr: CoverRequest) -> dict:
-    return {
-        "id": cr.id,
-        "game_id": cr.game_id,
-        "game_info": str(cr.game) if cr.game else None,
-        "requested_by_id": cr.requested_by_id,
-        "requested_by_email": cr.requested_by.email if cr.requested_by else None,
-        "request_type": cr.request_type,
-        "referee_slot_id": cr.referee_slot_id,
-        "status": cr.status,
-        "approver_id": cr.approver_id,
-        "approver_email": cr.approver.email if cr.approver else None,
-        "reason": cr.reason,
-        "custom_fee": str(cr.custom_fee) if cr.custom_fee else None,
-        "created_at": cr.created_at.isoformat(),
-        "updated_at": cr.updated_at.isoformat(),
-    }
+class MyCoverRequestListAPIView(generics.ListAPIView):
+    serializer_class = CoverRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            CoverRequest.objects.select_related(
+                "game",
+                "game__venue",
+                "game__division",
+                "game__home_team__club",
+                "game__away_team__club",
+                "requested_by",
+                "approver",
+                "replaced_by__user",
+                "referee_slot",
+                "referee_slot__referee__user",
+            )
+            .filter(requested_by=self.request.user)
+            .order_by("-created_at")
+        )
 
 
-# List all cover requests (GET)
-def list_cover_requests(request):
-    if request.method != "GET":
-        return _json_error("Method not allowed", 405)
-    
-    cover_requests = CoverRequest.objects.select_related(
-        'game', 'requested_by', 'approver'
-    ).all()
-    
-    # Optional filter by status
-    status = request.GET.get('status')
-    if status:
-        cover_requests = cover_requests.filter(status=status)
-    
-    data = [_cover_request_to_dict(cr) for cr in cover_requests]
-    return JsonResponse(data, safe=False)
+class PendingCoverRequestListAPIView(generics.ListAPIView):
+    serializer_class = CoverRequestSerializer
+
+    def get_queryset(self):
+        return (
+            CoverRequest.objects.select_related(
+                "game",
+                "game__venue",
+                "game__division",
+                "game__home_team__club",
+                "game__away_team__club",
+                "requested_by",
+                "approver",
+                "replaced_by__user",
+                "referee_slot",
+                "referee_slot__referee__user",
+            )
+            .filter(
+                status__in=[
+                    CoverRequest.Status.PENDING_COVER,
+                    CoverRequest.Status.PENDING_APPROVAL,
+                ]
+            )
+            .order_by("-created_at")
+        )
 
 
-# Get cover request detail (GET)
-def cover_request_detail(request, cover_request_id):
-    if request.method != "GET":
-        return _json_error("Method not allowed", 405)
-    
-    try:
-        cr = CoverRequest.objects.select_related(
-            'game', 'requested_by', 'approver', 'referee_slot'
-        ).get(pk=cover_request_id)
-    except CoverRequest.DoesNotExist:
-        return _json_error("Cover request not found", 404)
-    
-    return JsonResponse(_cover_request_to_dict(cr))
+class CreateCoverRequestAPIView(generics.CreateAPIView):
+    serializer_class = CoverRequestCreateSerializer
+    permission_classes = [IsAuthenticated]
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
 
-# List cover requests for current user (GET)
-def my_cover_requests(request):
-    if request.method != "GET":
-        return _json_error("Method not allowed", 405)
-    
-    if not request.user.is_authenticated:
-        return _json_error("Not authenticated", 401)
-    
-    cover_requests = CoverRequest.objects.select_related(
-        'game', 'requested_by', 'approver'
-    ).filter(requested_by=request.user)
-    
-    data = [_cover_request_to_dict(cr) for cr in cover_requests]
-    return JsonResponse(data, safe=False)
+class OfferCoverAPIView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request, pk):
+        try:
+            cover_request = CoverRequest.objects.select_related(
+                "game",
+                "referee_slot",
+                "referee_slot__referee__user",
+                "replaced_by__user",
+            ).get(pk=pk)
+        except CoverRequest.DoesNotExist:
+            return Response(
+                {"detail": "Cover request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-# List pending cover requests (GET)
-def pending_cover_requests(request):
-    if request.method != "GET":
-        return _json_error("Method not allowed", 405)
-    
-    cover_requests = CoverRequest.objects.select_related(
-        'game', 'requested_by', 'approver'
-    ).filter(status__in=['PENDING_COVER', 'PENDING_APPROVAL'])
-    
-    data = [_cover_request_to_dict(cr) for cr in cover_requests]
-    return JsonResponse(data, safe=False)
+        if cover_request.status != CoverRequest.Status.PENDING_COVER:
+            return Response(
+                {"detail": "This cover request is no longer open for offers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        try:
+            referee = RefereeProfile.objects.select_related("user").get(user=request.user)
+        except RefereeProfile.DoesNotExist:
+            return Response(
+                {"detail": "Only referees can offer to cover games."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-# TODO: Advanced views for later
-# create_cover_request
-# update_cover_request_status
-# delete_cover_request
-# accept_cover_request
-# approve_cover_request (admin)
-# reject_cover_request (admin)
+        original_referee = cover_request.referee_slot.referee
+
+        if referee.id == original_referee.id:
+            return Response(
+                {"detail": "You cannot offer to cover your own assignment."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cover_request.referee_slot.role == "CREW_CHIEF" and referee.grade == "INTRO":
+            return Response(
+                {"detail": "Intro referees cannot cover Crew Chief."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if cover_request.replaced_by is not None:
+            return Response(
+                {"detail": "Another referee has already offered to cover this game."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cover_request.replaced_by = referee
+        cover_request.status = CoverRequest.Status.PENDING_APPROVAL
+        cover_request.save()
+
+        serializer = CoverRequestSerializer(cover_request)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class ApproveCoverRequestAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            cover_request = CoverRequest.objects.select_related(
+                "game",
+                "requested_by",
+                "referee_slot",
+                "referee_slot__referee__user",
+                "replaced_by__user",
+            ).get(pk=pk)
+        except CoverRequest.DoesNotExist:
+            return Response(
+                {"detail": "Cover request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if cover_request.status != CoverRequest.Status.PENDING_APPROVAL:
+            return Response(
+                {"detail": "This cover request is not waiting for approval."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cover_request.replaced_by is None:
+            return Response(
+                {"detail": "There is no replacement referee to approve."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Optional permission rule:
+        # for now, allow the user who created the request to approve it.
+        # later you can replace this with DOA/NL admin permissions.
+        if cover_request.requested_by_id != request.user.id:
+            return Response(
+                {"detail": "You do not have permission to approve this cover request."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        referee_assignment = cover_request.referee_slot
+        replacement_referee = cover_request.replaced_by
+
+        if (
+            referee_assignment.role == "CREW_CHIEF"
+            and replacement_referee.grade == "INTRO"
+        ):
+            return Response(
+                {"detail": "Intro referees cannot cover Crew Chief."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        referee_assignment.referee = replacement_referee
+        referee_assignment.save()
+
+        cover_request.approver = request.user
+        cover_request.status = CoverRequest.Status.APPROVED
+        cover_request.save()
+
+        serializer = CoverRequestSerializer(cover_request)
+        return Response(serializer.data, status=status.HTTP_200_OK)

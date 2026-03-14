@@ -1,75 +1,113 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
 class CoverRequest(models.Model):
-    """Requests from referees to cover games/events."""
-    
-    TYPE_CHOICES = [
-        ('DOA', 'DOA'),
-        ('NL', 'National League'),
-        ('CLUB', 'Club'),
-        ('SCHOOL', 'School'),
-        ('FRIENDLY', 'Friendly'),
-    ]
-    
-    STATUS_CHOICES = [
-        ('PENDING_COVER', 'Pending Cover'),
-        ('PENDING_APPROVAL', 'Pending Approval'),
-        ('APPROVED', 'Approved'),
-        ('REJECTED', 'Rejected'),
-        ('COMPLETED', 'Completed'),
-    ]
-    
+    """Requests from referees to cover already assigned games."""
+
+    class Status(models.TextChoices):
+        PENDING_COVER = "PENDING_COVER", "Pending Cover"
+        PENDING_APPROVAL = "PENDING_APPROVAL", "Pending Approval"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
+        COMPLETED = "COMPLETED", "Completed"
+
     game = models.ForeignKey(
-        'games.Game',
+        "games.Game",
         on_delete=models.CASCADE,
-        related_name='cover_requests'
+        related_name="cover_requests",
     )
     requested_by = models.ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=models.CASCADE,
-        related_name='cover_requests_made'
+        related_name="cover_requests_made",
     )
-    request_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     referee_slot = models.ForeignKey(
-        'games.RefereeAssignment',
+        "games.RefereeAssignment",
         on_delete=models.CASCADE,
-        related_name='cover_requests',
-        help_text='The assignment being replaced (required - cover requests need an existing referee to replace)'
+        related_name="cover_requests",
+        help_text="The assignment being replaced.",
     )
     replaced_by = models.ForeignKey(
-        'users.RefereeProfile',
+        "users.RefereeProfile",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='cover_assignments',
-        help_text='The referee covering the game'
+        related_name="cover_assignments",
+        help_text="The referee covering the game.",
     )
     status = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
-        default='PENDING_COVER'
+        choices=Status.choices,
+        default=Status.PENDING_COVER,
     )
     approver = models.ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='cover_requests_approved'
+        related_name="cover_requests_approved",
     )
-    reason = models.TextField(blank=True, default='')
+    reason = models.TextField(blank=True, default="")
     custom_fee = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
-        blank=True
+        blank=True,
     )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        db_table = 'cover_requests_cover_request'
-        ordering = ['-created_at']
-    
+        db_table = "cover_requests_cover_request"
+        ordering = ["-created_at"]
+
     def __str__(self):
         return f"Cover request for {self.game} by {self.requested_by}"
+
+    def clean(self):
+        super().clean()
+
+        if self.referee_slot.game_id != self.game_id:
+            raise ValidationError(
+                {"referee_slot": "The referee assignment must belong to the same game."}
+            )
+
+        if self.requested_by_id != self.referee_slot.referee.user_id:
+            raise ValidationError(
+                {
+                    "requested_by": (
+                        "Only the referee assigned to this slot can request cover."
+                    )
+                }
+            )
+
+        if self.replaced_by and self.referee_slot.role == "CREW_CHIEF":
+            if self.replaced_by.grade == "INTRO":
+                raise ValidationError(
+                    {"replaced_by": "An Intro referee cannot cover Crew Chief."}
+                )
+
+        active_statuses = {
+            self.Status.PENDING_COVER,
+            self.Status.PENDING_APPROVAL,
+        }
+
+        existing_active_request = CoverRequest.objects.filter(
+            referee_slot=self.referee_slot,
+            status__in=active_statuses,
+        ).exclude(pk=self.pk)
+
+        if existing_active_request.exists():
+            raise ValidationError(
+                {
+                    "referee_slot": (
+                        "There is already an active cover request for this assignment."
+                    )
+                }
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)

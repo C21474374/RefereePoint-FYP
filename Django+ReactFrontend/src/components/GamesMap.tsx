@@ -1,142 +1,96 @@
-import React, { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-import type { Game } from "../pages/Games";
+import type { Opportunity } from "../pages/Games";
 import "leaflet/dist/leaflet.css";
 
-delete (L.Icon.Default.prototype as L.Icon.Default & {
-  _getIconUrl?: () => string;
-})._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
+
+type GamesMapProps = {
+  opportunities: Opportunity[];
+  selectedVenueId: number | null;
+  onVenueSelect: (venueId: number | null) => void;
+};
 
 type VenueGroup = {
   venueId: number;
   venueName: string;
   lat: number;
   lng: number;
-  games: Game[];
+  items: Opportunity[];
 };
 
-type GamesMapProps = {
-  games: Game[];
-  selectedVenueId: number | null;
-  onVenueSelect: (venueId: number | null) => void;
-};
+const GamesMap = ({ opportunities, selectedVenueId, onVenueSelect }: GamesMapProps) => {
+  const groupedByVenue = opportunities.reduce<Record<number, VenueGroup>>((acc, item) => {
+    if (
+      item.venue_id === null ||
+      item.venue_name === null ||
+      item.lat === null ||
+      item.lng === null
+    ) {
+      return acc;
+    }
 
-function ResizeMap() {
-  const map = useMap();
+    if (!acc[item.venue_id]) {
+      acc[item.venue_id] = {
+        venueId: item.venue_id,
+        venueName: item.venue_name,
+        lat: item.lat,
+        lng: item.lng,
+        items: [],
+      };
+    }
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      map.invalidateSize();
-    }, 100);
+    acc[item.venue_id].items.push(item);
+    return acc;
+  }, {});
 
-    return () => clearTimeout(timeout);
-  }, [map]);
-
-  return null;
-}
-
-export default function GamesMap({
-  games,
-  selectedVenueId,
-  onVenueSelect,
-}: GamesMapProps) {
-  // Group games by venue
-  const venueGroups = useMemo<VenueGroup[]>(() => {
-    const grouped = new Map<number, VenueGroup>();
-
-    games.forEach((game) => {
-      if (
-        game.venue === null ||
-        game.venue_name === null ||
-        game.lat === null ||
-        game.lng === null
-      ) {
-        return;
-      }
-
-      if (!grouped.has(game.venue)) {
-        grouped.set(game.venue, {
-          venueId: game.venue,
-          venueName: game.venue_name,
-          lat: game.lat,
-          lng: game.lng,
-          games: [],
-        });
-      }
-
-      grouped.get(game.venue)!.games.push(game);
-    });
-
-    return Array.from(grouped.values());
-  }, [games]);
-
-  const mapCenter: [number, number] =
-    venueGroups.length > 0
-      ? [venueGroups[0].lat, venueGroups[0].lng]
-      : [53.3498, -6.2603];
+  const venues = Object.values(groupedByVenue);
 
   return (
-    <div className="games-map-panel">
-      <div className="games-map-header">
-        <h2>Map View</h2>
-        <span>{venueGroups.length} venues shown</span>
-      </div>
+    <MapContainer
+      center={[53.3498, -6.2603]}
+      zoom={10}
+      scrollWheelZoom={true}
+      className="games-map"
+    >
+      <TileLayer
+        attribution='&copy; OpenStreetMap contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
 
-      <div className="games-map-wrapper">
-        <MapContainer
-          center={mapCenter}
-          zoom={11}
-          scrollWheelZoom={true}
-          className="games-leaflet-map"
+      {venues.map((venue) => (
+        <Marker
+          key={venue.venueId}
+          position={[venue.lat, venue.lng]}
+          eventHandlers={{
+            click: () => onVenueSelect(venue.venueId),
+          }}
         >
-          <ResizeMap />
-
-          <TileLayer
-            attribution="&copy; OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-
-          {venueGroups.map((venue) => (
-            <Marker
-              key={venue.venueId}
-              position={[venue.lat, venue.lng]}
-              eventHandlers={{
-                click: () => {
-                  onVenueSelect(venue.venueId);
-                },
-              }}
-            >
-              <Popup>
-                <div>
-                  <strong>{venue.venueName}</strong>
-                  <br />
-                  {venue.games.length} game{venue.games.length !== 1 ? "s" : ""} at this venue
-                  
-                
-                    
-               
-                  {selectedVenueId === venue.venueId && (
-                    <>
-                      <br />
-                      <small>Currently displaying in games list</small>
-                    </>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
-      </div>
-    </div>
+          <Popup>
+            <div className="venue-popup">
+              <strong>{venue.venueName}</strong>
+              <p>{venue.items.length} opportunity/opportunities</p>
+              <button
+                type="button"
+                className="venue-popup-btn"
+                onClick={() =>
+                  onVenueSelect(selectedVenueId === venue.venueId ? null : venue.venueId)
+                }
+              >
+                {selectedVenueId === venue.venueId ? "Clear Venue Filter" : "View Opportunities"}
+              </button>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </MapContainer>
   );
-}
+};
+
+export default GamesMap;

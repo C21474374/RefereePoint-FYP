@@ -1,9 +1,20 @@
 from django.urls import path
-from . import views
+from .views import (
+    CoverRequestListAPIView,
+    CoverRequestDetailAPIView,
+    MyCoverRequestListAPIView,
+    PendingCoverRequestListAPIView,
+    CreateCoverRequestAPIView,
+    OfferCoverAPIView,
+    ApproveCoverRequestAPIView,
+)
 
 urlpatterns = [
-    path('', views.list_cover_requests, name='list_cover_requests'),
-    path('<int:cover_request_id>/', views.cover_request_detail, name='cover_request_detail'),
-    path('my/', views.my_cover_requests, name='my_cover_requests'),
-    path('pending/', views.pending_cover_requests, name='pending_cover_requests'),
+    path("", CoverRequestListAPIView.as_view(), name="cover-request-list"),
+    path("create/", CreateCoverRequestAPIView.as_view(), name="cover-request-create"),
+    path("my/", MyCoverRequestListAPIView.as_view(), name="my-cover-requests"),
+    path("pending/", PendingCoverRequestListAPIView.as_view(), name="pending-cover-requests"),
+    path("<int:pk>/", CoverRequestDetailAPIView.as_view(), name="cover-request-detail"),
+    path("<int:pk>/offer/", OfferCoverAPIView.as_view(), name="cover-request-offer"),
+    path("<int:pk>/approve/", ApproveCoverRequestAPIView.as_view(), name="cover-request-approve"),
 ]

@@ -11,7 +11,7 @@ METHOD_NOT_ALLOWED_ERROR = "Method not allowed"
 
 def _venue_to_dict(venue: Venue) -> dict:
     return {
-        "id": venue.fid,
+        "id": venue.id,
         "name": venue.name,
         "address": venue.address,
         "lat": venue.lat,

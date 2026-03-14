@@ -1,32 +1,26 @@
-import React from "react";
-import type { Game } from "../pages/Games";
 import GameCard from "./GameCard";
+import type { Opportunity } from "../pages/Games";
 
-type GamesListProps = {
-  games: Game[];
+type GameslistProps = {
+  opportunities: Opportunity[];
 };
 
-export default function GamesList({ games }: GamesListProps) {
-  return (
-    <div className="games-list-panel">
-      {/* Header for the list section */}
-      <div className="games-list-header">
-        <h2>Game List</h2>
-        <span>{games.length} results</span>
+const Gameslist = ({ opportunities }: GameslistProps) => {
+  if (opportunities.length === 0) {
+    return (
+      <div className="games-empty-state">
+        <p>No opportunities found for the selected filters.</p>
       </div>
+    );
+  }
 
-      {/* Empty state if no games match the filters */}
-      {games.length === 0 ? (
-        <div className="games-empty-state">
-          <p>No games match your current filters.</p>
-        </div>
-      ) : (
-        <div className="games-list">
-          {games.map((game) => (
-            <GameCard key={game.id} game={game} />
-          ))}
-        </div>
-      )}
+  return (
+    <div className="games-list">
+      {opportunities.map((opportunity) => (
+        <GameCard key={`${opportunity.type}-${opportunity.id}`} opportunity={opportunity} />
+      ))}
     </div>
   );
-}
+};
+
+export default Gameslist;
