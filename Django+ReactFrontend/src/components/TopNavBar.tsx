@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const navLinks = [
   { name: "Dashboard", path: "/dashboard" },
@@ -13,6 +14,7 @@ const navLinks = [
 
 const TopNavBar: React.FC = () => {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
 
@@ -44,9 +46,9 @@ const TopNavBar: React.FC = () => {
 
   return (
     <nav className="top-nav-bar" ref={navRef}>
-     <div className="nav-left">
+      <div className="nav-left">
         <Link to="/dashboard" className="nav-title">RefereePoint</Link>
-     </div>
+      </div>
 
       <button
         className={`burger-button ${menuOpen ? "open" : ""}`}
@@ -66,9 +68,7 @@ const TopNavBar: React.FC = () => {
             key={link.name}
             to={link.path}
             onClick={handleLinkClick}
-            className={`nav-link ${
-              location.pathname === link.path ? "active" : ""
-            }`}
+            className={`nav-link ${location.pathname === link.path ? "active" : ""}`}
           >
             {link.name}
           </Link>
@@ -76,7 +76,14 @@ const TopNavBar: React.FC = () => {
       </div>
 
       <div className="nav-right">
-        <span className="nav-user">Demet</span>
+        {user ? (
+          <>
+            <span className="nav-user">{user.first_name || user.email}</span>
+            <button onClick={logout} type="button">Logout</button>
+          </>
+        ) : (
+          <Link to="/login">Login</Link>
+        )}
       </div>
     </nav>
   );

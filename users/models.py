@@ -72,7 +72,7 @@ class RefereeProfile(models.Model):
         related_name='referee_profile'
     )
     
-    grade = models.CharField(max_length=20, choices=GRADE_CHOICES, default='TRAINEE')
+    grade = models.CharField(max_length=20, choices=GRADE_CHOICES, default='INTRO')
     
     
     class Meta:

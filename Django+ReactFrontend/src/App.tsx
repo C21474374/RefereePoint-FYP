@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
 import RefereeSignup from './pages/RefereeSignup'
 import RefereeLogin from './pages/RefereeLogin'
 import RefereeDashboard from './pages/RefereeDashboard'
@@ -15,12 +16,16 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Auth routes (no layout) */}
         <Route path="/signup" element={<RefereeSignup />} />
         <Route path="/login" element={<RefereeLogin />} />
 
-        {/* Protected routes (with layout) */}
-        <Route element={<Layout />}>
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/dashboard" element={<RefereeDashboard />} />
           <Route path="/games" element={<Games />} />
           <Route path="/upload-game" element={<UploadGame />} />
@@ -30,9 +35,8 @@ function App() {
           <Route path="/earnings" element={<Earnings />} />
         </Route>
 
-        {/* Default redirect */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   )

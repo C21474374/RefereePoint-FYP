@@ -2,7 +2,10 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import User, RefereeProfile, RefereeAvailability
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from .serializers import CurrentUserSerializer
 
 def _json_error(message: str, status: int) -> JsonResponse:
     return JsonResponse({"error": message}, status=status)
@@ -54,15 +57,6 @@ def referee_detail(request, referee_id):
     return JsonResponse(_referee_profile_to_dict(profile))
 
 
-# Get current user info (GET) - requires authentication
-def current_user(request):
-    if request.method != "GET":
-        return _json_error("Method not allowed", 405)
-    
-    if not request.user.is_authenticated:
-        return _json_error("Not authenticated", 401)
-    
-    return JsonResponse(_user_to_dict(request.user))
 
 
 # List all users - admin only (GET)
@@ -75,17 +69,9 @@ def list_users(request):
     return JsonResponse(data, safe=False)
 
 
-# TODO: Advanced views for later
-# register_user
-# login_user or token login view
-# logout_user
-# update_user_profile
-# update_referee_profile
-# change_user_role (admin)
-# activate_deactivate_user (admin)
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
 
-# Referee availability views:
-# list_my_availability
-# create_availability
-# update_availability
-# delete_availability
+    def get(self, request):
+        serializer = CurrentUserSerializer(request.user)
+        return Response(serializer.data)
