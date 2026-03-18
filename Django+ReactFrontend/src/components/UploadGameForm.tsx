@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "../pages_css/UploadGame.css";
+import { getAccessToken } from "../services/auth";
 
 type SimpleOption = {
   id: number;
@@ -60,18 +61,7 @@ const initialForm: FormState = {
   description: "",
 };
 
-function getCookie(name: string) {
-  const cookies = document.cookie ? document.cookie.split("; ") : [];
 
-  for (const cookie of cookies) {
-    const [cookieName, ...rest] = cookie.split("=");
-    if (cookieName === name) {
-      return decodeURIComponent(rest.join("="));
-    }
-  }
-
-  return "";
-}
 
 function buildSlots(
   requestingSide: "" | "HOME" | "AWAY",
@@ -168,10 +158,12 @@ export default function UploadGameForm({
           time: form.time,
         });
 
-            const response = await fetch(`http://127.0.0.1:8000/api/games/upload/check/?${params.toString()}`, {
-            signal: controller.signal,
-            credentials: "include",
-            });
+              const response = await fetch(
+                `http://127.0.0.1:8000/api/games/upload/check/?${params.toString()}`,
+                {
+                  signal: controller.signal,
+                }
+              );
 
         const data = await response.json();
 
@@ -284,15 +276,20 @@ export default function UploadGameForm({
         slots,
       };
 
-        const response = await fetch("http://127.0.0.1:8000/api/games/upload/", {
-            method: "POST",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCookie("csrftoken"),
-            },
-            body: JSON.stringify(payload),
-        });
+const token = getAccessToken();
+
+if (!token) {
+  throw new Error("You must be logged in to upload a game.");
+}
+
+                const response = await fetch("http://127.0.0.1:8000/api/games/upload/", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify(payload),
+                });
 
       const data = await response.json();
 

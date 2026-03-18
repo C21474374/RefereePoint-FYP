@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import UploadGameForm from "../components/UploadGameForm";
+import { getAccessToken } from "../services/auth";
 
 type SimpleOption = {
   id: number;
@@ -15,28 +16,31 @@ export default function UploadGame() {
 
   useEffect(() => {
     async function loadData() {
-    try {
+      try {
         setLoading(true);
         setErrorMessage("");
 
-        await fetch("http://127.0.0.1:8000/api/games/csrf/", {
-        credentials: "include",
-        });
+        const token = getAccessToken();
+
+        const authHeaders: Record<string, string> = {};
+        if (token) {
+          authHeaders.Authorization = `Bearer ${token}`;
+        }
 
         const [divisionsRes, venuesRes, teamsRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/clubs/divisions/", {
-            credentials: "include",
-        }),
-        fetch("http://127.0.0.1:8000/api/venues/venues/", {
-            credentials: "include",
-        }),
-        fetch("http://127.0.0.1:8000/api/clubs/teams/", {
-            credentials: "include",
-        }),
+          fetch("http://127.0.0.1:8000/api/clubs/divisions/", {
+            headers: authHeaders,
+          }),
+          fetch("http://127.0.0.1:8000/api/venues/venues/", {
+            headers: authHeaders,
+          }),
+          fetch("http://127.0.0.1:8000/api/clubs/teams/", {
+            headers: authHeaders,
+          }),
         ]);
 
         if (!divisionsRes.ok || !venuesRes.ok || !teamsRes.ok) {
-        throw new Error("Failed to load upload form data.");
+          throw new Error("Failed to load upload form data.");
         }
 
         const divisionsData = await divisionsRes.json();
@@ -44,35 +48,35 @@ export default function UploadGame() {
         const teamsData = await teamsRes.json();
 
         setDivisions(
-        divisionsData.map((division: any) => ({
+          divisionsData.map((division: any) => ({
             id: division.id,
             name: division.display || `${division.name} (${division.gender})`,
-        }))
+          }))
         );
 
         setVenues(
-        venuesData.map((venue: any) => ({
+          venuesData.map((venue: any) => ({
             id: venue.id,
             name: venue.name,
-        }))
+          }))
         );
 
         setTeams(
-        teamsData.map((team: any) => ({
+          teamsData.map((team: any) => ({
             id: team.id,
             name: `${team.club_name} - ${team.division_name}`,
-        }))
+          }))
         );
-    } catch (error) {
+      } catch (error) {
         console.error("Failed loading upload form data:", error);
         setErrorMessage(
-        error instanceof Error
+          error instanceof Error
             ? error.message
             : "Failed to load upload form data."
         );
-    } finally {
+      } finally {
         setLoading(false);
-    }
+      }
     }
 
     loadData();
