@@ -9,7 +9,9 @@ class Game(models.Model):
     class GameType(models.TextChoices):
         DOA = "DOA", "DOA"
         NL = "NL", "National League"
-        NON_APPOINTED = "NON_APPOINTED", "Non-Appointed"
+        CLUB = "CLUB", "Club"
+        SCHOOL = "SCHOOL", "School"
+        COLLEGE = "COLLEGE", "College"
         FRIENDLY = "FRIENDLY", "Friendly"
 
     class Status(models.TextChoices):
@@ -107,8 +109,10 @@ class Game(models.Model):
     def clean(self):
         super().clean()
 
-        non_appointed_types = {
-            self.GameType.NON_APPOINTED,
+        self_assign_types = {
+            self.GameType.CLUB,
+            self.GameType.SCHOOL,
+            self.GameType.COLLEGE,
             self.GameType.FRIENDLY,
         }
         appointed_types = {
@@ -116,7 +120,7 @@ class Game(models.Model):
             self.GameType.NL,
         }
 
-        if self.game_type in non_appointed_types:
+        if self.game_type in self_assign_types:
             if self.payment_type not in {
                 self.PaymentType.CASH,
                 self.PaymentType.REVOLUT,
@@ -162,9 +166,7 @@ class NonAppointedSlot(models.Model):
         CREW_CHIEF = "CREW_CHIEF", "Crew Chief"
         UMPIRE_1 = "UMPIRE_1", "Umpire 1"
 
-    class SourceType(models.TextChoices):
-        CLUB = "CLUB", "Club"
-        SCHOOL = "SCHOOL", "School"
+
 
     class Status(models.TextChoices):
         OPEN = "OPEN", "Open"
@@ -181,10 +183,7 @@ class NonAppointedSlot(models.Model):
         max_length=20,
         choices=Role.choices,
     )
-    source_type = models.CharField(
-        max_length=20,
-        choices=SourceType.choices,
-    )
+    
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -231,7 +230,9 @@ class NonAppointedSlot(models.Model):
         super().clean()
 
         allowed_game_types = {
-            Game.GameType.NON_APPOINTED,
+            Game.GameType.CLUB,
+            Game.GameType.SCHOOL,
+            Game.GameType.COLLEGE,
             Game.GameType.FRIENDLY,
         }
 
@@ -239,8 +240,8 @@ class NonAppointedSlot(models.Model):
             raise ValidationError(
                 {
                     "game": (
-                        "Non-appointed slots can only be created for "
-                        "Non-Appointed or Friendly games."
+                        "Opportunity slots can only be created for "
+                        "Club, School, College, or Friendly games."
                     )
                 }
             )

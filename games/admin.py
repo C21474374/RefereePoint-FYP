@@ -7,7 +7,6 @@ class NonAppointedSlotInline(admin.TabularInline):
     extra = 0
     fields = (
         "role",
-        "source_type",
         "status",
         "posted_by",
         "claimed_by",
@@ -119,7 +118,6 @@ class NonAppointedSlotAdmin(admin.ModelAdmin):
         "id",
         "game",
         "role",
-        "source_type",
         "status",
         "posted_by",
         "claimed_by",
@@ -130,7 +128,6 @@ class NonAppointedSlotAdmin(admin.ModelAdmin):
     )
     list_filter = (
         "role",
-        "source_type",
         "status",
         "is_active",
         "created_at",

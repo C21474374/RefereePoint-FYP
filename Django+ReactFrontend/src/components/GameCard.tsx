@@ -1,8 +1,10 @@
 import type { Opportunity } from "../pages/Games";
-import { mockCurrentUser } from "../mockauth";
+import { useAuth } from "../context/AuthContext";
 
 type GameCardProps = {
   opportunity: Opportunity;
+  onClaimSlot: (slotId: number) => void;
+  claimingId?: number | null;
 };
 
 const formatDate = (dateString: string) => {
@@ -28,27 +30,36 @@ const formatTime = (timeString: string) => {
 const buildTitle = (opportunity: Opportunity) => {
   const home = opportunity.home_team_name ?? "Home Team";
   const away = opportunity.away_team_name ?? "Away Team";
-
-  if (opportunity.type === "COVER_REQUEST") {
-    return `${home} vs ${away}`;
-  }
-
   return `${home} vs ${away}`;
 };
 
-const GameCard = ({ opportunity }: GameCardProps) => {
+const GameCard = ({ opportunity, onClaimSlot, claimingId = null }: GameCardProps) => {
+  const { user, isAuthenticated } = useAuth();
+
   const isNonAppointed = opportunity.type === "NON_APPOINTED_SLOT";
   const isCoverRequest = opportunity.type === "COVER_REQUEST";
 
   const actionLabel = isNonAppointed ? "Take Game" : "Offer Cover";
 
+  const userGrade = user?.referee_profile?.grade ?? null;
+
   const canTakeCrewChief =
-    opportunity.role !== "CREW_CHIEF" || mockCurrentUser.grade !== "INTRO";
+    opportunity.role !== "CREW_CHIEF" || userGrade !== "INTRO";
 
-  const actionDisabled = !mockCurrentUser.isLoggedIn || !canTakeCrewChief;
+  const isClaimingThisCard = claimingId === opportunity.id;
 
-  const handlePlaceholderAction = () => {
-    window.alert("Auth/login will be connected later.");
+  const actionDisabled =
+    !isAuthenticated ||
+    (isNonAppointed && !canTakeCrewChief) ||
+    isClaimingThisCard;
+
+  const handleActionClick = () => {
+    if (isNonAppointed) {
+      onClaimSlot(opportunity.id);
+      return;
+    }
+
+    window.alert("Cover request action coming next.");
   };
 
   return (
@@ -75,23 +86,34 @@ const GameCard = ({ opportunity }: GameCardProps) => {
 
       <div className="game-card-tags">
         {opportunity.game_type_display && (
-          <span className="game-tag">{opportunity.game_type_display}</span>
+          <span className="game-tag game-tag-primary">
+            {opportunity.game_type_display}
+          </span>
         )}
 
-        {opportunity.source_type_display && (
-          <span className="game-tag">{opportunity.source_type_display}</span>
+        {opportunity.role_display && (
+          <span className="game-tag game-tag-role">
+            {opportunity.role_display}
+          </span>
         )}
 
         {opportunity.division_name && (
-          <span className="game-tag">{opportunity.division_name}</span>
+          <span className="game-tag">
+            {opportunity.division_name}
+            {opportunity.division_gender ? ` ${opportunity.division_gender}` : ""}
+          </span>
         )}
 
         {opportunity.payment_type_display && (
-          <span className="game-tag">{opportunity.payment_type_display}</span>
+          <span className="game-tag game-tag-payment">
+            {opportunity.payment_type_display}
+          </span>
         )}
 
-        {opportunity.status_display && (
-          <span className="game-tag">{opportunity.status_display}</span>
+        {opportunity.status === "CLAIMED" && opportunity.claimed_by_name && (
+          <span className="game-tag game-tag-claimed">
+            Claimed by {opportunity.claimed_by_name}
+          </span>
         )}
       </div>
 
@@ -122,13 +144,19 @@ const GameCard = ({ opportunity }: GameCardProps) => {
       <div className="game-card-actions">
         <button
           className="take-game-btn"
-          onClick={handlePlaceholderAction}
+          onClick={handleActionClick}
           disabled={actionDisabled}
         >
-          {actionLabel}
+          {isClaimingThisCard ? "Claiming..." : actionLabel}
         </button>
 
-        {!canTakeCrewChief && (
+        {!isAuthenticated && (
+          <small className="game-card-warning">
+            Log in to take games.
+          </small>
+        )}
+
+        {isAuthenticated && !canTakeCrewChief && (
           <small className="game-card-warning">
             Intro referees cannot take Crew Chief.
           </small>

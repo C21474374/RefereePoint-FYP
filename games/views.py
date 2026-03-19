@@ -144,7 +144,6 @@ class NonAppointedSlotListAPIView(generics.ListAPIView):
         game_id = self.request.query_params.get("game_id")
         venue_id = self.request.query_params.get("venue")
         role = self.request.query_params.get("role")
-        source_type = self.request.query_params.get("source_type")
         status = self.request.query_params.get("status")
         is_active = self.request.query_params.get("is_active")
         date = self.request.query_params.get("date")
@@ -159,8 +158,7 @@ class NonAppointedSlotListAPIView(generics.ListAPIView):
         if role:
             queryset = queryset.filter(role=role)
 
-        if source_type:
-            queryset = queryset.filter(source_type=source_type)
+    
 
         if status:
             queryset = queryset.filter(status=status)
@@ -301,7 +299,7 @@ class OpportunityFeedAPIView(APIView):
         venue_id = request.query_params.get("venue")
         role = request.query_params.get("role")
         game_type = request.query_params.get("game_type")
-        source_type = request.query_params.get("source_type")
+
         opportunity_type = request.query_params.get("type")
 
         if date:
@@ -320,8 +318,6 @@ class OpportunityFeedAPIView(APIView):
             non_appointed_slots = non_appointed_slots.filter(game__game_type=game_type)
             cover_requests = cover_requests.filter(game__game_type=game_type)
 
-        if source_type:
-            non_appointed_slots = non_appointed_slots.filter(source_type=source_type)
 
         items = []
 
@@ -354,8 +350,6 @@ class OpportunityFeedAPIView(APIView):
                         "role_display": slot.get_role_display(),
                         "status": slot.status,
                         "status_display": slot.get_status_display(),
-                        "source_type": slot.source_type,
-                        "source_type_display": slot.get_source_type_display(),
                         "posted_by_name": slot.posted_by.get_full_name() if slot.posted_by else None,
                         "claimed_by_name": (
                             slot.claimed_by.user.get_full_name()
@@ -402,8 +396,6 @@ class OpportunityFeedAPIView(APIView):
                         "role_display": cover.referee_slot.get_role_display() if cover.referee_slot else None,
                         "status": cover.status,
                         "status_display": cover.get_status_display(),
-                        "source_type": None,
-                        "source_type_display": None,
                         "posted_by_name": None,
                         "claimed_by_name": None,
                         "requested_by_name": cover.requested_by.get_full_name() if cover.requested_by else None,
@@ -458,16 +450,22 @@ class UploadGameAvailabilityView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        game_type = request.query_params.get("game_type")
+
+        if not all([home_team, away_team, venue, date, time, game_type]):
+            return Response(
+                {
+                    "detail": "home_team, away_team, venue, date, time, and game_type are required."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         game = Game.objects.filter(
             home_team_id=home_team,
             away_team_id=away_team,
             venue_id=venue,
             date=date,
             time=time,
-            game_type__in=[
-                Game.GameType.NON_APPOINTED,
-                Game.GameType.FRIENDLY,
-            ],
+            game_type=game_type,
         ).first()
 
         if not game:

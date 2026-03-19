@@ -28,8 +28,8 @@ type UploadGameFormProps = {
 };
 
 type FormState = {
-  game_type: "NON_APPOINTED" | "FRIENDLY";
-  payment_type: "CASH" | "REVOLUT" | "CLAIM";
+  game_type: "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY";
+  payment_type: "CASH" | "REVOLUT";
   division: string;
   date: string;
   time: string;
@@ -40,12 +40,11 @@ type FormState = {
   original_post_text: string;
   requesting_side: "" | "HOME" | "AWAY";
   second_ref_needed: boolean;
-  source_type: "CLUB" | "SCHOOL";
   description: string;
 };
 
 const initialForm: FormState = {
-  game_type: "NON_APPOINTED",
+  game_type: "CLUB",
   payment_type: "CASH",
   division: "",
   date: "",
@@ -57,7 +56,6 @@ const initialForm: FormState = {
   original_post_text: "",
   requesting_side: "",
   second_ref_needed: false,
-  source_type: "CLUB",
   description: "",
 };
 
@@ -66,13 +64,11 @@ const initialForm: FormState = {
 function buildSlots(
   requestingSide: "" | "HOME" | "AWAY",
   secondRefNeeded: boolean,
-  sourceType: "CLUB" | "SCHOOL",
   description: string
 ) {
   if (!requestingSide) return [];
 
   const baseSlot = {
-    source_type: sourceType,
     description,
   };
 
@@ -150,13 +146,14 @@ export default function UploadGameForm({
       try {
         setCheckingAvailability(true);
 
-        const params = new URLSearchParams({
-          home_team: form.home_team,
-          away_team: form.away_team,
-          venue: form.venue,
-          date: form.date,
-          time: form.time,
-        });
+              const params = new URLSearchParams({
+                home_team: form.home_team,
+                away_team: form.away_team,
+                venue: form.venue,
+                date: form.date,
+                time: form.time,
+                game_type: form.game_type,
+              });
 
               const response = await fetch(
                 `http://127.0.0.1:8000/api/games/upload/check/?${params.toString()}`,
@@ -195,6 +192,7 @@ export default function UploadGameForm({
     return () => controller.abort();
   }, [
     canCheckAvailability,
+    form.game_type,
     form.home_team,
     form.away_team,
     form.venue,
@@ -217,6 +215,10 @@ export default function UploadGameForm({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+    
+    if (name === "game_type") {
+      setAvailability(null);
+    }
 
     setErrorMessage("");
     setSuccessMessage("");
@@ -255,7 +257,6 @@ export default function UploadGameForm({
     const slots = buildSlots(
       form.requesting_side,
       form.second_ref_needed,
-      form.source_type,
       form.description
     );
 
@@ -317,7 +318,7 @@ if (!token) {
     <div className="upload-game-wrapper">
       <div className="upload-game-header">
         <h1>Upload Game</h1>
-        <p>Post a non-appointed or friendly game and create the referee opportunity.</p>
+        <p>Post a game and create referee opportunities.</p>
       </div>
 
       <form className="upload-game-form" onSubmit={handleSubmit}>
@@ -330,8 +331,10 @@ if (!token) {
           <div className="upload-grid">
             <div className="form-field">
               <label>Game Type</label>
-              <select name="game_type" value={form.game_type} onChange={handleChange}>
-                <option value="NON_APPOINTED">Non-Appointed</option>
+             <select name="game_type" value={form.game_type} onChange={handleChange}>
+                <option value="CLUB">Club</option>
+                <option value="SCHOOL">School</option>
+                <option value="COLLEGE">College</option>
                 <option value="FRIENDLY">Friendly</option>
               </select>
             </div>
@@ -341,7 +344,6 @@ if (!token) {
               <select name="payment_type" value={form.payment_type} onChange={handleChange}>
                 <option value="CASH">Cash</option>
                 <option value="REVOLUT">Revolut</option>
-                <option value="CLAIM">Claim</option>
               </select>
             </div>
 
@@ -462,13 +464,7 @@ if (!token) {
             Second referee also needed
           </label>
 
-          <div className="form-field">
-            <label>Source Type</label>
-            <select name="source_type" value={form.source_type} onChange={handleChange}>
-              <option value="CLUB">Club</option>
-              <option value="SCHOOL">School</option>
-            </select>
-          </div>
+          
 
           <div className="helper-box">
             <strong>Slot logic:</strong>

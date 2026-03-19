@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import "../pages_css/Games.css";
 import GamesMap from "../components/GamesMap";
 import Gameslist from "../components/Gameslist";
+import { getAccessToken } from "../services/auth";
 
 export type Opportunity = {
   id: number;
@@ -49,35 +50,73 @@ export type Opportunity = {
   created_at: string;
 };
 
+const API_BASE_URL = "http://127.0.0.1:8000/api";
+
 const Games = () => {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [claimingId, setClaimingId] = useState<number | null>(null);
+
+  const loadOpportunities = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(`${API_BASE_URL}/games/opportunities/`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch opportunities.");
+      }
+
+      const data = await response.json();
+      setOpportunities(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchOpportunities = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const response = await fetch("http://127.0.0.1:8000/api/games/opportunities/");
-        if (!response.ok) {
-          throw new Error("Failed to fetch opportunities.");
-        }
-
-        const data = await response.json();
-        setOpportunities(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOpportunities();
+    loadOpportunities();
   }, []);
+
+  const handleClaimSlot = async (slotId: number) => {
+    try {
+      setClaimingId(slotId);
+      setError("");
+
+      const token = getAccessToken();
+
+      if (!token) {
+        throw new Error("You must be logged in to take a game.");
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/games/non-appointed-slots/${slotId}/claim/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to claim slot.");
+      }
+
+      await loadOpportunities();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to claim slot.");
+    } finally {
+      setClaimingId(null);
+    }
+  };
 
   const filteredOpportunities = useMemo(() => {
     let filtered = [...opportunities];
@@ -136,7 +175,11 @@ const Games = () => {
           </div>
 
           <div className="games-list-panel">
-            <Gameslist opportunities={filteredOpportunities} />
+            <Gameslist
+              opportunities={filteredOpportunities}
+              onClaimSlot={handleClaimSlot}
+              claimingId={claimingId}
+            />
           </div>
         </div>
       )}

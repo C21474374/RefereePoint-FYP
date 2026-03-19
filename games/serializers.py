@@ -64,7 +64,6 @@ class GameSerializer(serializers.ModelSerializer):
 
 class NonAppointedSlotSerializer(serializers.ModelSerializer):
     role_display = serializers.CharField(source="get_role_display", read_only=True)
-    source_type_display = serializers.CharField(source="get_source_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     posted_by_name = serializers.CharField(source="posted_by.get_full_name", read_only=True)
@@ -81,8 +80,6 @@ class NonAppointedSlotSerializer(serializers.ModelSerializer):
             "game_details",
             "role",
             "role_display",
-            "source_type",
-            "source_type_display",
             "status",
             "status_display",
             "posted_by",
@@ -128,7 +125,7 @@ class RefereeAssignmentSerializer(serializers.ModelSerializer):
 
 class NonAppointedSlotCreateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=NonAppointedSlot.Role.choices)
-    source_type = serializers.ChoiceField(choices=NonAppointedSlot.SourceType.choices)
+
     description = serializers.CharField(required=False, allow_blank=True, default="")
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
 
@@ -220,7 +217,7 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
             venue=validated_data.get("venue"),
             date=validated_data.get("date"),
             time=validated_data.get("time"),
-            game_type__in=[Game.GameType.NON_APPOINTED, Game.GameType.FRIENDLY],
+            game_type=validated_data.get("game_type"),
         ).first()
 
         if matching_game:
@@ -311,9 +308,6 @@ class OpportunityFeedItemSerializer(serializers.Serializer):
 
     status = serializers.CharField()
     status_display = serializers.CharField()
-
-    source_type = serializers.CharField(allow_null=True, required=False)
-    source_type_display = serializers.CharField(allow_null=True, required=False)
 
     posted_by_name = serializers.CharField(allow_null=True, required=False)
     claimed_by_name = serializers.CharField(allow_null=True, required=False)
