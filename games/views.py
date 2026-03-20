@@ -505,3 +505,36 @@ class UploadGameAvailabilityView(APIView):
                 "message": "Matching game found."
             }
         )
+    
+class MyClaimedGamesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            referee = RefereeProfile.objects.get(user=request.user)
+        except RefereeProfile.DoesNotExist:
+            return Response(
+                {"detail": "Referee profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        slots = (
+            NonAppointedSlot.objects.select_related(
+                "game",
+                "game__venue",
+                "game__division",
+                "game__home_team__club",
+                "game__away_team__club",
+                "posted_by",
+                "claimed_by__user",
+            )
+            .filter(
+                claimed_by=referee,
+                is_active=True,
+                status=NonAppointedSlot.Status.CLAIMED,
+            )
+            .order_by("game__date", "game__time")
+        )
+
+        serializer = NonAppointedSlotSerializer(slots, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

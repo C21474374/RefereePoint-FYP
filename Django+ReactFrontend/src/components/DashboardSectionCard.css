@@ -1,0 +1,25 @@
+.dashboard-section-card {
+  background: #16182b;
+  border: 1px solid #2a2d46;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.dashboard-section-header {
+  margin-bottom: 14px;
+}
+
+.dashboard-section-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: white;
+}
+
+.dashboard-section-body {
+  min-height: 120px;
+}
+
+.dashboard-empty-message {
+  margin: 0;
+  color: #b8b8c7;
+}

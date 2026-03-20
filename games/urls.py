@@ -11,6 +11,7 @@ from .views import (
     OpportunityFeedAPIView,
     UploadGameAvailabilityView,
     CsrfCookieAPIView,
+    MyClaimedGamesAPIView,
 )
 
 
@@ -66,5 +67,11 @@ urlpatterns = [
     "csrf/",
     CsrfCookieAPIView.as_view(),
     name="csrf-cookie",
+    ),
+
+    path(
+    "my-games/",
+    MyClaimedGamesAPIView.as_view(),
+    name="my-claimed-games",
     ),
 ]

@@ -1,0 +1,73 @@
+.dashboard-hero {
+  background: #16182b;
+  border: 1px solid #2a2d46;
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.dashboard-hero-kicker {
+  margin: 0 0 8px;
+  color: #b8b8c7;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.dashboard-hero h1 {
+  margin: 0 0 10px;
+  font-size: 2rem;
+  color: white;
+}
+
+.dashboard-hero-subtitle {
+  margin: 0;
+  color: #b8b8c7;
+  max-width: 650px;
+  line-height: 1.6;
+}
+
+.dashboard-hero-profile {
+  min-width: 220px;
+}
+
+.dashboard-hero-profile-card {
+  height: 100%;
+  background: #1d2035;
+  border: 1px solid #2f3352;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.dashboard-profile-grade {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #2a2f4a;
+  color: #e4e5e6;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.dashboard-hero-profile-card p {
+  margin: 0;
+  color: #b8b8c7;
+  word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .dashboard-hero {
+    flex-direction: column;
+  }
+
+  .dashboard-hero h1 {
+    font-size: 1.6rem;
+  }
+}
