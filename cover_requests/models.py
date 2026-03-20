@@ -6,11 +6,10 @@ class CoverRequest(models.Model):
     """Requests from referees to cover already assigned games."""
 
     class Status(models.TextChoices):
-        PENDING_COVER = "PENDING_COVER", "Pending Cover"
-        PENDING_APPROVAL = "PENDING_APPROVAL", "Pending Approval"
+        PENDING = "PENDING", "Pending"
+        CLAIMED = "CLAIMED", "Claimed"
         APPROVED = "APPROVED", "Approved"
         REJECTED = "REJECTED", "Rejected"
-        COMPLETED = "COMPLETED", "Completed"
 
     game = models.ForeignKey(
         "games.Game",
@@ -39,7 +38,7 @@ class CoverRequest(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.PENDING_COVER,
+        default=Status.PENDING,
     )
     approver = models.ForeignKey(
         "users.User",
@@ -90,8 +89,8 @@ class CoverRequest(models.Model):
                 )
 
         active_statuses = {
-            self.Status.PENDING_COVER,
-            self.Status.PENDING_APPROVAL,
+            self.Status.PENDING,
+            self.Status.CLAIMED,
         }
 
         existing_active_request = CoverRequest.objects.filter(

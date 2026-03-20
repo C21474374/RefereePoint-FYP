@@ -1,0 +1,29 @@
+.cover-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #2a2d46;
+}
+
+.cover-status-pending {
+  background: rgba(221, 205, 13, 0.12);
+  color: #ddcd0d;
+}
+
+.cover-status-claimed {
+  background: rgba(90, 140, 255, 0.12);
+  color: #8ea8ff;
+}
+
+.cover-status-approved {
+  background: rgba(60, 190, 120, 0.12);
+  color: #68d391;
+}
+
+.cover-status-rejected {
+  background: rgba(210, 35, 42, 0.12);
+  color: #ff7b84;
+}

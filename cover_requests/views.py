@@ -1,12 +1,12 @@
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import CoverRequest
 from .serializers import CoverRequestSerializer, CoverRequestCreateSerializer
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from users.models import RefereeProfile
+
 
 class CoverRequestListAPIView(generics.ListAPIView):
     serializer_class = CoverRequestSerializer
@@ -97,8 +97,8 @@ class PendingCoverRequestListAPIView(generics.ListAPIView):
             )
             .filter(
                 status__in=[
-                    CoverRequest.Status.PENDING_COVER,
-                    CoverRequest.Status.PENDING_APPROVAL,
+                    CoverRequest.Status.PENDING,
+                    CoverRequest.Status.CLAIMED,
                 ]
             )
             .order_by("-created_at")
@@ -114,6 +114,7 @@ class CreateCoverRequestAPIView(generics.CreateAPIView):
         context["request"] = self.request
         return context
 
+
 class OfferCoverAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -121,6 +122,7 @@ class OfferCoverAPIView(APIView):
         try:
             cover_request = CoverRequest.objects.select_related(
                 "game",
+                "requested_by",
                 "referee_slot",
                 "referee_slot__referee__user",
                 "replaced_by__user",
@@ -131,9 +133,15 @@ class OfferCoverAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if cover_request.status != CoverRequest.Status.PENDING_COVER:
+        if cover_request.status != CoverRequest.Status.PENDING:
             return Response(
-                {"detail": "This cover request is no longer open for offers."},
+                {"detail": "This cover request is no longer open for claims."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cover_request.requested_by == request.user:
+            return Response(
+                {"detail": "You cannot cover your own request."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -141,7 +149,7 @@ class OfferCoverAPIView(APIView):
             referee = RefereeProfile.objects.select_related("user").get(user=request.user)
         except RefereeProfile.DoesNotExist:
             return Response(
-                {"detail": "Only referees can offer to cover games."},
+                {"detail": "Only referees can claim cover requests."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -149,11 +157,14 @@ class OfferCoverAPIView(APIView):
 
         if referee.id == original_referee.id:
             return Response(
-                {"detail": "You cannot offer to cover your own assignment."},
+                {"detail": "You cannot cover your own assignment."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if cover_request.referee_slot.role == "CREW_CHIEF" and referee.grade == "INTRO":
+        if (
+            cover_request.referee_slot.role == "CREW_CHIEF"
+            and referee.grade == "INTRO"
+        ):
             return Response(
                 {"detail": "Intro referees cannot cover Crew Chief."},
                 status=status.HTTP_403_FORBIDDEN,
@@ -161,16 +172,17 @@ class OfferCoverAPIView(APIView):
 
         if cover_request.replaced_by is not None:
             return Response(
-                {"detail": "Another referee has already offered to cover this game."},
+                {"detail": "Another referee has already claimed this game."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         cover_request.replaced_by = referee
-        cover_request.status = CoverRequest.Status.PENDING_APPROVAL
+        cover_request.status = CoverRequest.Status.CLAIMED
         cover_request.save()
 
         serializer = CoverRequestSerializer(cover_request)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class ApproveCoverRequestAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -190,7 +202,13 @@ class ApproveCoverRequestAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if cover_request.status != CoverRequest.Status.PENDING_APPROVAL:
+        if cover_request.status == CoverRequest.Status.APPROVED:
+            return Response(
+                {"detail": "This request is already approved."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cover_request.status != CoverRequest.Status.CLAIMED:
             return Response(
                 {"detail": "This cover request is not waiting for approval."},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -202,12 +220,9 @@ class ApproveCoverRequestAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Optional permission rule:
-        # for now, allow the user who created the request to approve it.
-        # later you can replace this with DOA/NL admin permissions.
-        if cover_request.requested_by_id != request.user.id:
+        if not request.user.is_staff:
             return Response(
-                {"detail": "You do not have permission to approve this cover request."},
+                {"detail": "Only admins can approve cover requests."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

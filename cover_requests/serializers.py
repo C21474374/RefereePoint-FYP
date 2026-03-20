@@ -1,7 +1,9 @@
 from rest_framework import serializers
+
 from .models import CoverRequest
 from games.serializers import GameSerializer, RefereeAssignmentSerializer
 from users.models import RefereeProfile
+
 
 class CoverRequestSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
@@ -25,10 +27,16 @@ class CoverRequestSerializer(serializers.ModelSerializer):
     )
 
     game_details = GameSerializer(source="game", read_only=True)
-    referee_slot_details = RefereeAssignmentSerializer(source="referee_slot", read_only=True)
+    referee_slot_details = RefereeAssignmentSerializer(
+        source="referee_slot",
+        read_only=True
+    )
 
     role = serializers.CharField(source="referee_slot.role", read_only=True)
-    role_display = serializers.CharField(source="referee_slot.get_role_display", read_only=True)
+    role_display = serializers.CharField(
+        source="referee_slot.get_role_display",
+        read_only=True
+    )
 
     original_referee_id = serializers.IntegerField(
         source="referee_slot.referee.id",
@@ -88,7 +96,6 @@ class CoverRequestSerializer(serializers.ModelSerializer):
         ]
 
 
-
 class CoverRequestCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CoverRequest
@@ -127,8 +134,8 @@ class CoverRequestCreateSerializer(serializers.ModelSerializer):
         existing_open_request = CoverRequest.objects.filter(
             referee_slot=referee_slot,
             status__in=[
-                CoverRequest.Status.PENDING_COVER,
-                CoverRequest.Status.PENDING_APPROVAL,
+                CoverRequest.Status.PENDING,
+                CoverRequest.Status.CLAIMED,
             ],
         ).exists()
 
@@ -145,11 +152,9 @@ class CoverRequestCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context["request"]
-       
-
 
         return CoverRequest.objects.create(
             requested_by=request.user,
-            status=CoverRequest.Status.PENDING_COVER,
+            status=CoverRequest.Status.PENDING,
             **validated_data,
         )

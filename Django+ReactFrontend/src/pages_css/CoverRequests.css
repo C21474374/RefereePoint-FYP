@@ -1,0 +1,45 @@
+.cover-requests-page {
+  padding: 24px;
+  background: #0f1020;
+  min-height: 100vh;
+}
+
+.cover-requests-page-header {
+  margin-bottom: 24px;
+}
+
+.cover-requests-page-header h1 {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: 28px;
+}
+
+.cover-requests-page-header p {
+  margin: 0;
+  color: #b8b8c7;
+  font-size: 15px;
+}
+
+.cover-requests-page-message,
+.cover-requests-page-error {
+  color: #b8b8c7;
+  margin-bottom: 16px;
+}
+
+.cover-requests-page-error {
+  color: #ff7b84;
+}
+
+.cover-requests-empty {
+  background: #16182b;
+  border: 1px solid #2a2d46;
+  border-radius: 16px;
+  padding: 24px;
+  color: #b8b8c7;
+}
+
+.cover-requests-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}

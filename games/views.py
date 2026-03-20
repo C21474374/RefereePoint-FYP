@@ -291,7 +291,7 @@ class OpportunityFeedAPIView(APIView):
                 "referee_slot",
                 "referee_slot__referee__user",
             )
-            .filter(status=CoverRequest.Status.PENDING_COVER)
+            .filter(status=CoverRequest.Status.PENDING)
             .order_by("game__date", "game__time", "created_at")
         )
 
