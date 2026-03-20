@@ -1,25 +1,47 @@
 import { useEffect, useState } from "react";
 import {
-  approveCoverRequest,
   claimCoverRequest,
-  getCoverRequests,
+  createCoverRequest,
+  getMyCoverRequests,
+  getMyUpcomingAssignments,
+  getPendingCoverRequests,
   type CoverRequest,
+  type UpcomingAssignment,
 } from "../services/coverRequests";
+import {
+  fetchCurrentUser,
+  getAccessToken,
+  type CurrentUser,
+} from "../services/auth";
 import CoverRequestCard from "../components/coverRequests/CoverRequestCard";
+import MyAssignmentCard from "../components/coverRequests/MyAssignmentCard";
 import "../pages_css/CoverRequests.css";
 
 export default function CoverRequestsPage() {
-  const [coverRequests, setCoverRequests] = useState<CoverRequest[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [myCoverRequests, setMyCoverRequests] = useState<CoverRequest[]>([]);
+  const [myAssignments, setMyAssignments] = useState<UpcomingAssignment[]>([]);
+  const [availableCoverRequests, setAvailableCoverRequests] = useState<CoverRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [requestingAssignmentId, setRequestingAssignmentId] = useState<number | null>(null);
 
-  const fetchCoverRequests = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
       setError("");
-      const data = await getCoverRequests();
-      setCoverRequests(data);
+
+      const [myCoverRequestsData, assignmentsData, availableCoverRequestsData] =
+        await Promise.all([
+          getMyCoverRequests(),
+          getMyUpcomingAssignments(),
+          getPendingCoverRequests(),
+        ]);
+
+      setMyCoverRequests(myCoverRequestsData);
+      setMyAssignments(assignmentsData);
+      setAvailableCoverRequests(availableCoverRequestsData);
     } catch (err) {
       console.error(err);
       setError("Failed to load cover requests.");
@@ -29,14 +51,32 @@ export default function CoverRequestsPage() {
   };
 
   useEffect(() => {
-    fetchCoverRequests();
+    const initPage = async () => {
+      try {
+        const token = getAccessToken();
+
+        if (token) {
+          const user = await fetchCurrentUser(token);
+          setCurrentUser(user);
+        }
+
+        await fetchData();
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load cover requests.");
+        setLoading(false);
+      }
+    };
+
+    initPage();
   }, []);
 
   const handleClaim = async (id: number) => {
     try {
       setActionLoadingId(id);
+      setError("");
       await claimCoverRequest(id);
-      await fetchCoverRequests();
+      await fetchData();
     } catch (err) {
       console.error(err);
       setError("Failed to claim cover request.");
@@ -45,16 +85,23 @@ export default function CoverRequestsPage() {
     }
   };
 
-  const handleApprove = async (id: number) => {
+  const handleRequestCover = async (assignment: UpcomingAssignment) => {
     try {
-      setActionLoadingId(id);
-      await approveCoverRequest(id);
-      await fetchCoverRequests();
+      setRequestingAssignmentId(assignment.assignment_id);
+      setError("");
+
+      await createCoverRequest({
+        game: assignment.game_id,
+        referee_slot: assignment.assignment_id,
+        reason: "",
+      });
+
+      await fetchData();
     } catch (err) {
       console.error(err);
-      setError("Failed to approve cover request.");
+      setError("Failed to create cover request.");
     } finally {
-      setActionLoadingId(null);
+      setRequestingAssignmentId(null);
     }
   };
 
@@ -62,31 +109,105 @@ export default function CoverRequestsPage() {
     <div className="cover-requests-page">
       <div className="cover-requests-page-header">
         <h1>Cover Requests</h1>
-        <p>View, claim, and manage referee cover requests.</p>
+        <p>
+          Request cover for your games or claim open cover requests from other
+          referees.
+        </p>
       </div>
 
-      {loading && <p className="cover-requests-page-message">Loading cover requests...</p>}
-      {error && <p className="cover-requests-page-error">{error}</p>}
-
-      {!loading && !error && coverRequests.length === 0 && (
-        <div className="cover-requests-empty">
-          <p>No cover requests available right now.</p>
-        </div>
+      {loading && (
+        <p className="cover-requests-page-message">Loading cover requests...</p>
       )}
 
-      <div className="cover-requests-grid">
-        {coverRequests.map((coverRequest) => (
-          <CoverRequestCard
-            key={coverRequest.id}
-            coverRequest={coverRequest}
-            canClaim
-            canApprove
-            onClaim={handleClaim}
-            onApprove={handleApprove}
-            loadingActionId={actionLoadingId}
-          />
-        ))}
-      </div>
+      {error && <p className="cover-requests-page-error">{error}</p>}
+
+      {!loading && (
+        <>
+          <section className="cover-requests-section">
+            <div className="cover-requests-section-header">
+              <h2>My Cover Requests</h2>
+              <p>Requests you created and requests you have claimed.</p>
+            </div>
+
+            {myCoverRequests.length === 0 ? (
+              <div className="cover-requests-empty">
+                <p>You have no cover requests yet.</p>
+              </div>
+            ) : (
+              <div className="cover-requests-grid">
+                {myCoverRequests.map((coverRequest) => {
+                  const isRequestedByMe = currentUser
+                    ? coverRequest.requested_by === currentUser.id
+                    : false;
+
+                  const isClaimedByMe = currentUser?.referee_profile
+                    ? coverRequest.replaced_by === currentUser.referee_profile.id
+                    : false;
+
+                  return (
+                    <CoverRequestCard
+                      key={coverRequest.id}
+                      coverRequest={coverRequest}
+                      loadingActionId={actionLoadingId}
+                      isRequestedByMe={isRequestedByMe}
+                      isClaimedByMe={isClaimedByMe}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className="cover-requests-section">
+            <div className="cover-requests-section-header">
+              <h2>My Upcoming Appointed Games</h2>
+              <p>Request cover for games already assigned to you.</p>
+            </div>
+
+            {myAssignments.length === 0 ? (
+              <div className="cover-requests-empty">
+                <p>You have no upcoming appointed games.</p>
+              </div>
+            ) : (
+              <div className="cover-requests-grid">
+                {myAssignments.map((assignment) => (
+                  <MyAssignmentCard
+                    key={assignment.assignment_id}
+                    assignment={assignment}
+                    onRequestCover={handleRequestCover}
+                    loading={requestingAssignmentId === assignment.assignment_id}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="cover-requests-section">
+            <div className="cover-requests-section-header">
+              <h2>Cover Requests I Can Take</h2>
+              <p>Open requests from other referees that you can claim.</p>
+            </div>
+
+            {availableCoverRequests.length === 0 ? (
+              <div className="cover-requests-empty">
+                <p>No cover requests available right now.</p>
+              </div>
+            ) : (
+              <div className="cover-requests-grid">
+                {availableCoverRequests.map((coverRequest) => (
+                  <CoverRequestCard
+                    key={coverRequest.id}
+                    coverRequest={coverRequest}
+                    canClaim
+                    onClaim={handleClaim}
+                    loadingActionId={actionLoadingId}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@ from .views import (
     CoverRequestListAPIView,
     CoverRequestDetailAPIView,
     MyCoverRequestListAPIView,
+    MyUpcomingAssignmentsAPIView,
     PendingCoverRequestListAPIView,
     CreateCoverRequestAPIView,
     OfferCoverAPIView,
@@ -17,4 +18,5 @@ urlpatterns = [
     path("<int:pk>/", CoverRequestDetailAPIView.as_view(), name="cover-request-detail"),
     path("<int:pk>/offer/", OfferCoverAPIView.as_view(), name="cover-request-offer"),
     path("<int:pk>/approve/", ApproveCoverRequestAPIView.as_view(), name="cover-request-approve"),
+    path("my-upcoming-assignments/",MyUpcomingAssignmentsAPIView.as_view(),name="my-upcoming-assignments",),
 ]

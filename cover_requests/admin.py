@@ -12,7 +12,6 @@ class CoverRequestAdmin(admin.ModelAdmin):
         "replaced_by",
         "approver",
         "status",
-        "custom_fee",
         "created_at",
         "updated_at",
     )
@@ -60,7 +59,7 @@ class CoverRequestAdmin(admin.ModelAdmin):
         ("Extra", {
             "fields": (
                 "reason",
-                "custom_fee",
+                
             )
         }),
         ("Timestamps", {

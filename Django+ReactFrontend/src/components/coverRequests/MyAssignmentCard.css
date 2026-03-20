@@ -1,0 +1,124 @@
+.my-assignment-card {
+  background: #16182b;
+  border: 1px solid #2a2d46;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.my-assignment-card:hover {
+  border-color: #3f456b;
+  transform: translateY(-2px);
+}
+
+.my-assignment-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.my-assignment-card-top h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.my-assignment-card-top p {
+  margin-top: 4px;
+  font-size: 0.92rem;
+  color: #b8b8c7;
+}
+
+.my-assignment-role {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #2a2f4a;
+  color: #e4e5e6;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.my-assignment-meta {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.my-assignment-meta p {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  color: #ffffff;
+  font-size: 0.92rem;
+}
+
+.my-assignment-meta strong {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.my-assignment-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.my-assignment-button {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  background: #d2232a;
+  color: white;
+  white-space: nowrap;
+}
+
+.my-assignment-button:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.my-assignment-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.my-assignment-existing-request {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(234, 179, 8, 0.15);
+  color: #facc15;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .my-assignment-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .my-assignment-actions {
+    justify-content: stretch;
+  }
+
+  .my-assignment-button {
+    width: 100%;
+  }
+}

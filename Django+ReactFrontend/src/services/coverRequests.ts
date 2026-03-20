@@ -5,20 +5,41 @@ export type CoverRequest = {
   game: number;
   game_details: {
     id: number;
+    game_type?: string;
+    game_type_display?: string;
+    status?: string;
+    status_display?: string;
+    payment_type?: string;
+    payment_type_display?: string;
+    division?: number;
+    division_name?: string;
+    division_gender?: string;
+    division_display?: string;
     date?: string;
-    match_date?: string;
     time?: string;
-    venue?: string | { name?: string };
-    home_team?: { name?: string };
-    away_team?: { name?: string };
-    division?: { name?: string };
+    venue?: number;
+    venue_name?: string;
+    lat?: number;
+    lng?: number;
+    home_team?: number;
+    home_team_name?: string;
+    away_team?: number;
+    away_team_name?: string;
+    notes?: string;
+    original_post_text?: string;
+    created_by?: number;
+    assigned_roles_count?: number;
+    open_non_appointed_slots_count?: number;
+    created_at?: string;
+    updated_at?: string;
   };
   requested_by: number;
   requested_by_name: string;
   referee_slot: number;
   role: string;
   role_display: string;
-  original_referee_id: number;
+  original_referee: number | null;
+  original_referee_id: number | null;
   original_referee_name: string;
   original_referee_grade: string;
   replaced_by: number | null;
@@ -29,7 +50,6 @@ export type CoverRequest = {
   approver: number | null;
   approver_name: string | null;
   reason: string;
-  custom_fee: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -38,7 +58,22 @@ export type CreateCoverRequestPayload = {
   game: number;
   referee_slot: number;
   reason?: string;
-  custom_fee?: string | null;
+};
+
+export type UpcomingAssignment = {
+  assignment_id: number;
+  role: string;
+  role_display: string;
+  game_id: number;
+  game_details: any;
+  has_active_cover_request: boolean;
+};
+
+export const getMyUpcomingAssignments = async () => {
+  const response = await axiosInstance.get<UpcomingAssignment[]>(
+    "/cover-requests/my-upcoming-assignments/"
+  );
+  return response.data;
 };
 
 export const getCoverRequests = async (status?: string) => {
@@ -60,16 +95,23 @@ export const getPendingCoverRequests = async () => {
 };
 
 export const createCoverRequest = async (payload: CreateCoverRequestPayload) => {
-  const response = await axiosInstance.post<CoverRequest>("/cover-requests/create/", payload);
+  const response = await axiosInstance.post<CoverRequest>(
+    "/cover-requests/create/",
+    payload
+  );
   return response.data;
 };
 
 export const claimCoverRequest = async (id: number) => {
-  const response = await axiosInstance.post<CoverRequest>(`/cover-requests/${id}/offer/`);
+  const response = await axiosInstance.post<CoverRequest>(
+    `/cover-requests/${id}/offer/`
+  );
   return response.data;
 };
 
 export const approveCoverRequest = async (id: number) => {
-  const response = await axiosInstance.post<CoverRequest>(`/cover-requests/${id}/approve/`);
+  const response = await axiosInstance.post<CoverRequest>(
+    `/cover-requests/${id}/approve/`
+  );
   return response.data;
 };

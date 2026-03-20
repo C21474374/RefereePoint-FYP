@@ -27,6 +27,14 @@ class CoverRequest(models.Model):
         related_name="cover_requests",
         help_text="The assignment being replaced.",
     )
+    original_referee = models.ForeignKey(
+        "users.RefereeProfile",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="original_cover_requests",
+        help_text="The originally assigned referee at the time the cover request was created.",
+    )
     replaced_by = models.ForeignKey(
         "users.RefereeProfile",
         on_delete=models.SET_NULL,
@@ -48,12 +56,6 @@ class CoverRequest(models.Model):
         related_name="cover_requests_approved",
     )
     reason = models.TextField(blank=True, default="")
-    custom_fee = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -73,14 +75,18 @@ class CoverRequest(models.Model):
                 {"referee_slot": "The referee assignment must belong to the same game."}
             )
 
-        if self.requested_by_id != self.referee_slot.referee.user_id:
-            raise ValidationError(
-                {
-                    "requested_by": (
-                        "Only the referee assigned to this slot can request cover."
-                    )
-                }
-            )
+        if self.original_referee is None and self.referee_slot_id:
+            self.original_referee = self.referee_slot.referee
+
+        if self.status in {self.Status.PENDING, self.Status.CLAIMED}:
+            if self.requested_by_id != self.referee_slot.referee.user_id:
+                raise ValidationError(
+                    {
+                        "requested_by": (
+                            "Only the referee assigned to this slot can request cover."
+                        )
+                    }
+                )
 
         if self.replaced_by and self.referee_slot.role == "CREW_CHIEF":
             if self.replaced_by.grade == "INTRO":
@@ -108,5 +114,8 @@ class CoverRequest(models.Model):
             )
 
     def save(self, *args, **kwargs):
+        if self.original_referee is None and self.referee_slot_id:
+            self.original_referee = self.referee_slot.referee
+
         self.full_clean()
         return super().save(*args, **kwargs)

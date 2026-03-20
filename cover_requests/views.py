@@ -1,11 +1,16 @@
+from django.db.models import Q
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from games.models import RefereeAssignment
+from games.serializers import GameSerializer
+from users.models import RefereeProfile
+
 from .models import CoverRequest
 from .serializers import CoverRequestSerializer, CoverRequestCreateSerializer
-from users.models import RefereeProfile
 
 
 class CoverRequestListAPIView(generics.ListAPIView):
@@ -21,8 +26,12 @@ class CoverRequestListAPIView(generics.ListAPIView):
                 "game__away_team__club",
                 "requested_by",
                 "approver",
+                "original_referee",
+                "original_referee__user",
+                "replaced_by",
                 "replaced_by__user",
                 "referee_slot",
+                "referee_slot__referee",
                 "referee_slot__referee__user",
             )
             .all()
@@ -46,8 +55,12 @@ class CoverRequestDetailAPIView(generics.RetrieveAPIView):
             "game__away_team__club",
             "requested_by",
             "approver",
+            "original_referee",
+            "original_referee__user",
+            "replaced_by",
             "replaced_by__user",
             "referee_slot",
+            "referee_slot__referee",
             "referee_slot__referee__user",
         )
         .all()
@@ -69,17 +82,25 @@ class MyCoverRequestListAPIView(generics.ListAPIView):
                 "game__away_team__club",
                 "requested_by",
                 "approver",
+                "original_referee",
+                "original_referee__user",
+                "replaced_by",
                 "replaced_by__user",
                 "referee_slot",
+                "referee_slot__referee",
                 "referee_slot__referee__user",
             )
-            .filter(requested_by=self.request.user)
+            .filter(
+                Q(requested_by=self.request.user) |
+                Q(replaced_by__user=self.request.user)
+            )
             .order_by("-created_at")
         )
 
 
 class PendingCoverRequestListAPIView(generics.ListAPIView):
     serializer_class = CoverRequestSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return (
@@ -91,16 +112,16 @@ class PendingCoverRequestListAPIView(generics.ListAPIView):
                 "game__away_team__club",
                 "requested_by",
                 "approver",
+                "original_referee",
+                "original_referee__user",
+                "replaced_by",
                 "replaced_by__user",
                 "referee_slot",
+                "referee_slot__referee",
                 "referee_slot__referee__user",
             )
-            .filter(
-                status__in=[
-                    CoverRequest.Status.PENDING,
-                    CoverRequest.Status.CLAIMED,
-                ]
-            )
+            .filter(status=CoverRequest.Status.PENDING)
+            .exclude(requested_by=self.request.user)
             .order_by("-created_at")
         )
 
@@ -123,8 +144,12 @@ class OfferCoverAPIView(APIView):
             cover_request = CoverRequest.objects.select_related(
                 "game",
                 "requested_by",
+                "original_referee",
+                "original_referee__user",
                 "referee_slot",
+                "referee_slot__referee",
                 "referee_slot__referee__user",
+                "replaced_by",
                 "replaced_by__user",
             ).get(pk=pk)
         except CoverRequest.DoesNotExist:
@@ -153,7 +178,7 @@ class OfferCoverAPIView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        original_referee = cover_request.referee_slot.referee
+        original_referee = cover_request.original_referee or cover_request.referee_slot.referee
 
         if referee.id == original_referee.id:
             return Response(
@@ -184,6 +209,61 @@ class OfferCoverAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class MyUpcomingAssignmentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            referee_profile = RefereeProfile.objects.get(user=request.user)
+        except RefereeProfile.DoesNotExist:
+            return Response(
+                {"detail": "Only referees can view assigned games."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        today = timezone.localdate()
+
+        assignments = (
+            RefereeAssignment.objects.select_related(
+                "game",
+                "game__venue",
+                "game__division",
+                "game__home_team__club",
+                "game__away_team__club",
+                "referee",
+                "referee__user",
+            )
+            .filter(
+                referee=referee_profile,
+                game__date__gte=today,
+            )
+            .order_by("game__date", "game__time")
+        )
+
+        results = []
+
+        for assignment in assignments:
+            has_active_cover_request = assignment.cover_requests.filter(
+                status__in=[
+                    CoverRequest.Status.PENDING,
+                    CoverRequest.Status.CLAIMED,
+                ]
+            ).exists()
+
+            results.append(
+                {
+                    "assignment_id": assignment.id,
+                    "role": assignment.role,
+                    "role_display": assignment.get_role_display(),
+                    "game_id": assignment.game.id,
+                    "game_details": GameSerializer(assignment.game).data,
+                    "has_active_cover_request": has_active_cover_request,
+                }
+            )
+
+        return Response(results, status=status.HTTP_200_OK)
+
+
 class ApproveCoverRequestAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -192,8 +272,12 @@ class ApproveCoverRequestAPIView(APIView):
             cover_request = CoverRequest.objects.select_related(
                 "game",
                 "requested_by",
+                "original_referee",
+                "original_referee__user",
                 "referee_slot",
+                "referee_slot__referee",
                 "referee_slot__referee__user",
+                "replaced_by",
                 "replaced_by__user",
             ).get(pk=pk)
         except CoverRequest.DoesNotExist:

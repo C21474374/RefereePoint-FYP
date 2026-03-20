@@ -39,15 +39,15 @@ class CoverRequestSerializer(serializers.ModelSerializer):
     )
 
     original_referee_id = serializers.IntegerField(
-        source="referee_slot.referee.id",
+        source="original_referee.id",
         read_only=True
     )
     original_referee_name = serializers.CharField(
-        source="referee_slot.referee.user.get_full_name",
+        source="original_referee.user.get_full_name",
         read_only=True
     )
     original_referee_grade = serializers.CharField(
-        source="referee_slot.referee.grade",
+        source="original_referee.grade",
         read_only=True
     )
 
@@ -63,6 +63,7 @@ class CoverRequestSerializer(serializers.ModelSerializer):
             "referee_slot_details",
             "role",
             "role_display",
+            "original_referee",
             "original_referee_id",
             "original_referee_name",
             "original_referee_grade",
@@ -74,7 +75,6 @@ class CoverRequestSerializer(serializers.ModelSerializer):
             "approver",
             "approver_name",
             "reason",
-            "custom_fee",
             "created_at",
             "updated_at",
         ]
@@ -90,6 +90,7 @@ class CoverRequestSerializer(serializers.ModelSerializer):
             "referee_slot_details",
             "role",
             "role_display",
+            "original_referee",
             "original_referee_id",
             "original_referee_name",
             "original_referee_grade",
@@ -103,7 +104,6 @@ class CoverRequestCreateSerializer(serializers.ModelSerializer):
             "game",
             "referee_slot",
             "reason",
-            "custom_fee",
         ]
 
     def validate(self, attrs):
@@ -155,6 +155,7 @@ class CoverRequestCreateSerializer(serializers.ModelSerializer):
 
         return CoverRequest.objects.create(
             requested_by=request.user,
+            original_referee=validated_data["referee_slot"].referee,
             status=CoverRequest.Status.PENDING,
             **validated_data,
         )
