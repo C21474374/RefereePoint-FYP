@@ -14,18 +14,15 @@ export default function DashboardHero({
   return (
     <section className="dashboard-hero">
       <div className="dashboard-hero-content">
-        <p className="dashboard-hero-kicker">Referee Dashboard</p>
-        <h1>Welcome back, {name}</h1>
+        <h1>Welcome back, {name.split(' ')[0]}</h1>
         <p className="dashboard-hero-subtitle">
-          Manage your games, track your referee activity, and quickly jump into
-          the most important actions.
+          Ready to referee? Check your next game and take action.
         </p>
       </div>
 
       <div className="dashboard-hero-profile">
         <div className="dashboard-hero-profile-card">
           <span className="dashboard-profile-grade">{grade}</span>
-          <p>{email}</p>
         </div>
       </div>
     </section>

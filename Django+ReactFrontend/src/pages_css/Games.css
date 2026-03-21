@@ -56,12 +56,32 @@
   border-radius: 12px;
   padding: 16px;
   box-sizing: border-box;
+  color: var(--color-text);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .games-map-panel {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.games-map {
+  width: 100%;
+  min-height: 500px;
+  height: 100%;
+  border-radius: 12px;
+  background: var(--color-card);
+}
+
+.leaflet-container {
+  background: var(--color-card);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-card);
+  color: var(--color-text);
 }
 
 .games-map-header,
@@ -156,7 +176,7 @@
   gap: 18px;
   flex-wrap: wrap;
   padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--color-border);
 }
 
 .game-detail-item {
@@ -241,11 +261,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 12px 16px;
   margin-bottom: 20px;
+  color: var(--color-text);
 }
 
 .clear-venue-filter-btn {
@@ -254,8 +275,8 @@
   padding: 10px 14px;
   cursor: pointer;
   font-weight: 600;
-  background: #2c3150;
-  color: white;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
 }
 
 .popup-show-games-btn {
@@ -265,8 +286,8 @@
   padding: 8px 12px;
   cursor: pointer;
   font-weight: 600;
-  background: #d2232a;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .games-header {
@@ -283,7 +304,7 @@
 
 .games-header p {
   margin: 0;
-  color: #666;
+  color: var(--color-text-muted);
 }
 
 .games-filters {
@@ -291,16 +312,16 @@
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
-  color: black;
+  color: var(--color-text);
 }
 
 .games-filter-select,
 .clear-venue-btn {
   padding: 0.65rem 0.9rem;
   border-radius: 10px;
-  border: 1px solid #d0d0d0;
-  background: white;
-  color: black;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel-2);
+  color: var(--color-text);
   font-size: 0.95rem;
 }
 
@@ -322,9 +343,12 @@
 
 .games-map-panel,
 .games-list-panel {
-  background: white;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   overflow: hidden;
+  color: var(--color-text);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .games-map {
@@ -343,11 +367,13 @@
 }
 
 .game-card {
-  background: #fff;
-  border: 1px solid #e7e7e7;
+  background: var(--color-bg-panel-2);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 1rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  color: var(--color-text);
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .game-card-top {
@@ -370,18 +396,18 @@
 }
 
 .game-card-type.non-appointed {
-  background: #eef6ff;
-  color: #1d4ed8;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
 }
 
 .game-card-type.cover-request {
-  background: #fff4e8;
-  color: #c2410c;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
 }
 
 .game-card-role {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
 }
 
 .game-card-title {
@@ -391,7 +417,7 @@
 
 .game-card-meta,
 .game-card-venue {
-  color: #555;
+  color: var(--color-text-muted);
   margin-bottom: 0.5rem;
 }
 
@@ -409,13 +435,13 @@
 }
 
 .game-tag {
-  background: #f5f5f5;
-  color: #333;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
 }
 
 .game-card-extra {
   font-size: 0.92rem;
-  color: #444;
+  color: var(--color-text-muted);
   margin-top: 0.5rem;
 }
 
@@ -434,8 +460,8 @@
   border: none;
   border-radius: 10px;
   padding: 0.8rem 1rem;
-  background: #111827;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   font-weight: 600;
   cursor: pointer;
 }
@@ -446,7 +472,7 @@
 }
 
 .game-card-warning {
-  color: #b91c1c;
+  color: var(--color-error);
   font-size: 0.82rem;
 }
 
@@ -454,24 +480,26 @@
 .games-info-message,
 .games-error-message {
   padding: 1rem;
-  background: white;
+  background: var(--color-card);
   border-radius: 12px;
+  color: var(--color-text);
 }
 
 .games-error-message {
-  color: #b91c1c;
+  color: var(--color-error);
 }
 
 .venue-popup p {
   margin: 0.4rem 0 0.7rem 0;
+  color: var(--color-text-muted);
 }
 
 .venue-popup-btn {
   border: none;
   border-radius: 8px;
   padding: 0.55rem 0.8rem;
-  background: #111827;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   cursor: pointer;
 }
 

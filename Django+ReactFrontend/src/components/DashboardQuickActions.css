@@ -1,42 +1,52 @@
 .dashboard-quick-actions {
-  margin-top: 24px;
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 18px;
+  margin-top: 40px;
 }
 
 .dashboard-quick-actions h2 {
-  margin: 0 0 16px;
-  font-size: 1.1rem;
+  margin: 0 0 20px;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--color-text);
 }
 
 .dashboard-action-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
 }
 
 .dashboard-action-card {
   display: block;
   text-decoration: none;
-  background: var(--color-bg-panel-2);
+  background: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 16px;
+  padding: 24px;
   color: var(--color-text);
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  transition: all 0.3s ease;
+  text-align: center;
 }
 
 .dashboard-action-card:hover {
-  border-color: var(--color-border-hover);
-  transform: translateY(-2px);
+  border-color: var(--color-accent);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(210, 35, 42, 0.15);
+}
+
+.dashboard-action-card.primary {
+  border-color: var(--color-accent);
+  background: linear-gradient(135deg, var(--color-card) 0%, var(--color-bg-panel-2) 100%);
+}
+
+.dashboard-action-card.primary:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 8px 25px rgba(210, 35, 42, 0.25);
 }
 
 .dashboard-action-card h3 {
   margin: 0 0 8px;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
   color: var(--color-text);
 }
 
@@ -44,7 +54,17 @@
   margin: 0;
   color: var(--color-text-secondary);
   line-height: 1.5;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .dashboard-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-action-card {
+    padding: 20px;
+  }
 }
 
 @media (max-width: 1000px) {

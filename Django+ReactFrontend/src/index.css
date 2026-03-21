@@ -5,13 +5,13 @@
 }
 
 :root {
-  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  font-family: var(--font-family);
   line-height: 1.5;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  --font-family: 'Figtree', 'Segoe UI', Arial, sans-serif;
   --font-size-base: 16px;
   --font-size-lg: 20px;
   --font-size-sm: 14px;
