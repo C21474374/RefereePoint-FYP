@@ -1,6 +1,6 @@
 .dashboard-hero {
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 18px;
   display: flex;
@@ -10,7 +10,7 @@
 
 .dashboard-hero-kicker {
   margin: 0 0 8px;
-  color: #b8b8c7;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
   font-weight: 600;
 }
@@ -18,12 +18,12 @@
 .dashboard-hero h1 {
   margin: 0 0 10px;
   font-size: 2rem;
-  color: white;
+  color: var(--color-text);
 }
 
 .dashboard-hero-subtitle {
   margin: 0;
-  color: #b8b8c7;
+  color: var(--color-text-secondary);
   max-width: 650px;
   line-height: 1.6;
 }
@@ -34,8 +34,8 @@
 
 .dashboard-hero-profile-card {
   height: 100%;
-  background: #1d2035;
-  border: 1px solid #2f3352;
+  background: var(--color-bg-panel-2);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 16px;
   display: flex;
@@ -50,15 +50,15 @@
   width: fit-content;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #2a2f4a;
-  color: #e4e5e6;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
   font-size: 0.8rem;
   font-weight: 600;
 }
 
 .dashboard-hero-profile-card p {
   margin: 0;
-  color: #b8b8c7;
+  color: var(--color-text-secondary);
   word-break: break-word;
 }
 

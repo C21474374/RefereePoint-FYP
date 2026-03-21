@@ -1,8 +1,8 @@
 .games-page {
   padding: 24px;
-  color: white;
+  color: var(--color-text);
   min-height: calc(100vh - 60px);
-  background-color: #0f1020;
+  background-color: var(--color-bg);
   box-sizing: border-box;
 }
 
@@ -17,7 +17,7 @@
 
 .games-subtitle {
   margin-top: 6px;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 .games-filters {
@@ -29,9 +29,9 @@
 
 .games-filter-input,
 .games-filter-select {
-  background: #1a1c30;
-  color: white;
-  border: 1px solid #2b2d45;
+  background: var(--color-bg-panel-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.95rem;
@@ -51,8 +51,8 @@
 
 .games-map-panel,
 .games-list-panel {
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 16px;
   box-sizing: border-box;
@@ -99,8 +99,8 @@
   padding-right: 4px;
 }
 .game-card {
-  background: #1d2035;
-  border: 1px solid #2f3352;
+  background: var(--color-bg-panel-2);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -110,7 +110,7 @@
 }
 
 .game-card:hover {
-  border-color: #3f456b;
+  border-color: var(--color-border-hover);
   transform: translateY(-2px);
 }
 
@@ -125,13 +125,13 @@
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .game-card-subtitle {
   margin-top: 4px;
   font-size: 0.92rem;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 .game-card-tags {
@@ -145,8 +145,8 @@
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #2a2f4a;
-  color: #e4e5e6;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -167,7 +167,7 @@
 
 .game-detail-label {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--color-text-muted-2);
   margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -175,7 +175,7 @@
 
 .game-detail-value {
   font-size: 0.92rem;
-  color: #ffffff;
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -185,8 +185,8 @@
   padding: 10px 14px;
   cursor: pointer;
   font-weight: 600;
-  background: #d2232a;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   white-space: nowrap;
 }
 
@@ -197,7 +197,7 @@
 .games-empty-state {
   padding: 32px;
   text-align: center;
-  color: #bcbfd1;
+  color: var(--color-text-muted);
 }
 
 .status-badge {

@@ -1,6 +1,6 @@
 .dashboard-section-card {
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 18px;
 }
@@ -12,7 +12,7 @@
 .dashboard-section-header h2 {
   margin: 0;
   font-size: 1.1rem;
-  color: white;
+  color: var(--color-text);
 }
 
 .dashboard-section-body {
@@ -21,5 +21,5 @@
 
 .dashboard-empty-message {
   margin: 0;
-  color: #b8b8c7;
+  color: var(--color-text-secondary);
 }

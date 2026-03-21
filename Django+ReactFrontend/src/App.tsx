@@ -10,12 +10,14 @@ import CoverRequests from './pages/CoverRequests'
 import Events from './pages/Events'
 import Reports from './pages/Reports'
 import Earnings from './pages/Earnings'
+import { ThemeProvider } from './context/ThemeContext'
 import './App.css'
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
         <Route path="/signup" element={<RefereeSignup />} />
         <Route path="/login" element={<RefereeLogin />} />
 
@@ -39,7 +41,7 @@ function App() {
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
-  )
-}
+  </ThemeProvider>
+)}
 
 export default App

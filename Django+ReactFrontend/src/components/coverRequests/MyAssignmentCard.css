@@ -1,6 +1,6 @@
 .my-assignment-card {
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -10,7 +10,7 @@
 }
 
 .my-assignment-card:hover {
-  border-color: #3f456b;
+  border-color: var(--color-border-hover);
   transform: translateY(-2px);
 }
 

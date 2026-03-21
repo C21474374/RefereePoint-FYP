@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 
 const navLinks = [
   { name: "Dashboard", path: "/dashboard" },
@@ -15,6 +16,7 @@ const navLinks = [
 const TopNavBar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
 
@@ -76,6 +78,15 @@ const TopNavBar: React.FC = () => {
       </div>
 
       <div className="nav-right">
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          type="button"
+          title="Toggle theme"
+        >
+          {theme === 'dark' ? '☀︎ Light' : '☾ Dark'}
+        </button>
+
         {user ? (
           <>
             <span className="nav-user">{user.first_name || user.email}</span>

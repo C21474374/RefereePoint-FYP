@@ -1,6 +1,6 @@
 .cover-request-card {
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -10,7 +10,7 @@
 }
 
 .cover-request-card:hover {
-  border-color: #3f456b;
+  border-color: var(--color-border-hover);
   transform: translateY(-2px);
 }
 
@@ -25,13 +25,13 @@
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .cover-request-division {
   margin-top: 4px;
   font-size: 0.92rem;
-  color: #b8b8c7;
+  color: var(--color-text-secondary);
 }
 
 .cover-request-meta-grid {
@@ -39,7 +39,7 @@
   gap: 18px;
   flex-wrap: wrap;
   padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--color-border);
 }
 
 .cover-request-meta-grid > div {
@@ -50,7 +50,7 @@
 
 .cover-request-label {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
   margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -60,13 +60,13 @@
 .cover-request-reason p {
   margin: 0;
   font-size: 0.92rem;
-  color: #ffffff;
+  color: var(--color-text);
   font-weight: 500;
 }
 
 .cover-request-reason {
-  background: #1d2035;
-  border: 1px solid #2f3352;
+  background: var(--color-bg-panel-2);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 12px;
 }
@@ -83,8 +83,8 @@
   padding: 10px 14px;
   cursor: pointer;
   font-weight: 600;
-  background: #2c3150;
-  color: white;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
   white-space: nowrap;
 }
 
@@ -98,7 +98,7 @@
 }
 
 .cover-request-button-approve {
-  background: #d2232a;
+  background: var(--color-error);
   color: white;
 }
 
@@ -128,15 +128,15 @@
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #2a2a2a;
-  color: #ddcd0d;
+  background: var(--color-bg-secondary);
+  color: var(--color-warning);
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 
 .cover-request-card-tag-claimed {
-  background: rgba(210, 35, 42, 0.16);
-  color: #ffffff;
-  border: 1px solid rgba(210, 35, 42, 0.35);
+  background: var(--color-error-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-error-border);
 }

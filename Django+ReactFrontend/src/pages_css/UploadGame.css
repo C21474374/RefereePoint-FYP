@@ -1,8 +1,8 @@
 .upload-game-wrapper {
   padding: 24px;
-  color: white;
+  color: var(--color-text);
   min-height: calc(100vh - 60px);
-  background-color: #0f1020;
+  background-color: var(--color-bg);
   box-sizing: border-box;
 }
 
@@ -17,7 +17,7 @@
 
 .upload-game-header p {
   margin-top: 6px;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 /* FORM */
@@ -31,8 +31,8 @@
 /* SECTION CARDS */
 
 .upload-section {
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 18px;
 }
@@ -58,15 +58,15 @@
 
 .form-field label {
   font-size: 0.9rem;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 .form-field input,
 .form-field select,
 .form-field textarea {
-  background: #1a1c30;
-  color: white;
-  border: 1px solid #2b2d45;
+  background: var(--color-bg-panel-2);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.95rem;
@@ -76,7 +76,7 @@
 .form-field select:focus,
 .form-field textarea:focus {
   outline: none;
-  border-color: #3f456b;
+  border-color: var(--color-border-hover);
 }
 
 /* RADIO */
@@ -109,12 +109,12 @@
 
 .helper-box {
   margin-top: 10px;
-  background: #1d2035;
-  border: 1px solid #2f3352;
+  background: var(--color-bg-panel-2);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 10px;
   font-size: 0.85rem;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 /* BUTTON */
@@ -130,8 +130,8 @@
   padding: 10px 14px;
   cursor: pointer;
   font-weight: 600;
-  background: #d2232a;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .upload-actions button:hover {
@@ -152,12 +152,12 @@
 
 .upload-message.error {
   background: rgba(210, 35, 42, 0.15);
-  border: 1px solid #d2232a;
+  border: 1px solid var(--color-accent);
 }
 
 .upload-message.success {
   background: rgba(34, 197, 94, 0.15);
-  border: 1px solid #4ade80;
+  border: 1px solid var(--color-success);
 }
 
 /* RESPONSIVE */

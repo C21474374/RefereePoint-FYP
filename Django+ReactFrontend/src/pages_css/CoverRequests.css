@@ -1,8 +1,8 @@
 .cover-requests-page {
   padding: 24px;
-  color: white;
+  color: var(--color-text);
   min-height: calc(100vh - 60px);
-  background-color: #0f1020;
+  background-color: var(--color-bg);
   box-sizing: border-box;
 }
 
@@ -17,7 +17,7 @@
 
 .cover-requests-page-header p {
   margin-top: 6px;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 .cover-requests-section {
@@ -31,12 +31,12 @@
 .cover-requests-section-header h2 {
   margin: 0;
   font-size: 1.1rem;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .cover-requests-section-header p {
   margin-top: 6px;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
   font-size: 0.95rem;
 }
 
@@ -49,24 +49,24 @@
 .cover-requests-empty,
 .cover-requests-page-message,
 .cover-requests-page-error {
-  background: #16182b;
-  border: 1px solid #2a2d46;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 16px;
   box-sizing: border-box;
 }
 
 .cover-requests-empty {
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 .cover-requests-page-message {
-  color: #b8b8c7;
+  color: var(--color-text-muted);
   margin-bottom: 16px;
 }
 
 .cover-requests-page-error {
-  color: #ff8a8a;
+  color: var(--color-error);
   margin-bottom: 16px;
 }
 
