@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  cancelCoverRequest,
   claimCoverRequest,
   createCoverRequest,
   getMyCoverRequests,
   getMyUpcomingAssignments,
   getPendingCoverRequests,
+  withdrawCoverClaim,
   type CoverRequest,
   type UpcomingAssignment,
 } from "../services/coverRequests";
@@ -85,6 +87,34 @@ export default function CoverRequestsPage() {
     }
   };
 
+  const handleCancel = async (id: number) => {
+    try {
+      setActionLoadingId(id);
+      setError("");
+      await cancelCoverRequest(id);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to cancel cover request.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleWithdrawClaim = async (id: number) => {
+    try {
+      setActionLoadingId(id);
+      setError("");
+      await withdrawCoverClaim(id);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to cancel cover claim.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const handleRequestCover = async (assignment: UpcomingAssignment) => {
     try {
       setRequestingAssignmentId(assignment.assignment_id);
@@ -151,6 +181,10 @@ export default function CoverRequestsPage() {
                       loadingActionId={actionLoadingId}
                       isRequestedByMe={isRequestedByMe}
                       isClaimedByMe={isClaimedByMe}
+                      canCancel={isRequestedByMe && coverRequest.status === "PENDING"}
+                      canWithdrawClaim={isClaimedByMe && coverRequest.status === "CLAIMED"}
+                      onCancel={handleCancel}
+                      onWithdrawClaim={handleWithdrawClaim}
                     />
                   );
                 })}

@@ -1,38 +1,40 @@
 import axiosInstance from "./axiosInstance";
 
+export type GameDetails = {
+  id: number;
+  game_type?: string;
+  game_type_display?: string;
+  status?: string;
+  status_display?: string;
+  payment_type?: string;
+  payment_type_display?: string;
+  division?: number;
+  division_name?: string;
+  division_gender?: string;
+  division_display?: string;
+  date?: string;
+  time?: string;
+  venue?: number;
+  venue_name?: string;
+  lat?: number;
+  lng?: number;
+  home_team?: number;
+  home_team_name?: string;
+  away_team?: number;
+  away_team_name?: string;
+  notes?: string;
+  original_post_text?: string;
+  created_by?: number;
+  assigned_roles_count?: number;
+  open_non_appointed_slots_count?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type CoverRequest = {
   id: number;
   game: number;
-  game_details: {
-    id: number;
-    game_type?: string;
-    game_type_display?: string;
-    status?: string;
-    status_display?: string;
-    payment_type?: string;
-    payment_type_display?: string;
-    division?: number;
-    division_name?: string;
-    division_gender?: string;
-    division_display?: string;
-    date?: string;
-    time?: string;
-    venue?: number;
-    venue_name?: string;
-    lat?: number;
-    lng?: number;
-    home_team?: number;
-    home_team_name?: string;
-    away_team?: number;
-    away_team_name?: string;
-    notes?: string;
-    original_post_text?: string;
-    created_by?: number;
-    assigned_roles_count?: number;
-    open_non_appointed_slots_count?: number;
-    created_at?: string;
-    updated_at?: string;
-  };
+  game_details: GameDetails;
   requested_by: number;
   requested_by_name: string;
   referee_slot: number;
@@ -65,7 +67,7 @@ export type UpcomingAssignment = {
   role: string;
   role_display: string;
   game_id: number;
-  game_details: any;
+  game_details: GameDetails;
   has_active_cover_request: boolean;
 };
 
@@ -102,9 +104,20 @@ export const createCoverRequest = async (payload: CreateCoverRequestPayload) => 
   return response.data;
 };
 
+export const cancelCoverRequest = async (id: number) => {
+  await axiosInstance.delete(`/cover-requests/${id}/cancel/`);
+};
+
 export const claimCoverRequest = async (id: number) => {
   const response = await axiosInstance.post<CoverRequest>(
     `/cover-requests/${id}/offer/`
+  );
+  return response.data;
+};
+
+export const withdrawCoverClaim = async (id: number) => {
+  const response = await axiosInstance.post<CoverRequest>(
+    `/cover-requests/${id}/withdraw/`
   );
   return response.data;
 };

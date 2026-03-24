@@ -5,7 +5,11 @@ import type { CoverRequest } from "../../services/coverRequests";
 type CoverRequestCardProps = {
   coverRequest: CoverRequest;
   canClaim?: boolean;
+  canCancel?: boolean;
+  canWithdrawClaim?: boolean;
   onClaim?: (id: number) => void;
+  onCancel?: (id: number) => void;
+  onWithdrawClaim?: (id: number) => void;
   loadingActionId?: number | null;
   isRequestedByMe?: boolean;
   isClaimedByMe?: boolean;
@@ -29,7 +33,11 @@ function formatGameDate(gameDetails: CoverRequest["game_details"]) {
 export default function CoverRequestCard({
   coverRequest,
   canClaim = false,
+  canCancel = false,
+  canWithdrawClaim = false,
   onClaim,
+  onCancel,
+  onWithdrawClaim,
   loadingActionId = null,
   isRequestedByMe = false,
   isClaimedByMe = false,
@@ -131,6 +139,26 @@ export default function CoverRequestCard({
       )}
 
       <div className="cover-request-actions">
+        {canCancel && (
+          <button
+            className="cover-request-button cover-request-button-cancel"
+            onClick={() => onCancel?.(id)}
+            disabled={isLoading}
+          >
+            {isLoading ? "Cancelling..." : "Cancel Request"}
+          </button>
+        )}
+
+        {canWithdrawClaim && (
+          <button
+            className="cover-request-button cover-request-button-cancel"
+            onClick={() => onWithdrawClaim?.(id)}
+            disabled={isLoading}
+          >
+            {isLoading ? "Cancelling..." : "Cancel Claim"}
+          </button>
+        )}
+
         {canClaim && status === "PENDING" && (
           <button
             className="cover-request-button"

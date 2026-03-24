@@ -136,6 +136,36 @@ class CreateCoverRequestAPIView(generics.CreateAPIView):
         return context
 
 
+class CancelCoverRequestAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            cover_request = CoverRequest.objects.select_related(
+                "requested_by",
+            ).get(pk=pk)
+        except CoverRequest.DoesNotExist:
+            return Response(
+                {"detail": "Cover request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if cover_request.requested_by_id != request.user.id:
+            return Response(
+                {"detail": "You can only cancel your own cover requests."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if cover_request.status != CoverRequest.Status.PENDING:
+            return Response(
+                {"detail": "Only pending cover requests can be cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cover_request.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class OfferCoverAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -203,6 +233,47 @@ class OfferCoverAPIView(APIView):
 
         cover_request.replaced_by = referee
         cover_request.status = CoverRequest.Status.CLAIMED
+        cover_request.save()
+
+        serializer = CoverRequestSerializer(cover_request)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class WithdrawCoverClaimAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            cover_request = CoverRequest.objects.select_related(
+                "replaced_by",
+                "replaced_by__user",
+            ).get(pk=pk)
+        except CoverRequest.DoesNotExist:
+            return Response(
+                {"detail": "Cover request not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if cover_request.status == CoverRequest.Status.APPROVED:
+            return Response(
+                {"detail": "Approved cover requests cannot be cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cover_request.status != CoverRequest.Status.CLAIMED:
+            return Response(
+                {"detail": "Only claimed cover requests can be cancelled by the replacement referee."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not cover_request.replaced_by or cover_request.replaced_by.user_id != request.user.id:
+            return Response(
+                {"detail": "You can only cancel a claim that you made."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        cover_request.replaced_by = None
+        cover_request.status = CoverRequest.Status.PENDING
         cover_request.save()
 
         serializer = CoverRequestSerializer(cover_request)

@@ -45,7 +45,6 @@ export type Opportunity = {
 
   description?: string;
   reason?: string;
-  custom_fee?: string | null;
 
   created_at: string;
 };
@@ -58,7 +57,12 @@ const Games = () => {
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [claimingId, setClaimingId] = useState<number | null>(null);
+  const [claimingKey, setClaimingKey] = useState<string | null>(null);
+
+  const getOpportunityKey = (
+    type: Opportunity["type"],
+    id: number
+  ) => `${type}-${id}`;
 
   const loadOpportunities = async () => {
     try {
@@ -85,7 +89,7 @@ const Games = () => {
 
   const handleClaimSlot = async (slotId: number) => {
     try {
-      setClaimingId(slotId);
+      setClaimingKey(getOpportunityKey("NON_APPOINTED_SLOT", slotId));
       setError("");
 
       const token = getAccessToken();
@@ -114,7 +118,42 @@ const Games = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to claim slot.");
     } finally {
-      setClaimingId(null);
+      setClaimingKey(null);
+    }
+  };
+
+  const handleOfferCover = async (coverRequestId: number) => {
+    try {
+      setClaimingKey(getOpportunityKey("COVER_REQUEST", coverRequestId));
+      setError("");
+
+      const token = getAccessToken();
+
+      if (!token) {
+        throw new Error("You must be logged in to offer cover.");
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/cover-requests/${coverRequestId}/offer/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to offer cover.");
+      }
+
+      await loadOpportunities();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to offer cover.");
+    } finally {
+      setClaimingKey(null);
     }
   };
 
@@ -178,7 +217,8 @@ const Games = () => {
             <Gameslist
               opportunities={filteredOpportunities}
               onClaimSlot={handleClaimSlot}
-              claimingId={claimingId}
+              onOfferCover={handleOfferCover}
+              claimingKey={claimingKey}
             />
           </div>
         </div>

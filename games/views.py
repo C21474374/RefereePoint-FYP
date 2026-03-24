@@ -361,7 +361,6 @@ class OpportunityFeedAPIView(APIView):
                         "replaced_by_name": None,
                         "description": slot.description,
                         "reason": "",
-                        "custom_fee": None,
                         "created_at": slot.created_at,
                     }
                 )
@@ -411,7 +410,6 @@ class OpportunityFeedAPIView(APIView):
                         ),
                         "description": "",
                         "reason": cover.reason,
-                        "custom_fee": cover.custom_fee,
                         "created_at": cover.created_at,
                     }
                 )

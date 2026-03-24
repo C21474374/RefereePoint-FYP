@@ -318,11 +318,5 @@ class OpportunityFeedItemSerializer(serializers.Serializer):
 
     description = serializers.CharField(allow_blank=True, required=False)
     reason = serializers.CharField(allow_blank=True, required=False)
-    custom_fee = serializers.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        allow_null=True,
-        required=False,
-    )
 
     created_at = serializers.DateTimeField()

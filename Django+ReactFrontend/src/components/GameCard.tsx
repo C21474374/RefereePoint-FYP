@@ -4,7 +4,8 @@ import { useAuth } from "../context/AuthContext";
 type GameCardProps = {
   opportunity: Opportunity;
   onClaimSlot: (slotId: number) => void;
-  claimingId?: number | null;
+  onOfferCover: (coverRequestId: number) => void;
+  claimingKey?: string | null;
 };
 
 const formatDate = (dateString: string) => {
@@ -33,20 +34,25 @@ const buildTitle = (opportunity: Opportunity) => {
   return `${home} vs ${away}`;
 };
 
-const GameCard = ({ opportunity, onClaimSlot, claimingId = null }: GameCardProps) => {
+const GameCard = ({
+  opportunity,
+  onClaimSlot,
+  onOfferCover,
+  claimingKey = null,
+}: GameCardProps) => {
   const { user, isAuthenticated } = useAuth();
 
   const isNonAppointed = opportunity.type === "NON_APPOINTED_SLOT";
   const isCoverRequest = opportunity.type === "COVER_REQUEST";
 
-  const actionLabel = isNonAppointed ? "Take Game" : "Offer Cover";
+  const actionLabel = isNonAppointed ? "Take Game" : "Claim Cover";
 
   const userGrade = user?.referee_profile?.grade ?? null;
 
   const canTakeCrewChief =
     opportunity.role !== "CREW_CHIEF" || userGrade !== "INTRO";
 
-  const isClaimingThisCard = claimingId === opportunity.id;
+  const isClaimingThisCard = claimingKey === `${opportunity.type}-${opportunity.id}`;
 
   const actionDisabled =
     !isAuthenticated ||
@@ -59,7 +65,7 @@ const GameCard = ({ opportunity, onClaimSlot, claimingId = null }: GameCardProps
       return;
     }
 
-    window.alert("Cover request action coming next.");
+    onOfferCover(opportunity.id);
   };
 
   return (
@@ -147,7 +153,11 @@ const GameCard = ({ opportunity, onClaimSlot, claimingId = null }: GameCardProps
           onClick={handleActionClick}
           disabled={actionDisabled}
         >
-          {isClaimingThisCard ? "Claiming..." : actionLabel}
+          {isClaimingThisCard
+            ? isNonAppointed
+              ? "Claiming..."
+              : "Offering..."
+            : actionLabel}
         </button>
 
         {!isAuthenticated && (
