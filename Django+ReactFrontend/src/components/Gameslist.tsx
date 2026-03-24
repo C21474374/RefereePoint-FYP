@@ -5,6 +5,7 @@ type GameslistProps = {
   opportunities: Opportunity[];
   onClaimSlot: (slotId: number) => void;
   onOfferCover: (coverRequestId: number) => void;
+  onJoinEvent: (eventId: number) => void;
   claimingKey: string | null;
 };
 
@@ -12,6 +13,7 @@ const Gameslist = ({
   opportunities,
   onClaimSlot,
   onOfferCover,
+  onJoinEvent,
   claimingKey,
 }: GameslistProps) => {
   if (opportunities.length === 0) {
@@ -30,6 +32,7 @@ const Gameslist = ({
           opportunity={opportunity}
           onClaimSlot={onClaimSlot}
           onOfferCover={onOfferCover}
+          onJoinEvent={onJoinEvent}
           claimingKey={claimingKey}
         />
       ))}

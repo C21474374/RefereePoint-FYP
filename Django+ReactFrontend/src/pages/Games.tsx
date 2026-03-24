@@ -6,12 +6,17 @@ import { getAccessToken } from "../services/auth";
 
 export type Opportunity = {
   id: number;
-  type: "NON_APPOINTED_SLOT" | "COVER_REQUEST";
+  type: "NON_APPOINTED_SLOT" | "COVER_REQUEST" | "EVENT";
   game_id: number;
   game_type: string;
   game_type_display: string;
   date: string;
   time: string;
+  event_end_date?: string | null;
+  fee_per_game?: string | null;
+  referees_required?: number | null;
+  joined_referees_count?: number | null;
+  slots_left?: number | null;
 
   venue_id: number | null;
   venue_name: string | null;
@@ -157,6 +162,38 @@ const Games = () => {
     }
   };
 
+  const handleJoinEvent = async (eventId: number) => {
+    try {
+      setClaimingKey(getOpportunityKey("EVENT", eventId));
+      setError("");
+
+      const token = getAccessToken();
+
+      if (!token) {
+        throw new Error("You must be logged in to join an event.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/join/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to join event.");
+      }
+
+      await loadOpportunities();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to join event.");
+    } finally {
+      setClaimingKey(null);
+    }
+  };
+
   const filteredOpportunities = useMemo(() => {
     let filtered = [...opportunities];
 
@@ -176,7 +213,7 @@ const Games = () => {
       <div className="games-header">
         <div>
           <h1>Opportunities</h1>
-          <p>Find non-appointed games and cover requests.</p>
+          <p>Find non-appointed games, cover requests, and events.</p>
         </div>
 
         <div className="games-filters">
@@ -188,6 +225,7 @@ const Games = () => {
             <option value="ALL">All Opportunities</option>
             <option value="NON_APPOINTED_SLOT">Non-Appointed Games</option>
             <option value="COVER_REQUEST">Cover Requests</option>
+            <option value="EVENT">Events</option>
           </select>
 
           <button
@@ -218,6 +256,7 @@ const Games = () => {
               opportunities={filteredOpportunities}
               onClaimSlot={handleClaimSlot}
               onOfferCover={handleOfferCover}
+              onJoinEvent={handleJoinEvent}
               claimingKey={claimingKey}
             />
           </div>

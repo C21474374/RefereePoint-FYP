@@ -1,0 +1,234 @@
+.events-page {
+  padding: 24px;
+  color: var(--color-text);
+  min-height: calc(100vh - 60px);
+  background-color: var(--color-bg);
+  box-sizing: border-box;
+}
+
+.events-page-header {
+  margin-bottom: 20px;
+}
+
+.events-page-header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.events-page-header p {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+}
+
+.events-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.events-form {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.events-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.events-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.events-form-grid label span {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.events-form-grid input,
+.events-form-grid select,
+.events-form-grid textarea {
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel-2);
+  color: var(--color-text);
+  padding: 10px 12px;
+}
+
+.events-form-wide {
+  grid-column: 1 / -1;
+}
+
+.events-form-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.events-form-submit,
+.events-form-cancel {
+  border-radius: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+}
+
+.events-form-submit {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border: none;
+}
+
+.events-form-cancel {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.events-filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-bg-panel-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 0.92rem;
+}
+
+.events-filter-select,
+.events-filter-date,
+.events-filter-clear {
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel-2);
+  color: var(--color-text);
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}
+
+.events-filter-clear {
+  cursor: pointer;
+}
+
+.events-filter-clear:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.events-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.events-stat-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.events-stat-card span {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.events-stat-card strong {
+  font-size: 1.2rem;
+  color: var(--color-text);
+}
+
+.events-section {
+  margin-bottom: 24px;
+}
+
+.events-section-header {
+  margin-bottom: 14px;
+}
+
+.events-section-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.events-section-header p {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.events-empty,
+.events-page-message,
+.events-page-error {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.events-empty {
+  color: var(--color-text-muted);
+}
+
+.events-page-message {
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+.events-page-error {
+  color: var(--color-error);
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1024px) {
+  .events-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .events-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .events-page {
+    padding: 16px;
+  }
+
+  .events-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .events-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .events-form-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+}
