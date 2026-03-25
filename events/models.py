@@ -22,6 +22,13 @@ class Event(models.Model):
     )
     contact_information = models.TextField(blank=True, default='')
     referees_required = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="events_created",
+    )
     
     class Meta:
         db_table = 'events_event'
@@ -30,3 +37,32 @@ class Event(models.Model):
     def __str__(self):
         venue_name = self.venue.name if self.venue else 'No venue'
         return f"Event at {venue_name} ({self.start_date} - {self.end_date})"
+
+
+class EventRefereeAssignment(models.Model):
+    """Referees assigned to an event tournament."""
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name="referee_assignments",
+    )
+    referee = models.ForeignKey(
+        "users.RefereeProfile",
+        on_delete=models.CASCADE,
+        related_name="event_assignments",
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "events_event_referee_assignment"
+        ordering = ["joined_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "referee"],
+                name="unique_event_referee_assignment",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.referee} @ Event {self.event_id}"

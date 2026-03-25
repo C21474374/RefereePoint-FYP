@@ -318,5 +318,15 @@ class OpportunityFeedItemSerializer(serializers.Serializer):
 
     description = serializers.CharField(allow_blank=True, required=False)
     reason = serializers.CharField(allow_blank=True, required=False)
+    event_end_date = serializers.DateField(allow_null=True, required=False)
+    fee_per_game = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        allow_null=True,
+        required=False,
+    )
+    referees_required = serializers.IntegerField(allow_null=True, required=False)
+    joined_referees_count = serializers.IntegerField(allow_null=True, required=False)
+    slots_left = serializers.IntegerField(allow_null=True, required=False)
 
     created_at = serializers.DateTimeField()

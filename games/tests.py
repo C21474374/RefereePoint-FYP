@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 
 from clubs.models import Club, Division, Team
 from cover_requests.models import CoverRequest
+from events.models import Event
 from users.models import User
 from venues.models import Venue
 
@@ -96,3 +97,39 @@ class OpportunityFeedTests(TestCase):
 
         self.assertEqual(len(cover_items), 1)
         self.assertNotIn("custom_fee", cover_items[0])
+
+    def test_opportunity_feed_includes_open_event_items(self):
+        Event.objects.create(
+            start_date=date(2026, 5, 20),
+            end_date=date(2026, 5, 22),
+            venue=self.venue,
+            description="Weekend tournament",
+            fee_per_game="40.00",
+            contact_information="events@test.local",
+            referees_required=3,
+        )
+
+        response = self.client.get(reverse("opportunity-feed"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        event_items = [item for item in response.data if item["type"] == "EVENT"]
+        self.assertEqual(len(event_items), 1)
+        self.assertEqual(event_items[0]["game_type"], "EVENT")
+        self.assertEqual(event_items[0]["status"], "OPEN")
+
+    def test_opportunity_feed_event_type_filter_only_returns_events(self):
+        Event.objects.create(
+            start_date=date(2026, 5, 25),
+            end_date=date(2026, 5, 27),
+            venue=self.venue,
+            description="Final four",
+            fee_per_game="45.00",
+            contact_information="events@test.local",
+            referees_required=2,
+        )
+
+        response = self.client.get(reverse("opportunity-feed"), {"type": "EVENT"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreater(len(response.data), 0)
+        self.assertTrue(all(item["type"] == "EVENT" for item in response.data))

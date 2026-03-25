@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics, status
+from django.db.models import Count, F, Q
 from django.utils import timezone
 from .models import Game, NonAppointedSlot, RefereeAssignment
 from .serializers import (
@@ -13,8 +14,10 @@ from .serializers import (
 )
 from users.models import RefereeProfile
 from cover_requests.models import CoverRequest
+from events.models import Event
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
+from datetime import datetime, time as dt_time
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -278,6 +281,13 @@ class OpportunityFeedAPIView(APIView):
             )
             .order_by("game__date", "game__time", "created_at")
         )
+        today = timezone.localdate()
+        events = (
+            Event.objects.select_related("venue")
+            .annotate(joined_referees_count=Count("referee_assignments"))
+            .filter(end_date__gte=today)
+            .order_by("start_date")
+        )
 
         cover_requests = (
             CoverRequest.objects.select_related(
@@ -305,18 +315,29 @@ class OpportunityFeedAPIView(APIView):
         if date:
             non_appointed_slots = non_appointed_slots.filter(game__date=date)
             cover_requests = cover_requests.filter(game__date=date)
+            events = events.filter(start_date__lte=date, end_date__gte=date)
 
         if venue_id:
             non_appointed_slots = non_appointed_slots.filter(game__venue_id=venue_id)
             cover_requests = cover_requests.filter(game__venue_id=venue_id)
+            events = events.filter(venue_id=venue_id)
 
         if role:
             non_appointed_slots = non_appointed_slots.filter(role=role)
             cover_requests = cover_requests.filter(referee_slot__role=role)
 
         if game_type:
-            non_appointed_slots = non_appointed_slots.filter(game__game_type=game_type)
-            cover_requests = cover_requests.filter(game__game_type=game_type)
+            if game_type == "EVENT":
+                non_appointed_slots = non_appointed_slots.none()
+                cover_requests = cover_requests.none()
+            else:
+                non_appointed_slots = non_appointed_slots.filter(game__game_type=game_type)
+                cover_requests = cover_requests.filter(game__game_type=game_type)
+                events = events.none()
+
+        events = events.filter(
+            Q(referees_required=0) | Q(joined_referees_count__lt=F("referees_required"))
+        )
 
 
         items = []
@@ -410,7 +431,66 @@ class OpportunityFeedAPIView(APIView):
                         ),
                         "description": "",
                         "reason": cover.reason,
+                        "event_end_date": None,
+                        "fee_per_game": None,
+                        "referees_required": None,
+                        "joined_referees_count": None,
+                        "slots_left": None,
                         "created_at": cover.created_at,
+                    }
+                )
+
+        if opportunity_type in (None, "", "EVENT"):
+            for event in events:
+                venue = event.venue
+                slots_left = None
+                status_value = "OPEN"
+                status_display = "Open"
+
+                if event.referees_required > 0:
+                    slots_left = max(event.referees_required - event.joined_referees_count, 0)
+                    if slots_left <= 0:
+                        status_value = "FULL"
+                        status_display = "Full"
+
+                items.append(
+                    {
+                        "type": "EVENT",
+                        "id": event.id,
+                        "game_id": event.id,
+                        "game_type": "EVENT",
+                        "game_type_display": "Event",
+                        "date": event.start_date,
+                        "time": dt_time(0, 0),
+                        "venue_id": venue.id if venue else None,
+                        "venue_name": venue.name if venue else None,
+                        "lat": venue.lat if venue else None,
+                        "lng": venue.lon if venue else None,
+                        "home_team_name": None,
+                        "away_team_name": None,
+                        "division_name": None,
+                        "division_gender": None,
+                        "payment_type": None,
+                        "payment_type_display": None,
+                        "role": None,
+                        "role_display": None,
+                        "status": status_value,
+                        "status_display": status_display,
+                        "posted_by_name": None,
+                        "claimed_by_name": None,
+                        "requested_by_name": None,
+                        "original_referee_name": None,
+                        "replaced_by_name": None,
+                        "description": event.description,
+                        "reason": "",
+                        "event_end_date": event.end_date,
+                        "fee_per_game": event.fee_per_game,
+                        "referees_required": event.referees_required,
+                        "joined_referees_count": event.joined_referees_count,
+                        "slots_left": slots_left,
+                        "created_at": timezone.make_aware(
+                            datetime.combine(event.start_date, dt_time.min)
+                        ),
                     }
                 )
 
