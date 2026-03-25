@@ -1,4 +1,5 @@
 from datetime import date, time
+from decimal import Decimal
 
 from django.test import TestCase
 from django.urls import reverse
@@ -7,7 +8,7 @@ from rest_framework.test import APIClient
 
 from clubs.models import Club, Division, Team
 from cover_requests.models import CoverRequest
-from events.models import Event
+from events.models import Event, EventRefereeAssignment
 from users.models import User
 from venues.models import Venue
 
@@ -133,3 +134,115 @@ class OpportunityFeedTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreater(len(response.data), 0)
         self.assertTrue(all(item["type"] == "EVENT" for item in response.data))
+
+    def test_opportunity_feed_excludes_events_joined_by_authenticated_referee(self):
+        event = Event.objects.create(
+            start_date=date(2026, 5, 30),
+            end_date=date(2026, 5, 31),
+            venue=self.venue,
+            description="Already joined event",
+            fee_per_game="50.00",
+            contact_information="events@test.local",
+            referees_required=4,
+        )
+        EventRefereeAssignment.objects.create(
+            event=event,
+            referee=self.requesting_referee,
+        )
+
+        self.client.force_authenticate(user=self.requesting_user)
+        response = self.client.get(reverse("opportunity-feed"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        event_ids = [item["id"] for item in response.data if item["type"] == "EVENT"]
+        self.assertNotIn(event.id, event_ids)
+
+
+class RefereeEarningsAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        self.user = User.objects.create_user(
+            email="earnings@example.com",
+            password="password123",
+            first_name="Earning",
+            last_name="Ref",
+            bipin_number="5001",
+            home_address="Dublin 1",
+            home_lat=53.3498,
+            home_lon=-6.2603,
+        )
+        self.referee = self.user.referee_profile
+        self.referee.grade = "GRADE_2"
+        self.referee.save(update_fields=["grade"])
+
+        club_home = Club.objects.create(name="Leinster Lions")
+        club_away = Club.objects.create(name="Munster Meteors")
+        division = Division.objects.create(name="Senior", gender="M")
+        home_team = Team.objects.create(club=club_home, division=division)
+        away_team = Team.objects.create(club=club_away, division=division)
+
+        self.venue = Venue.objects.create(
+            name="City Arena",
+            lat=53.35,
+            lon=-6.2,
+            club=club_home,
+        )
+
+        game_1 = Game.objects.create(
+            game_type=Game.GameType.DOA,
+            payment_type=Game.PaymentType.CLAIM,
+            division=division,
+            date=date(2026, 3, 12),
+            time=time(11, 0),
+            venue=self.venue,
+            home_team=home_team,
+            away_team=away_team,
+            created_by=self.user,
+        )
+
+        game_2 = Game.objects.create(
+            game_type=Game.GameType.DOA,
+            payment_type=Game.PaymentType.CLAIM,
+            division=division,
+            date=date(2026, 3, 12),
+            time=time(14, 0),
+            venue=self.venue,
+            home_team=home_team,
+            away_team=away_team,
+            created_by=self.user,
+        )
+
+        self.assignment_1 = RefereeAssignment.objects.create(
+            game=game_1,
+            referee=self.referee,
+            role=RefereeAssignment.Role.UMPIRE_1,
+        )
+
+        self.assignment_2 = RefereeAssignment.objects.create(
+            game=game_2,
+            referee=self.referee,
+            role=RefereeAssignment.Role.UMPIRE_2,
+        )
+
+    def test_earnings_api_calculates_back_to_back_same_venue_mileage_once(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.get(reverse("referee-earnings"), {"period": "all"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["totals"]["games_count"], 2)
+
+        items = response.data["items"]
+        self.assertEqual(len(items), 2)
+
+        first_item = items[0]
+        second_item = items[1]
+
+        self.assertEqual(first_item["is_back_to_back_same_venue"], False)
+        self.assertEqual(second_item["is_back_to_back_same_venue"], True)
+        self.assertGreater(Decimal(first_item["mileage_km"]), Decimal("0.00"))
+        self.assertEqual(Decimal(second_item["mileage_km"]), Decimal("0.00"))
+
+        self.assertEqual(Decimal(first_item["base_fee"]), Decimal("25.00"))
+        self.assertEqual(Decimal(second_item["base_fee"]), Decimal("25.00"))

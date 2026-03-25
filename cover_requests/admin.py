@@ -23,8 +23,8 @@ class CoverRequestAdmin(admin.ModelAdmin):
         "updated_at",
     )
     search_fields = (
-        "game__home_team__name",
-        "game__away_team__name",
+        "game__home_team__club__name",
+        "game__away_team__club__name",
         "game__venue__name",
         "requested_by__email",
         "replaced_by__user__email",

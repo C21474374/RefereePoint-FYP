@@ -106,6 +106,7 @@ class RefereeAssignmentSerializer(serializers.ModelSerializer):
     referee_bipin = serializers.CharField(source="referee.user.bipin_number", read_only=True)
     referee_grade = serializers.CharField(source="referee.grade", read_only=True)
     role_display = serializers.CharField(source="get_role_display", read_only=True)
+    travel_mode_display = serializers.CharField(source="get_travel_mode_display", read_only=True)
 
     game_details = GameSerializer(source="game", read_only=True)
 
@@ -121,6 +122,9 @@ class RefereeAssignmentSerializer(serializers.ModelSerializer):
             "referee_grade",
             "role",
             "role_display",
+            "travel_mode",
+            "travel_mode_display",
+            "public_transport_fare",
         ]
 
 class NonAppointedSlotCreateSerializer(serializers.Serializer):

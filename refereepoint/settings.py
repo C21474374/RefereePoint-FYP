@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'cover_requests',
     #'reports',
     'events',
+    'expenses',
 ]
 
 MIDDLEWARE = [

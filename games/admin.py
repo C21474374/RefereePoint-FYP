@@ -48,8 +48,8 @@ class GameAdmin(admin.ModelAdmin):
         "date",
     )
     search_fields = (
-        "home_team__name",
-        "away_team__name",
+        "home_team__club__name",
+        "away_team__club__name",
         "venue__name",
         "division__name",
         "created_by__email",
@@ -133,8 +133,8 @@ class NonAppointedSlotAdmin(admin.ModelAdmin):
         "created_at",
     )
     search_fields = (
-        "game__home_team__name",
-        "game__away_team__name",
+        "game__home_team__club__name",
+        "game__away_team__club__name",
         "game__venue__name",
         "posted_by__email",
         "claimed_by__user__email",
@@ -159,8 +159,8 @@ class RefereeAssignmentAdmin(admin.ModelAdmin):
         "game__status",
     )
     search_fields = (
-        "game__home_team__name",
-        "game__away_team__name",
+        "game__home_team__club__name",
+        "game__away_team__club__name",
         "game__venue__name",
         "referee__user__email",
     )

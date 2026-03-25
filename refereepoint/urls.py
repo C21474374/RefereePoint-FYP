@@ -37,5 +37,6 @@ urlpatterns = [
     path("api/games/", include("games.urls")),
     path("api/events/", include("events.urls")),
     path("api/cover-requests/", include("cover_requests.urls")),
+    path("api/expenses/", include("expenses.urls")),
 ]
 

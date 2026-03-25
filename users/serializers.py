@@ -20,5 +20,8 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'last_name',
             'phone_number',
             'bipin_number',
+            'home_address',
+            'home_lat',
+            'home_lon',
             'referee_profile',
         ]

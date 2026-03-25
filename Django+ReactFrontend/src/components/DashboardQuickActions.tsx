@@ -21,6 +21,11 @@ export default function DashboardQuickActions() {
           <h3>Upload Game</h3>
           <p>Post a game and create referee opportunities.</p>
         </Link>
+
+        <Link to="/earnings" className="dashboard-action-card secondary">
+          <h3>Earnings</h3>
+          <p>Track monthly claim totals and travel amounts.</p>
+        </Link>
       </div>
     </section>
   );

@@ -18,6 +18,7 @@ export default function DashboardHero({
         <p className="dashboard-hero-subtitle">
           Ready to referee? Check your next game and take action.
         </p>
+        <p className="dashboard-hero-subtitle">{email}</p>
       </div>
 
       <div className="dashboard-hero-profile">

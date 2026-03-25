@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import DashboardHero from "../components/DashboardHero";
 import DashboardStats from "../components/DashboardStats";
-import DashboardSectionCard from "../components/DashboardSectionCard";
 import DashboardQuickActions from "../components/DashboardQuickActions";
 import { getAccessToken } from "../services/auth";
 import "../pages_css/RefereeDashboard.css";
@@ -28,60 +27,77 @@ type MyGame = {
   };
 };
 
+type MonthlyEarningsSummary = {
+  games_count: number;
+  total_claim_amount: string;
+  mileage_km_total: string;
+};
+
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 
 export default function RefereeDashboard() {
   const { user } = useAuth();
 
   const [myGames, setMyGames] = useState<MyGame[]>([]);
-  const [loadingGames, setLoadingGames] = useState(true);
   const [gamesError, setGamesError] = useState("");
-  const [filterPeriod, setFilterPeriod] = useState<'week' | 'month' | 'all'>('all');
+  const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarningsSummary | null>(null);
+  const [filterPeriod, setFilterPeriod] = useState<"week" | "month" | "all">("all");
 
   useEffect(() => {
-    async function loadMyGames() {
+    async function loadDashboardData() {
       try {
-        setLoadingGames(true);
         setGamesError("");
 
         const token = getAccessToken();
 
         if (!token) {
           setMyGames([]);
+          setMonthlyEarnings(null);
           return;
         }
 
-        const response = await fetch(`${API_BASE_URL}/games/my-games/`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [gamesResponse, earningsResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/games/my-games/`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${API_BASE_URL}/expenses/earnings/?period=month`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+        ]);
 
-        if (response.status === 404) {
+        if (gamesResponse.status === 404) {
           setMyGames([]);
-          setGamesError("");
-          return;
+        } else {
+          const gamesData = await gamesResponse.json();
+          if (!gamesResponse.ok) {
+            throw new Error(gamesData.detail || "Failed to load dashboard games.");
+          }
+          setMyGames(gamesData);
         }
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.detail || "Failed to load dashboard games.");
+        const earningsData = await earningsResponse.json();
+        if (!earningsResponse.ok) {
+          throw new Error(earningsData.detail || "Failed to load dashboard earnings.");
         }
-
-        setMyGames(data);
+        setMonthlyEarnings({
+          games_count: earningsData.totals.games_count,
+          total_claim_amount: earningsData.totals.total_claim_amount,
+          mileage_km_total: earningsData.totals.mileage_km_total,
+        });
       } catch (error) {
         setGamesError(
           error instanceof Error
             ? error.message
-            : "Failed to load dashboard games."
+            : "Failed to load dashboard data."
         );
-      } finally {
-        setLoadingGames(false);
       }
     }
 
-    loadMyGames();
+    loadDashboardData();
   }, []);
 
   const fullName =
@@ -95,9 +111,11 @@ export default function RefereeDashboard() {
     const parseGameDate = (game: MyGame) => {
       const time = game.game_details.time || "00:00";
       const dateString = `${game.game_details.date}T${time}`;
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return null;
-      return date;
+      const parsedDate = new Date(dateString);
+      if (isNaN(parsedDate.getTime())) {
+        return null;
+      }
+      return parsedDate;
     };
 
     const validFutureGames = myGames
@@ -106,13 +124,15 @@ export default function RefereeDashboard() {
         gameDate: parseGameDate(game),
       }))
       .filter((item) => item.gameDate && item.gameDate >= now)
-      .sort((a, b) => (a.gameDate!.getTime() - b.gameDate!.getTime()));
+      .sort((a, b) => a.gameDate!.getTime() - b.gameDate!.getTime());
 
     return validFutureGames.map((item) => item.game);
   }, [myGames]);
 
   const filteredUpcomingGames = useMemo(() => {
-    if (filterPeriod === 'all') return allUpcomingGames;
+    if (filterPeriod === "all") {
+      return allUpcomingGames;
+    }
 
     const now = new Date();
     const weekFromNow = new Date(now);
@@ -122,15 +142,16 @@ export default function RefereeDashboard() {
     const monthFromNow = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     return allUpcomingGames.filter((game) => {
-      const time = game.game_details.time || "00:00";
-      const gameDate = new Date(`${game.game_details.date}T${time}`);
-      if (isNaN(gameDate.getTime())) return false;
+      const gameDate = new Date(`${game.game_details.date}T${game.game_details.time || "00:00"}`);
+      if (isNaN(gameDate.getTime())) {
+        return false;
+      }
 
-      if (filterPeriod === 'week') {
+      if (filterPeriod === "week") {
         return gameDate >= now && gameDate <= weekFromNow;
       }
 
-      if (filterPeriod === 'month') {
+      if (filterPeriod === "month") {
         return gameDate >= now && gameDate <= monthFromNow;
       }
 
@@ -138,31 +159,25 @@ export default function RefereeDashboard() {
     });
   }, [allUpcomingGames, filterPeriod]);
 
-  const allNextGame = allUpcomingGames.length > 0 ? allUpcomingGames[0] : null;
-  const nextGame = allNextGame || (filteredUpcomingGames.length > 0 ? filteredUpcomingGames[0] : null);
+  const nextGame = allUpcomingGames.length > 0 ? allUpcomingGames[0] : null;
 
   const stats = useMemo(
     () => [
       {
-        label: "Games This Month",
-        value: String(myGames.length),
+        label: "DOA Games This Month",
+        value: String(monthlyEarnings?.games_count ?? 0),
       },
       {
-        label: "This Month Earnings",
-        value: "€0",
+        label: "This Month Claim",
+        value: `EUR ${monthlyEarnings?.total_claim_amount ?? "0.00"}`,
+      },
+      {
+        label: "Mileage This Month",
+        value: `${monthlyEarnings?.mileage_km_total ?? "0.00"} km`,
       },
     ],
-    [myGames.length]
+    [monthlyEarnings]
   );
-
-  const recentActivity = useMemo(() => {
-    if (myGames.length === 0) return [];
-    return myGames.slice(0, 3).map((slot) => {
-      const home = slot.game_details.home_team_name || "Home Team";
-      const away = slot.game_details.away_team_name || "Away Team";
-      return `You claimed ${slot.role_display} for ${home} vs ${away}.`;
-    });
-  }, [myGames]);
 
   return (
     <div className="dashboard-page">
@@ -204,27 +219,26 @@ export default function RefereeDashboard() {
         </section>
       )}
 
-      {/* Upcoming Games */}
       {filteredUpcomingGames.length > 0 ? (
         <div className="dashboard-upcoming-games">
           <div className="dashboard-games-header">
             <h2>Upcoming Games</h2>
             <div className="dashboard-filter-buttons">
               <button
-                className={`filter-button ${filterPeriod === 'all' ? 'active' : ''}`}
-                onClick={() => setFilterPeriod('all')}
+                className={`filter-button ${filterPeriod === "all" ? "active" : ""}`}
+                onClick={() => setFilterPeriod("all")}
               >
                 All
               </button>
               <button
-                className={`filter-button ${filterPeriod === 'week' ? 'active' : ''}`}
-                onClick={() => setFilterPeriod('week')}
+                className={`filter-button ${filterPeriod === "week" ? "active" : ""}`}
+                onClick={() => setFilterPeriod("week")}
               >
                 This Week
               </button>
               <button
-                className={`filter-button ${filterPeriod === 'month' ? 'active' : ''}`}
-                onClick={() => setFilterPeriod('month')}
+                className={`filter-button ${filterPeriod === "month" ? "active" : ""}`}
+                onClick={() => setFilterPeriod("month")}
               >
                 This Month
               </button>
@@ -237,7 +251,7 @@ export default function RefereeDashboard() {
               const isNext = index === 0;
 
               return (
-                <div key={game.id} className={`dashboard-game-card ${isNext ? 'next-game' : ''}`}>
+                <div key={game.id} className={`dashboard-game-card ${isNext ? "next-game" : ""}`}>
                   <div className="dashboard-game-main">
                     <div className="dashboard-game-header">
                       <h3>{home} vs {away}</h3>

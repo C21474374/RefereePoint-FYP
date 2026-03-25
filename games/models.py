@@ -271,6 +271,10 @@ class RefereeAssignment(models.Model):
         UMPIRE_1 = "UMPIRE_1", "Umpire 1"
         UMPIRE_2 = "UMPIRE_2", "Umpire 2"
 
+    class TravelMode(models.TextChoices):
+        MILEAGE = "MILEAGE", "Mileage"
+        PUBLIC_TRANSPORT = "PUBLIC_TRANSPORT", "Public Transport"
+
     game = models.ForeignKey(
         "games.Game",
         on_delete=models.CASCADE,
@@ -284,6 +288,17 @@ class RefereeAssignment(models.Model):
     role = models.CharField(
         max_length=20,
         choices=Role.choices,
+    )
+    travel_mode = models.CharField(
+        max_length=20,
+        choices=TravelMode.choices,
+        default=TravelMode.MILEAGE,
+    )
+    public_transport_fare = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
 
     class Meta:
@@ -304,6 +319,11 @@ class RefereeAssignment(models.Model):
         if self.role == self.Role.CREW_CHIEF and self.referee.grade == "INTRO":
             raise ValidationError(
                 {"referee": "An Intro referee cannot be assigned as Crew Chief."}
+            )
+
+        if self.public_transport_fare is not None and self.public_transport_fare < 0:
+            raise ValidationError(
+                {"public_transport_fare": "Public transport fare cannot be negative."}
             )
 
     def save(self, *args, **kwargs):

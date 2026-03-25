@@ -73,8 +73,11 @@ const Games = () => {
     try {
       setLoading(true);
       setError("");
+      const token = getAccessToken();
 
-      const response = await fetch(`${API_BASE_URL}/games/opportunities/`);
+      const response = await fetch(`${API_BASE_URL}/games/opportunities/`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch opportunities.");
       }

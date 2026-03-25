@@ -17,6 +17,9 @@ export interface CurrentUser {
   last_name: string;
   phone_number: string | null;
   bipin_number: string | null;
+  home_address: string;
+  home_lat: number | null;
+  home_lon: number | null;
   referee_profile: RefereeProfile | null;
 }
 

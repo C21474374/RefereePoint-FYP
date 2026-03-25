@@ -254,7 +254,8 @@ class NonAppointedGameUploadAPIView(generics.CreateAPIView):
 
         output_serializer = GameSerializer(game, context={"request": request})
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
-    
+
+
 class OpportunityFeedAPIView(APIView):
     """
     Combined opportunities feed for the frontend.
@@ -284,10 +285,14 @@ class OpportunityFeedAPIView(APIView):
         today = timezone.localdate()
         events = (
             Event.objects.select_related("venue")
-            .annotate(joined_referees_count=Count("referee_assignments"))
             .filter(end_date__gte=today)
             .order_by("start_date")
         )
+        referee_profile = None
+        if request.user.is_authenticated:
+            referee_profile = RefereeProfile.objects.filter(user=request.user).first()
+            if referee_profile:
+                events = events.exclude(referee_assignments__referee=referee_profile)
 
         cover_requests = (
             CoverRequest.objects.select_related(
@@ -335,6 +340,7 @@ class OpportunityFeedAPIView(APIView):
                 cover_requests = cover_requests.filter(game__game_type=game_type)
                 events = events.none()
 
+        events = events.annotate(joined_referees_count=Count("referee_assignments"))
         events = events.filter(
             Q(referees_required=0) | Q(joined_referees_count__lt=F("referees_required"))
         )
