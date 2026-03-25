@@ -26,6 +26,8 @@ export default function Earnings() {
   const [locating, setLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState("");
   const [error, setError] = useState("");
+  const [addressError, setAddressError] = useState("");
+  const [addressDirty, setAddressDirty] = useState(false);
 
   const loadReport = async (nextPeriod: EarningsPeriod) => {
     try {
@@ -38,6 +40,7 @@ export default function Earnings() {
         home_lat: data.home.home_lat,
         home_lon: data.home.home_lon,
       });
+      setAddressDirty(false);
     } catch (err) {
       console.error(err);
       setError("Failed to load earnings.");
@@ -51,20 +54,55 @@ export default function Earnings() {
   }, [period]);
 
   const handleSaveHome = async () => {
+    const trimmedAddress = homeForm.home_address.trim();
+    const hasCoordinates =
+      homeForm.home_lat !== null && homeForm.home_lon !== null;
+
+    if (!trimmedAddress && !hasCoordinates) {
+      setAddressError("Enter a home address/postcode or use current location.");
+      setError("Please provide home location details before saving.");
+      return;
+    }
+
+    if (trimmedAddress && trimmedAddress.length < 3) {
+      setAddressError("Please enter a more specific address or postcode.");
+      setError("Address looks too short.");
+      return;
+    }
+
     try {
       setSavingHome(true);
       setError("");
+      setLocationMessage("");
+      setAddressError("");
 
-      await updateHomeLocation({
-        home_address: homeForm.home_address.trim(),
-        home_lat: homeForm.home_lat,
-        home_lon: homeForm.home_lon,
+      const savedHome = await updateHomeLocation({
+        home_address: trimmedAddress,
+        home_lat: addressDirty ? null : homeForm.home_lat,
+        home_lon: addressDirty ? null : homeForm.home_lon,
       });
 
       await loadReport(period);
-    } catch (err) {
+      setAddressDirty(false);
+      if (savedHome.geocode_warning) {
+        setError(String(savedHome.geocode_warning));
+        setLocationMessage("Home address saved.");
+      } else {
+        setLocationMessage("Home location saved.");
+      }
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to update home location.");
+      const detail =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Failed to update home location.";
+      setError(detail);
+      if (
+        String(detail).includes("resolve that address") ||
+        String(detail).includes("address")
+      ) {
+        setAddressError("Could not find that address/postcode. Try a more specific one.");
+      }
     } finally {
       setSavingHome(false);
     }
@@ -79,6 +117,8 @@ export default function Earnings() {
     setLocating(true);
     setError("");
     setLocationMessage("");
+    setAddressError("");
+    setAddressDirty(false);
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -125,6 +165,12 @@ export default function Earnings() {
 
       {!loading && report && (
         <>
+          {(report.home.home_lat === null || report.home.home_lon === null) && (
+            <p className="earnings-error">
+              Home coordinates are missing, so mileage cannot be calculated yet.
+              Use Current Location or save a valid address/postcode.
+            </p>
+          )}
           <section className="earnings-section">
             <h2>Home Location</h2>
             <div className="earnings-home-grid">
@@ -132,12 +178,22 @@ export default function Earnings() {
                 <span>Home Address or Postcode</span>
                 <input
                   type="text"
+                  className={addressError ? "input-error" : ""}
                   value={homeForm.home_address}
-                  onChange={(e) =>
-                    setHomeForm((prev) => ({ ...prev, home_address: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    setAddressError("");
+                    setError("");
+                    setAddressDirty(true);
+                    setHomeForm((prev) => ({
+                      ...prev,
+                      home_address: e.target.value,
+                    }));
+                  }}
                   placeholder="Eircode/Postcode or address"
                 />
+                {addressError && (
+                  <small className="earnings-inline-error">{addressError}</small>
+                )}
               </label>
             </div>
             <div className="earnings-home-actions">
@@ -159,7 +215,8 @@ export default function Earnings() {
             </div>
             {locationMessage && <p className="earnings-info">{locationMessage}</p>}
             <p className="earnings-note">
-              Mileage claims require shared location coordinates. Tolls, taxis, and parking are excluded.
+              Save with address/postcode to geocode automatically, or use current location.
+              Tolls, taxis, and parking are excluded.
             </p>
           </section>
 

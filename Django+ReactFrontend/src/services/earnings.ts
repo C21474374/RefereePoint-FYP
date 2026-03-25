@@ -60,7 +60,12 @@ export type HomeLocationPayload = {
   home_lon: number | null;
 };
 
+export type UpdateHomeLocationResponse = {
+  geocode_warning?: string;
+  [key: string]: unknown;
+};
+
 export const updateHomeLocation = async (payload: HomeLocationPayload) => {
-  const response = await axiosInstance.patch("/users/me/home/", payload);
+  const response = await axiosInstance.patch<UpdateHomeLocationResponse>("/users/me/home/", payload);
   return response.data;
 };

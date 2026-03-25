@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from django.utils import timezone
 
 from games.models import Game, RefereeAssignment
+from users.geocoding import geocode_address
 from users.models import RefereeProfile
 
 from .models import ExpenseRecord
@@ -90,6 +91,19 @@ class RefereeEarningsAPIView(APIView):
             .order_by("game__date", "game__time", "id")
         )
 
+        home_lat = request.user.home_lat
+        home_lon = request.user.home_lon
+        if (
+            home_lat is None
+            or home_lon is None
+        ) and request.user.home_address:
+            geocoded_home = geocode_address(request.user.home_address)
+            if geocoded_home:
+                home_lat, home_lon = geocoded_home
+                request.user.home_lat = home_lat
+                request.user.home_lon = home_lon
+                request.user.save(update_fields=["home_lat", "home_lon"])
+
         base_fee_doa = Decimal("25.00")
         rate_per_km = Decimal("0.31")
 
@@ -103,6 +117,7 @@ class RefereeEarningsAPIView(APIView):
         previous_date = None
         previous_venue_id = None
         computed_assignment_ids = []
+        geocoded_venues = {}
 
         for assignment in assignments:
             game = assignment.game
@@ -134,10 +149,23 @@ class RefereeEarningsAPIView(APIView):
                         rounding=ROUND_HALF_UP,
                     )
                 else:
-                    home_lat = request.user.home_lat
-                    home_lon = request.user.home_lon
                     venue_lat = venue.lat if venue else None
                     venue_lon = venue.lon if venue else None
+                    if (
+                        venue is not None
+                        and (venue_lat is None or venue_lon is None)
+                        and venue.address
+                    ):
+                        cached = geocoded_venues.get(venue.id)
+                        if cached is None:
+                            query = f"{venue.name} {venue.address}".strip()
+                            cached = geocode_address(query)
+                            geocoded_venues[venue.id] = cached
+                        if cached:
+                            venue_lat, venue_lon = cached
+                            venue.lat = venue_lat
+                            venue.lon = venue_lon
+                            venue.save(update_fields=["lat", "lon"])
 
                     if (
                         home_lat is not None

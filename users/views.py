@@ -1,4 +1,3 @@
-import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import User, RefereeProfile, RefereeAvailability
@@ -7,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .serializers import CurrentUserSerializer
+from .geocoding import geocode_address
+
 
 def _json_error(message: str, status: int) -> JsonResponse:
     return JsonResponse({"error": message}, status=status)
@@ -86,6 +87,7 @@ class UpdateHomeLocationView(APIView):
 
     def patch(self, request):
         user = request.user
+        geocode_warning = None
 
         home_address = request.data.get("home_address")
         home_lat = request.data.get("home_lat")
@@ -94,14 +96,22 @@ class UpdateHomeLocationView(APIView):
         if home_address is not None:
             user.home_address = str(home_address).strip()
 
-        if home_lat in ("", None):
-            user.home_lat = None
-        elif home_lat is not None:
+        lat_provided = home_lat not in ("", None)
+        lon_provided = home_lon not in ("", None)
+
+        if lat_provided != lon_provided:
+            return Response(
+                {"detail": "home_lat and home_lon must both be provided together."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if lat_provided and lon_provided:
             try:
                 lat_value = float(home_lat)
+                lon_value = float(home_lon)
             except (TypeError, ValueError):
                 return Response(
-                    {"detail": "home_lat must be a valid number."},
+                    {"detail": "home_lat and home_lon must be valid numbers."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             if lat_value < -90 or lat_value > 90:
@@ -109,25 +119,27 @@ class UpdateHomeLocationView(APIView):
                     {"detail": "home_lat must be between -90 and 90."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            user.home_lat = lat_value
-
-        if home_lon in ("", None):
-            user.home_lon = None
-        elif home_lon is not None:
-            try:
-                lon_value = float(home_lon)
-            except (TypeError, ValueError):
-                return Response(
-                    {"detail": "home_lon must be a valid number."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             if lon_value < -180 or lon_value > 180:
                 return Response(
                     {"detail": "home_lon must be between -180 and 180."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            user.home_lat = lat_value
             user.home_lon = lon_value
+        else:
+            if user.home_address:
+                geocoded = geocode_address(user.home_address)
+                if geocoded:
+                    user.home_lat, user.home_lon = geocoded
+                else:
+                    geocode_warning = (
+                        "Address saved, but we could not resolve coordinates. "
+                        "Use current location for accurate mileage."
+                    )
 
         user.save(update_fields=["home_address", "home_lat", "home_lon"])
         serializer = CurrentUserSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        payload = serializer.data
+        if geocode_warning:
+            payload["geocode_warning"] = geocode_warning
+        return Response(payload, status=status.HTTP_200_OK)

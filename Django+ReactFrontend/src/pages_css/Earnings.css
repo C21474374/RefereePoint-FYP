@@ -109,6 +109,15 @@
   padding: 10px 12px;
 }
 
+.earnings-home-grid input.input-error {
+  border-color: var(--color-accent);
+}
+
+.earnings-inline-error {
+  color: var(--color-accent);
+  font-size: 0.82rem;
+}
+
 .earnings-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
