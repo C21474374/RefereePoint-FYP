@@ -1,80 +1,74 @@
 .dashboard-quick-actions {
-  margin-top: 40px;
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
 }
 
 .dashboard-quick-actions h2 {
-  margin: 0 0 20px;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--color-text);
+  margin: 0 0 14px;
+  font-size: 1.24rem;
 }
 
 .dashboard-action-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .dashboard-action-card {
   display: block;
-  text-decoration: none;
-  background: var(--color-card);
+  min-height: 132px;
+  padding: 16px;
+  border-radius: 12px;
   border: 1px solid var(--color-border);
-  border-radius: 16px;
-  padding: 24px;
+  text-decoration: none;
   color: var(--color-text);
-  transition: all 0.3s ease;
-  text-align: center;
+  background: var(--color-bg-panel);
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .dashboard-action-card:hover {
+  transform: translateY(-3px);
   border-color: var(--color-accent);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(210, 35, 42, 0.15);
 }
 
 .dashboard-action-card.primary {
   border-color: var(--color-accent);
-  background: linear-gradient(135deg, var(--color-card) 0%, var(--color-bg-panel-2) 100%);
-}
-
-.dashboard-action-card.primary:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 8px 25px rgba(210, 35, 42, 0.25);
+  background: var(--color-bg-panel);
 }
 
 .dashboard-action-card h3 {
-  margin: 0 0 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--color-text);
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.2;
 }
 
 .dashboard-action-card p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: 1.5;
+  margin: 10px 0 0;
+  color: var(--color-text-muted);
   font-size: 0.9rem;
+  line-height: 1.45;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1050px) {
+  .dashboard-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .dashboard-quick-actions {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
   .dashboard-action-grid {
     grid-template-columns: 1fr;
   }
 
   .dashboard-action-card {
-    padding: 20px;
-  }
-}
-
-@media (max-width: 1000px) {
-  .dashboard-action-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 560px) {
-  .dashboard-action-grid {
-    grid-template-columns: 1fr;
+    min-height: 0;
   }
 }

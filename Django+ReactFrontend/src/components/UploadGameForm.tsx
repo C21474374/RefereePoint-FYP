@@ -25,6 +25,8 @@ type UploadGameFormProps = {
   divisions: SimpleOption[];
   venues: SimpleOption[];
   teams: TeamOption[];
+  embedded?: boolean;
+  onPosted?: () => void;
 };
 
 type FormState = {
@@ -111,6 +113,8 @@ export default function UploadGameForm({
   divisions,
   venues,
   teams,
+  embedded = false,
+  onPosted,
 }: UploadGameFormProps) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
@@ -305,6 +309,7 @@ if (!token) {
       setSuccessMessage("Game posted successfully.");
       setForm(initialForm);
       setAvailability(null);
+      onPosted?.();
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Something went wrong while posting the game."
@@ -314,210 +319,215 @@ if (!token) {
     }
   }
 
+  const formContent = (
+    <form className="upload-game-form" onSubmit={handleSubmit}>
+      {errorMessage && <div className="upload-message error">{errorMessage}</div>}
+      {successMessage && <div className="upload-message success">{successMessage}</div>}
+
+      <section className="upload-section">
+        <h2>Game Details</h2>
+
+        <div className="upload-grid">
+          <div className="form-field">
+            <label>Game Type</label>
+           <select name="game_type" value={form.game_type} onChange={handleChange}>
+              <option value="CLUB">Club</option>
+              <option value="SCHOOL">School</option>
+              <option value="COLLEGE">College</option>
+              <option value="FRIENDLY">Friendly</option>
+            </select>
+          </div>
+
+          <div className="form-field">
+            <label>Payment Type</label>
+            <select name="payment_type" value={form.payment_type} onChange={handleChange}>
+              <option value="CASH">Cash</option>
+              <option value="REVOLUT">Revolut</option>
+            </select>
+          </div>
+
+          <div className="form-field">
+            <label>Division</label>
+            <select name="division" value={form.division} onChange={handleChange}>
+              <option value="">Select division</option>
+              {divisions.map((division) => (
+                <option key={division.id} value={division.id}>
+                  {division.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-field">
+            <label>Venue</label>
+            <select name="venue" value={form.venue} onChange={handleChange}>
+              <option value="">Select venue</option>
+              {venues.map((venue) => (
+                <option key={venue.id} value={venue.id}>
+                  {venue.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-field">
+            <label>Home Team</label>
+            <select name="home_team" value={form.home_team} onChange={handleChange}>
+              <option value="">Select home team</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-field">
+            <label>Away Team</label>
+            <select name="away_team" value={form.away_team} onChange={handleChange}>
+              <option value="">Select away team</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-field">
+            <label>Date</label>
+            <input type="date" name="date" value={form.date} onChange={handleChange} />
+          </div>
+
+          <div className="form-field">
+            <label>Time</label>
+            <input type="time" name="time" value={form.time} onChange={handleChange} />
+          </div>
+        </div>
+      </section>
+
+      <section className="upload-section">
+        <h2>Referee Requirement</h2>
+
+        <div className="radio-group">
+          <p className="radio-title">Which team needs a referee?</p>
+
+          {checkingAvailability && (
+            <p className="availability-text">Checking if this game already exists...</p>
+          )}
+
+          {availability?.exists && !bothSidesBlocked && (
+            <p className="availability-text warning">
+              This game already exists. You can only request the missing side.
+            </p>
+          )}
+
+          {bothSidesBlocked && (
+            <p className="availability-text danger">
+              Both referee requests already exist for this game.
+            </p>
+          )}
+
+          <label className={`radio-option ${homeDisabled ? "disabled" : ""}`}>
+            <input
+              type="radio"
+              name="requesting_side"
+              value="HOME"
+              checked={form.requesting_side === "HOME"}
+              onChange={handleChange}
+              disabled={homeDisabled}
+            />
+            Home Team
+          </label>
+
+          <label className={`radio-option ${awayDisabled ? "disabled" : ""}`}>
+            <input
+              type="radio"
+              name="requesting_side"
+              value="AWAY"
+              checked={form.requesting_side === "AWAY"}
+              onChange={handleChange}
+              disabled={awayDisabled}
+            />
+            Away Team
+          </label>
+        </div>
+
+        <label className="checkbox-option">
+          <input
+            type="checkbox"
+            name="second_ref_needed"
+            checked={form.second_ref_needed}
+            onChange={handleChange}
+          />
+          Second referee also needed
+        </label>
+
+        <div className="helper-box">
+          <strong>Slot logic:</strong>
+          <span>
+            Home team request creates a Crew Chief slot. Away team request creates an Umpire 1
+            slot. If second referee is ticked, both slots are created.
+          </span>
+        </div>
+      </section>
+
+      <section className="upload-section">
+        <h2>Extra Details</h2>
+
+        <div className="form-field">
+          <label>Slot Description</label>
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            rows={3}
+            placeholder="Optional short description for the opportunity"
+          />
+        </div>
+
+        <div className="form-field">
+          <label>Notes</label>
+          <textarea
+            name="notes"
+            value={form.notes}
+            onChange={handleChange}
+            rows={3}
+            placeholder="Optional notes about the game"
+          />
+        </div>
+
+        <div className="form-field">
+          <label>Original Post Text</label>
+          <textarea
+            name="original_post_text"
+            value={form.original_post_text}
+            onChange={handleChange}
+            rows={4}
+            placeholder="Optional copied message or original request text"
+          />
+        </div>
+      </section>
+
+      <div className="upload-actions">
+        <button type="submit" disabled={submitting || bothSidesBlocked}>
+          {submitting ? "Posting..." : "Post Game"}
+        </button>
+      </div>
+    </form>
+  );
+
+  if (embedded) {
+    return formContent;
+  }
+
   return (
     <div className="upload-game-wrapper">
       <div className="upload-game-header">
         <h1>Upload Game</h1>
         <p>Post a game and create referee opportunities.</p>
       </div>
-
-      <form className="upload-game-form" onSubmit={handleSubmit}>
-        {errorMessage && <div className="upload-message error">{errorMessage}</div>}
-        {successMessage && <div className="upload-message success">{successMessage}</div>}
-
-        <section className="upload-section">
-          <h2>Game Details</h2>
-
-          <div className="upload-grid">
-            <div className="form-field">
-              <label>Game Type</label>
-             <select name="game_type" value={form.game_type} onChange={handleChange}>
-                <option value="CLUB">Club</option>
-                <option value="SCHOOL">School</option>
-                <option value="COLLEGE">College</option>
-                <option value="FRIENDLY">Friendly</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label>Payment Type</label>
-              <select name="payment_type" value={form.payment_type} onChange={handleChange}>
-                <option value="CASH">Cash</option>
-                <option value="REVOLUT">Revolut</option>
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label>Division</label>
-              <select name="division" value={form.division} onChange={handleChange}>
-                <option value="">Select division</option>
-                {divisions.map((division) => (
-                  <option key={division.id} value={division.id}>
-                    {division.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label>Venue</label>
-              <select name="venue" value={form.venue} onChange={handleChange}>
-                <option value="">Select venue</option>
-                {venues.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label>Home Team</label>
-              <select name="home_team" value={form.home_team} onChange={handleChange}>
-                <option value="">Select home team</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label>Away Team</label>
-              <select name="away_team" value={form.away_team} onChange={handleChange}>
-                <option value="">Select away team</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label>Date</label>
-              <input type="date" name="date" value={form.date} onChange={handleChange} />
-            </div>
-
-            <div className="form-field">
-              <label>Time</label>
-              <input type="time" name="time" value={form.time} onChange={handleChange} />
-            </div>
-          </div>
-        </section>
-
-        <section className="upload-section">
-          <h2>Referee Requirement</h2>
-
-          <div className="radio-group">
-            <p className="radio-title">Which team needs a referee?</p>
-
-            {checkingAvailability && (
-              <p className="availability-text">Checking if this game already exists...</p>
-            )}
-
-            {availability?.exists && !bothSidesBlocked && (
-              <p className="availability-text warning">
-                This game already exists. You can only request the missing side.
-              </p>
-            )}
-
-            {bothSidesBlocked && (
-              <p className="availability-text danger">
-                Both referee requests already exist for this game.
-              </p>
-            )}
-
-            <label className={`radio-option ${homeDisabled ? "disabled" : ""}`}>
-              <input
-                type="radio"
-                name="requesting_side"
-                value="HOME"
-                checked={form.requesting_side === "HOME"}
-                onChange={handleChange}
-                disabled={homeDisabled}
-              />
-              Home Team
-            </label>
-
-            <label className={`radio-option ${awayDisabled ? "disabled" : ""}`}>
-              <input
-                type="radio"
-                name="requesting_side"
-                value="AWAY"
-                checked={form.requesting_side === "AWAY"}
-                onChange={handleChange}
-                disabled={awayDisabled}
-              />
-              Away Team
-            </label>
-          </div>
-
-          <label className="checkbox-option">
-            <input
-              type="checkbox"
-              name="second_ref_needed"
-              checked={form.second_ref_needed}
-              onChange={handleChange}
-            />
-            Second referee also needed
-          </label>
-
-          
-
-          <div className="helper-box">
-            <strong>Slot logic:</strong>
-            <span>
-              Home team request creates a Crew Chief slot. Away team request creates an Umpire 1
-              slot. If second referee is ticked, both slots are created.
-            </span>
-          </div>
-        </section>
-
-        <section className="upload-section">
-          <h2>Extra Details</h2>
-
-          <div className="form-field">
-            <label>Slot Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Optional short description for the opportunity"
-            />
-          </div>
-
-          <div className="form-field">
-            <label>Notes</label>
-            <textarea
-              name="notes"
-              value={form.notes}
-              onChange={handleChange}
-              rows={3}
-              placeholder="Optional notes about the game"
-            />
-          </div>
-
-          <div className="form-field">
-            <label>Original Post Text</label>
-            <textarea
-              name="original_post_text"
-              value={form.original_post_text}
-              onChange={handleChange}
-              rows={4}
-              placeholder="Optional copied message or original request text"
-            />
-          </div>
-        </section>
-
-        <div className="upload-actions">
-          <button type="submit" disabled={submitting || bothSidesBlocked}>
-            {submitting ? "Posting..." : "Post Game"}
-          </button>
-        </div>
-      </form>
+      {formContent}
     </div>
   );
 }

@@ -16,9 +16,6 @@
   --font-size-lg: 20px;
   --font-size-sm: 14px;
 
-  /* =========================
-     DARK THEME (poster style)
-     ========================= */
   --color-bg: #000000;
   --color-bg-panel: #111111;
   --color-bg-panel-2: #181818;
@@ -39,26 +36,21 @@
   --color-warning: #d2232a;
   --color-error: #d2232a;
 
-  --color-nav-bg: rgba(0, 0, 0, 0.9);
+  --color-nav-bg: rgba(0, 0, 0, 0.92);
+  --color-nav-divider: rgba(255, 255, 255, 0.08);
 
   --color-link: #ffffff;
   --color-link-hover: #d2232a;
 
   --color-error-bg: rgba(210, 35, 42, 0.16);
   --color-error-border: rgba(210, 35, 42, 0.35);
+  --color-accent-soft: rgba(210, 35, 42, 0.12);
+  --color-accent-soft-strong: rgba(210, 35, 42, 0.2);
 
-  /* subtle dark background texture */
-  --app-background-image:
-    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0) 22%),
-    radial-gradient(circle at 85% 18%, rgba(255, 255, 255, 0.035) 0, rgba(255, 255, 255, 0) 20%),
-    radial-gradient(circle at 28% 78%, rgba(255, 255, 255, 0.03) 0, rgba(255, 255, 255, 0) 24%),
-    radial-gradient(circle at 75% 70%, rgba(255, 255, 255, 0.03) 0, rgba(255, 255, 255, 0) 22%);
+  --app-background-image: none;
 }
 
 :root[data-theme='light'] {
-  /* =========================
-     LIGHT THEME (poster style)
-     ========================= */
   --color-bg: #efefef;
   --color-bg-panel: #f6f6f6;
   --color-bg-panel-2: #ebebeb;
@@ -79,20 +71,18 @@
   --color-warning: #d2232a;
   --color-error: #d2232a;
 
-  --color-nav-bg: rgba(239, 239, 239, 0.92);
+  --color-nav-bg: rgba(239, 239, 239, 0.96);
+  --color-nav-divider: rgba(0, 0, 0, 0.08);
 
   --color-link: #1f1b20;
   --color-link-hover: #d2232a;
 
   --color-error-bg: rgba(210, 35, 42, 0.12);
   --color-error-border: rgba(210, 35, 42, 0.28);
+  --color-accent-soft: rgba(210, 35, 42, 0.12);
+  --color-accent-soft-strong: rgba(210, 35, 42, 0.18);
 
-  /* subtle light background texture */
-  --app-background-image:
-    radial-gradient(circle at 12% 18%, rgba(0, 0, 0, 0.06) 0, rgba(0, 0, 0, 0) 22%),
-    radial-gradient(circle at 82% 16%, rgba(0, 0, 0, 0.05) 0, rgba(0, 0, 0, 0) 20%),
-    radial-gradient(circle at 30% 75%, rgba(0, 0, 0, 0.045) 0, rgba(0, 0, 0, 0) 24%),
-    radial-gradient(circle at 74% 72%, rgba(0, 0, 0, 0.045) 0, rgba(0, 0, 0, 0) 22%);
+  --app-background-image: none;
 }
 
 html,

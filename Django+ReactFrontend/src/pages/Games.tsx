@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import "../pages_css/Games.css";
 import GamesMap from "../components/GamesMap";
 import Gameslist from "../components/Gameslist";
+import UploadGamePanel from "../components/UploadGamePanel";
 import { getAccessToken } from "../services/auth";
 
 export type Opportunity = {
@@ -57,6 +59,8 @@ export type Opportunity = {
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 
 const Games = () => {
+  const location = useLocation();
+  const uploadSectionRef = useRef<HTMLElement | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState<string>("ALL");
@@ -94,6 +98,19 @@ const Games = () => {
   useEffect(() => {
     loadOpportunities();
   }, []);
+
+  useEffect(() => {
+    if (location.hash !== "#upload-game") {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      uploadSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [location.hash]);
 
   const handleClaimSlot = async (slotId: number) => {
     try {
@@ -265,6 +282,18 @@ const Games = () => {
           </div>
         </div>
       )}
+
+      <section
+        id="upload-game"
+        className="games-upload-section"
+        ref={uploadSectionRef}
+      >
+        <div className="games-upload-header">
+          <h2>Upload Game</h2>
+          <p>Post a game and create non-appointed referee opportunities.</p>
+        </div>
+        <UploadGamePanel embedded onPosted={loadOpportunities} />
+      </section>
     </div>
   );
 };

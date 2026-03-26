@@ -1,13 +1,14 @@
 .cover-requests-page {
-  padding: 24px;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 30px 24px 38px;
   color: var(--color-text);
   min-height: calc(100vh - 60px);
-  background-color: var(--color-bg);
   box-sizing: border-box;
 }
 
 .cover-requests-page-header {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .cover-requests-page-header h1 {
@@ -20,58 +21,69 @@
   color: var(--color-text-muted);
 }
 
+.cover-requests-page-message,
+.cover-requests-page-error {
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.cover-requests-page-message {
+  color: var(--color-text-muted);
+}
+
+.cover-requests-page-error {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  background: var(--color-error-bg);
+}
+
 .cover-requests-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
 }
 
 .cover-requests-section-header {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .cover-requests-section-header h2 {
   margin: 0;
-  font-size: 1.1rem;
-  color: var(--color-text);
+  font-size: 1.18rem;
 }
 
 .cover-requests-section-header p {
   margin-top: 6px;
   color: var(--color-text-muted);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .cover-requests-grid {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-.cover-requests-empty,
-.cover-requests-page-message,
-.cover-requests-page-error {
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 16px;
-  box-sizing: border-box;
+  gap: 12px;
 }
 
 .cover-requests-empty {
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  padding: 14px;
   color: var(--color-text-muted);
 }
 
-.cover-requests-page-message {
-  color: var(--color-text-muted);
-  margin-bottom: 16px;
-}
-
-.cover-requests-page-error {
-  color: var(--color-error);
-  margin-bottom: 16px;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 760px) {
   .cover-requests-page {
-    padding: 16px;
+    padding: 22px 16px 30px;
+  }
+
+  .cover-requests-section {
+    padding: 12px;
+    border-radius: 14px;
   }
 }

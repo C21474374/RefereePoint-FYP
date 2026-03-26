@@ -1,5 +1,5 @@
 .my-assignment-card {
-  background: var(--color-card);
+  background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 16px;
@@ -10,7 +10,7 @@
 }
 
 .my-assignment-card:hover {
-  border-color: var(--color-border-hover);
+  border-color: var(--color-accent);
   transform: translateY(-2px);
 }
 
@@ -25,13 +25,13 @@
   margin: 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--color-text);
 }
 
 .my-assignment-card-top p {
   margin-top: 4px;
   font-size: 0.92rem;
-  color: #b8b8c7;
+  color: var(--color-text-muted);
 }
 
 .my-assignment-role {
@@ -39,8 +39,9 @@
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #2a2f4a;
-  color: #e4e5e6;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
   font-size: 0.8rem;
   font-weight: 600;
   white-space: nowrap;
@@ -51,7 +52,7 @@
   gap: 18px;
   flex-wrap: wrap;
   padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--color-border);
 }
 
 .my-assignment-meta p {
@@ -59,13 +60,13 @@
   display: flex;
   flex-direction: column;
   min-width: 160px;
-  color: #ffffff;
+  color: var(--color-text);
   font-size: 0.92rem;
 }
 
 .my-assignment-meta strong {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--color-text-muted);
   margin-bottom: 2px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -82,9 +83,9 @@
   border-radius: 8px;
   padding: 10px 14px;
   cursor: pointer;
-  font-weight: 600;
-  background: #d2232a;
-  color: white;
+  font-weight: 700;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   white-space: nowrap;
 }
 
@@ -102,8 +103,9 @@
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(234, 179, 8, 0.15);
-  color: #facc15;
+  border: 1px solid var(--color-error-border);
+  background: var(--color-error-bg);
+  color: var(--color-text);
   font-size: 0.8rem;
   font-weight: 600;
 }

@@ -10,7 +10,11 @@ const navLinks = [
   { name: "Events", path: "/events" },
   { name: "Reports", path: "/reports" },
   { name: "Earnings", path: "/earnings" },
-  { name: "Upload Game", path: "/upload-game" },
+];
+
+const uploadLinks = [
+  { name: "Upload Game", path: "/games#upload-game" },
+  { name: "Upload Event", path: "/events#upload-event" },
 ];
 
 const TopNavBar: React.FC = () => {
@@ -18,20 +22,38 @@ const TopNavBar: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
 
   const handleMenuToggle = () => {
-    setMenuOpen((prev) => !prev);
+    setMenuOpen((prev) => {
+      const next = !prev;
+      if (!next) {
+        setUploadMenuOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const handleUploadMenuToggle = () => {
+    setUploadMenuOpen((prev) => !prev);
   };
 
   const handleLinkClick = () => {
     setMenuOpen(false);
+    setUploadMenuOpen(false);
+  };
+
+  const handleUploadLinkClick = () => {
+    setMenuOpen(false);
+    setUploadMenuOpen(false);
   };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
+        setUploadMenuOpen(false);
       }
     };
 
@@ -44,12 +66,19 @@ const TopNavBar: React.FC = () => {
 
   useEffect(() => {
     setMenuOpen(false);
+    setUploadMenuOpen(false);
   }, [location.pathname]);
+
+  const uploadIsActive =
+    (location.pathname === "/games" && location.hash === "#upload-game") ||
+    (location.pathname === "/events" && location.hash === "#upload-event");
 
   return (
     <nav className="top-nav-bar" ref={navRef}>
       <div className="nav-left">
-        <Link to="/dashboard" className="nav-title">RefereePoint</Link>
+        <Link to="/dashboard" className="nav-title">
+          RefereePoint
+        </Link>
       </div>
 
       <button
@@ -75,6 +104,31 @@ const TopNavBar: React.FC = () => {
             {link.name}
           </Link>
         ))}
+
+        <div className={`upload-menu ${uploadMenuOpen ? "open" : ""}`}>
+          <button
+            className={`nav-link upload-menu-trigger ${uploadIsActive ? "active" : ""}`}
+            onClick={handleUploadMenuToggle}
+            aria-expanded={uploadMenuOpen}
+            aria-haspopup="menu"
+            type="button"
+          >
+            +Upload
+          </button>
+          <div className="upload-menu-panel" role="menu">
+            {uploadLinks.map((link) => (
+              <Link
+                key={link.name}
+                to={link.path}
+                onClick={handleUploadLinkClick}
+                className="upload-menu-link"
+                role="menuitem"
+              >
+                {link.name}
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="nav-right">
@@ -84,13 +138,15 @@ const TopNavBar: React.FC = () => {
           type="button"
           title="Toggle theme"
         >
-          {theme === 'dark' ? '☀︎ Light' : '☾ Dark'}
+          {theme === "dark" ? "Light" : "Dark"}
         </button>
 
         {user ? (
           <>
             <span className="nav-user">{user.first_name || user.email}</span>
-            <button onClick={logout} type="button">Logout</button>
+            <button onClick={logout} type="button">
+              Logout
+            </button>
           </>
         ) : (
           <Link to="/login">Login</Link>

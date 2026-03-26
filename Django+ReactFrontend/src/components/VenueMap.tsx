@@ -35,9 +35,10 @@ const styles = {
   },
   header: {
     padding: '16px 24px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: '#111111',
     color: 'white',
     boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+    borderBottom: '1px solid rgba(210,35,42,0.45)',
   },
   title: {
     margin: '0 0 16px 0',
@@ -54,7 +55,7 @@ const styles = {
     display: 'flex',
     gap: '8px',
     alignItems: 'center',
-    background: 'rgba(255,255,255,0.15)',
+    background: 'rgba(210,35,42,0.14)',
     padding: '8px 12px',
     borderRadius: '8px',
   },
@@ -66,12 +67,12 @@ const styles = {
     fontWeight: 500,
     cursor: 'pointer',
     transition: 'all 0.2s',
-    background: 'white',
-    color: '#667eea',
+    background: '#d2232a',
+    color: '#ffffff',
   },
   buttonPrimary: {
-    background: '#4CAF50',
-    color: 'white',
+    background: '#d2232a',
+    color: '#ffffff',
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -126,7 +127,7 @@ const styles = {
   },
   popupDistance: {
     margin: 0,
-    color: '#667eea',
+    color: '#d2232a',
     fontSize: '14px',
     fontWeight: 500,
   },
@@ -260,7 +261,7 @@ export default function VenueMap() {
               style={styles.button}
               title="Get your location"
             >
-              📍 My Location
+              My Location
             </button>
             <input
               type="number"
@@ -317,7 +318,7 @@ export default function VenueMap() {
               {mode === 'nearby' && ` within ${radiusKm}km`}
               {mode === 'search' && ` matching "${searchName}"`}
               {userLocation && (
-                <> · Your location: {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}</>
+                <> | Your location: {userLocation.lat.toFixed(4)}, {userLocation.lon.toFixed(4)}</>
               )}
             </span>
           )}
@@ -344,8 +345,8 @@ export default function VenueMap() {
               center={[userLocation.lat, userLocation.lon]}
               radius={radiusKm * 1000}
               pathOptions={{
-                color: '#667eea',
-                fillColor: '#667eea',
+                color: '#d2232a',
+                fillColor: '#d2232a',
                 fillOpacity: 0.1,
                 weight: 2,
               }}
@@ -357,7 +358,7 @@ export default function VenueMap() {
             <Marker position={[userLocation.lat, userLocation.lon]}>
               <Popup>
                 <div style={styles.popup}>
-                  <h3 style={styles.popupTitle}>📍 Your Location</h3>
+                  <h3 style={styles.popupTitle}>Your Location</h3>
                   <p style={styles.popupAddress}>
                     {userLocation.lat.toFixed(6)}, {userLocation.lon.toFixed(6)}
                   </p>
@@ -377,7 +378,7 @@ export default function VenueMap() {
                   )}
                   {venue.distance_km !== undefined && (
                     <p style={styles.popupDistance}>
-                      📏 {venue.distance_km} km away
+                      Distance: {venue.distance_km} km
                     </p>
                   )}
                 </div>

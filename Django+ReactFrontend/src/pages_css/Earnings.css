@@ -1,13 +1,14 @@
 .earnings-page {
-  padding: 24px;
-  color: var(--color-text);
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 30px 24px 38px;
   min-height: calc(100vh - 60px);
-  background-color: var(--color-bg);
   box-sizing: border-box;
+  color: var(--color-text);
 }
 
 .earnings-header {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .earnings-header h1 {
@@ -22,58 +23,24 @@
 
 .earnings-controls {
   display: flex;
-  gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 18px;
-}
-
-.earnings-period-select,
-.earnings-save-home {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-bg-panel-2);
-  color: var(--color-text);
-  padding: 10px 12px;
-}
-
-.earnings-save-home {
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
-  border: none;
-  font-weight: 600;
-}
-
-.earnings-save-home:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.earnings-home-actions {
-  margin-top: 10px;
-  display: flex;
   gap: 10px;
-  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
-.earnings-location-btn {
+.earnings-period-select {
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: var(--color-bg-panel-2);
+  background: var(--color-bg-panel);
   color: var(--color-text);
   padding: 10px 12px;
-  font-weight: 600;
-}
-
-.earnings-location-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  min-width: 170px;
 }
 
 .earnings-section {
   background: var(--color-card);
   border: 1px solid var(--color-border);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -96,15 +63,15 @@
 
 .earnings-home-grid span {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .earnings-home-grid input {
   border: 1px solid var(--color-border);
   border-radius: 10px;
-  background: var(--color-bg-panel-2);
+  background: var(--color-bg-panel);
   color: var(--color-text);
   padding: 10px 12px;
 }
@@ -114,18 +81,50 @@
 }
 
 .earnings-inline-error {
-  color: var(--color-accent);
+  color: var(--color-text-secondary);
   font-size: 0.82rem;
+}
+
+.earnings-home-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.earnings-location-btn,
+.earnings-save-home {
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+}
+
+.earnings-location-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+}
+
+.earnings-save-home {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.earnings-location-btn:disabled,
+.earnings-save-home:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .earnings-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .earnings-summary-card {
-  background: var(--color-bg-panel-2);
+  background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 12px;
@@ -134,12 +133,14 @@
 .earnings-summary-card p {
   margin: 0;
   color: var(--color-text-muted);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .earnings-summary-card h3 {
-  margin: 6px 0 0;
-  font-size: 1.2rem;
+  margin: 8px 0 0;
+  font-size: 1.15rem;
 }
 
 .earnings-items {
@@ -149,7 +150,7 @@
 }
 
 .earnings-item {
-  background: var(--color-bg-panel-2);
+  background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 12px;
@@ -211,14 +212,14 @@
 }
 
 .earnings-info {
-  background: var(--color-card);
+  background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
   color: var(--color-text-muted);
 }
 
 .earnings-error {
-  background: rgba(210, 35, 42, 0.15);
-  border: 1px solid var(--color-accent);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
   color: var(--color-text);
 }
 
@@ -226,18 +227,19 @@
   .earnings-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
-  .earnings-home-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 760px) {
   .earnings-page {
-    padding: 16px;
+    padding: 22px 16px 30px;
   }
 
   .earnings-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .earnings-item-top {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

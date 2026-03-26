@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import EventCard from "../components/events/EventCard";
 import EventForm from "../components/events/EventForm";
 import EventStats from "../components/events/EventStats";
@@ -17,6 +18,7 @@ import {
 import "../pages_css/Events.css";
 
 export default function Events() {
+  const location = useLocation();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [venues, setVenues] = useState<EventVenueOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +54,16 @@ export default function Events() {
   useEffect(() => {
     loadPageData();
   }, []);
+
+  useEffect(() => {
+    if (loading || location.hash !== "#upload-event") {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [loading, location.hash]);
 
   const handleJoin = async (eventId: number) => {
     try {
@@ -192,7 +204,7 @@ export default function Events() {
       </div>
 
       {!loading && (
-        <section className="events-section" ref={formSectionRef}>
+        <section id="upload-event" className="events-section" ref={formSectionRef}>
           <div className="events-section-header">
             <h2>{editingEvent ? "Edit Event" : "Upload Event"}</h2>
             <p>Create tournament events so referees can join and coordinate coverage.</p>

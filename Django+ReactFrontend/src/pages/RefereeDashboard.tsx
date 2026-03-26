@@ -160,6 +160,15 @@ export default function RefereeDashboard() {
   }, [allUpcomingGames, filterPeriod]);
 
   const nextGame = allUpcomingGames.length > 0 ? allUpcomingGames[0] : null;
+  const additionalUpcomingGames = useMemo(() => {
+    if (!nextGame) {
+      return filteredUpcomingGames.slice(0, 5);
+    }
+
+    return filteredUpcomingGames
+      .filter((game) => game.id !== nextGame.id)
+      .slice(0, 5);
+  }, [filteredUpcomingGames, nextGame]);
 
   const stats = useMemo(
     () => [
@@ -219,7 +228,7 @@ export default function RefereeDashboard() {
         </section>
       )}
 
-      {filteredUpcomingGames.length > 0 ? (
+      {allUpcomingGames.length > 0 ? (
         <div className="dashboard-upcoming-games">
           <div className="dashboard-games-header">
             <h2>Upcoming Games</h2>
@@ -244,57 +253,63 @@ export default function RefereeDashboard() {
               </button>
             </div>
           </div>
-          <div className="dashboard-games-list">
-            {filteredUpcomingGames.slice(0, 5).map((game, index) => {
-              const home = game.game_details.home_team_name || "Home Team";
-              const away = game.game_details.away_team_name || "Away Team";
-              const isNext = index === 0;
+          {additionalUpcomingGames.length > 0 ? (
+            <div className="dashboard-games-list">
+              {additionalUpcomingGames.map((game, index) => {
+                const home = game.game_details.home_team_name || "Home Team";
+                const away = game.game_details.away_team_name || "Away Team";
+                const isNext = !nextGame && index === 0;
 
-              return (
-                <div key={game.id} className={`dashboard-game-card ${isNext ? "next-game" : ""}`}>
-                  <div className="dashboard-game-main">
-                    <div className="dashboard-game-header">
-                      <h3>{home} vs {away}</h3>
-                      {isNext && <span className="next-badge">Next Game</span>}
-                    </div>
-                    <div className="dashboard-game-details">
-                      <div className="dashboard-game-info">
-                        <span className="dashboard-game-date">
-                          {game.game_details.date}
-                        </span>
-                        <span className="dashboard-game-time">
-                          {game.game_details.time}
-                        </span>
+                return (
+                  <div key={game.id} className={`dashboard-game-card ${isNext ? "next-game" : ""}`}>
+                    <div className="dashboard-game-main">
+                      <div className="dashboard-game-header">
+                        <h3>{home} vs {away}</h3>
+                        {isNext && <span className="next-badge">Next Game</span>}
                       </div>
-                      <div className="dashboard-game-meta">
-                        <span className="dashboard-game-venue">
-                          {game.game_details.venue_name || "Venue TBC"}
-                        </span>
-                        <span className="dashboard-game-type">
-                          {game.game_details.game_type_display || "Game"}
-                        </span>
-                        {game.game_details.division_name && (
-                          <span className="dashboard-game-division">
-                            {game.game_details.division_name}
+                      <div className="dashboard-game-details">
+                        <div className="dashboard-game-info">
+                          <span className="dashboard-game-date">
+                            {game.game_details.date}
                           </span>
-                        )}
+                          <span className="dashboard-game-time">
+                            {game.game_details.time}
+                          </span>
+                        </div>
+                        <div className="dashboard-game-meta">
+                          <span className="dashboard-game-venue">
+                            {game.game_details.venue_name || "Venue TBC"}
+                          </span>
+                          <span className="dashboard-game-type">
+                            {game.game_details.game_type_display || "Game"}
+                          </span>
+                          {game.game_details.division_name && (
+                            <span className="dashboard-game-division">
+                              {game.game_details.division_name}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="dashboard-game-side">
-                    <span className="dashboard-role-badge">
-                      {game.role_display}
-                    </span>
-                    {game.game_details.payment_type_display && (
-                      <span className="dashboard-payment-badge">
-                        {game.game_details.payment_type_display}
+                    <div className="dashboard-game-side">
+                      <span className="dashboard-role-badge">
+                        {game.role_display}
                       </span>
-                    )}
+                      {game.game_details.payment_type_display && (
+                        <span className="dashboard-payment-badge">
+                          {game.game_details.payment_type_display}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="dashboard-no-games-message">
+              <p>No additional upcoming games for this period.</p>
+            </div>
+          )}
         </div>
       ) : (
         <div className="dashboard-no-games-message">
