@@ -39,6 +39,10 @@ export default function EventCard({
   const isLoading = actionLoadingId === event.id;
   const isFull = event.slots_left !== null && event.slots_left <= 0;
   const canJoin = !event.current_user_joined && !isFull;
+  const canRunPrimaryAction =
+    (event.current_user_joined && Boolean(onLeave)) ||
+    (!event.current_user_joined && canJoin && Boolean(onJoin));
+  const hasManageActions = event.can_manage && (Boolean(onEdit) || Boolean(onDelete));
 
   const handleAction = () => {
     if (event.current_user_joined) {
@@ -100,48 +104,52 @@ export default function EventCard({
         </p>
       )}
 
-      <div className="event-card-actions">
-        <div className="event-card-action-row">
-          <button
-            className={`event-action-button ${event.current_user_joined ? "event-action-button-leave" : ""}`}
-            onClick={handleAction}
-            disabled={isLoading || (!event.current_user_joined && !canJoin)}
-          >
-            {isLoading
-              ? event.current_user_joined
-                ? "Leaving..."
-                : "Joining..."
-              : event.current_user_joined
-                ? "Leave Event"
-                : "Join Event"}
-          </button>
+      {(canRunPrimaryAction || hasManageActions || (!event.current_user_joined && isFull)) && (
+        <div className="event-card-actions">
+          <div className="event-card-action-row">
+            {canRunPrimaryAction && (
+              <button
+                className={`event-action-button ${event.current_user_joined ? "event-action-button-leave" : ""}`}
+                onClick={handleAction}
+                disabled={isLoading || (!event.current_user_joined && !canJoin)}
+              >
+                {isLoading
+                  ? event.current_user_joined
+                    ? "Leaving..."
+                    : "Joining..."
+                  : event.current_user_joined
+                    ? "Leave Event"
+                    : "Join Event"}
+              </button>
+            )}
 
-          {event.can_manage && (
-            <>
+            {event.can_manage && onEdit && (
               <button
                 className="event-action-button event-action-button-manage"
-                onClick={() => onEdit?.(event)}
+                onClick={() => onEdit(event)}
                 type="button"
                 disabled={isLoading}
               >
                 Edit
               </button>
+            )}
+            {event.can_manage && onDelete && (
               <button
                 className="event-action-button event-action-button-danger"
-                onClick={() => onDelete?.(event.id)}
+                onClick={() => onDelete(event.id)}
                 type="button"
                 disabled={isLoading}
               >
                 Delete
               </button>
-            </>
+            )}
+          </div>
+
+          {!event.current_user_joined && isFull && (
+            <small className="event-card-warning">This event is currently full.</small>
           )}
         </div>
-
-        {!event.current_user_joined && isFull && (
-          <small className="event-card-warning">This event is currently full.</small>
-        )}
-      </div>
+      )}
     </article>
   );
 }

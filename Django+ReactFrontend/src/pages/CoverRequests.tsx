@@ -2,13 +2,10 @@ import { useEffect, useState } from "react";
 import {
   cancelCoverRequest,
   claimCoverRequest,
-  createCoverRequest,
   getMyCoverRequests,
-  getMyUpcomingAssignments,
   getPendingCoverRequests,
   withdrawCoverClaim,
   type CoverRequest,
-  type UpcomingAssignment,
 } from "../services/coverRequests";
 import {
   fetchCurrentUser,
@@ -16,33 +13,42 @@ import {
   type CurrentUser,
 } from "../services/auth";
 import CoverRequestCard from "../components/coverRequests/CoverRequestCard";
-import MyAssignmentCard from "../components/coverRequests/MyAssignmentCard";
 import "../pages_css/CoverRequests.css";
+
+type CoverSectionKey =
+  | "manageCoverRequests"
+  | "availableCoverRequests";
 
 export default function CoverRequestsPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [myCoverRequests, setMyCoverRequests] = useState<CoverRequest[]>([]);
-  const [myAssignments, setMyAssignments] = useState<UpcomingAssignment[]>([]);
   const [availableCoverRequests, setAvailableCoverRequests] = useState<CoverRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
-  const [requestingAssignmentId, setRequestingAssignmentId] = useState<number | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<CoverSectionKey, boolean>>({
+    manageCoverRequests: false,
+    availableCoverRequests: false,
+  });
+
+  const toggleSection = (key: CoverSectionKey) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const [myCoverRequestsData, assignmentsData, availableCoverRequestsData] =
-        await Promise.all([
-          getMyCoverRequests(),
-          getMyUpcomingAssignments(),
-          getPendingCoverRequests(),
-        ]);
+      const [myCoverRequestsData, availableCoverRequestsData] = await Promise.all([
+        getMyCoverRequests(),
+        getPendingCoverRequests(),
+      ]);
 
       setMyCoverRequests(myCoverRequestsData);
-      setMyAssignments(assignmentsData);
       setAvailableCoverRequests(availableCoverRequestsData);
     } catch (err) {
       console.error(err);
@@ -115,26 +121,6 @@ export default function CoverRequestsPage() {
     }
   };
 
-  const handleRequestCover = async (assignment: UpcomingAssignment) => {
-    try {
-      setRequestingAssignmentId(assignment.assignment_id);
-      setError("");
-
-      await createCoverRequest({
-        game: assignment.game_id,
-        referee_slot: assignment.assignment_id,
-        reason: "",
-      });
-
-      await fetchData();
-    } catch (err) {
-      console.error(err);
-      setError("Failed to create cover request.");
-    } finally {
-      setRequestingAssignmentId(null);
-    }
-  };
-
   return (
     <div className="cover-requests-page">
       <div className="cover-requests-page-header">
@@ -153,92 +139,108 @@ export default function CoverRequestsPage() {
 
       {!loading && (
         <>
-          <section className="cover-requests-section">
+          <section
+            className={`cover-requests-section ${
+              expandedSections.manageCoverRequests ? "expanded" : "collapsed"
+            }`}
+          >
             <div className="cover-requests-section-header">
-              <h2>My Cover Requests</h2>
+              <h2>Manage Cover Requests</h2>
               <p>Requests you created and requests you have claimed.</p>
             </div>
 
-            {myCoverRequests.length === 0 ? (
-              <div className="cover-requests-empty">
-                <p>You have no cover requests yet.</p>
-              </div>
-            ) : (
-              <div className="cover-requests-grid">
-                {myCoverRequests.map((coverRequest) => {
-                  const isRequestedByMe = currentUser
-                    ? coverRequest.requested_by === currentUser.id
-                    : false;
+            {expandedSections.manageCoverRequests && (
+              <div className="cover-requests-section-content">
+                {myCoverRequests.length === 0 ? (
+                  <div className="cover-requests-empty">
+                    <p>You have no cover requests yet.</p>
+                  </div>
+                ) : (
+                  <div className="cover-requests-grid">
+                    {myCoverRequests.map((coverRequest) => {
+                      const isRequestedByMe = currentUser
+                        ? coverRequest.requested_by === currentUser.id
+                        : false;
 
-                  const isClaimedByMe = currentUser?.referee_profile
-                    ? coverRequest.replaced_by === currentUser.referee_profile.id
-                    : false;
+                      const isClaimedByMe = currentUser?.referee_profile
+                        ? coverRequest.replaced_by === currentUser.referee_profile.id
+                        : false;
 
-                  return (
-                    <CoverRequestCard
-                      key={coverRequest.id}
-                      coverRequest={coverRequest}
-                      loadingActionId={actionLoadingId}
-                      isRequestedByMe={isRequestedByMe}
-                      isClaimedByMe={isClaimedByMe}
-                      canCancel={isRequestedByMe && coverRequest.status === "PENDING"}
-                      canWithdrawClaim={isClaimedByMe && coverRequest.status === "CLAIMED"}
-                      onCancel={handleCancel}
-                      onWithdrawClaim={handleWithdrawClaim}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          <section className="cover-requests-section">
-            <div className="cover-requests-section-header">
-              <h2>My Upcoming Appointed Games</h2>
-              <p>Request cover for games already assigned to you.</p>
-            </div>
-
-            {myAssignments.length === 0 ? (
-              <div className="cover-requests-empty">
-                <p>You have no upcoming appointed games.</p>
-              </div>
-            ) : (
-              <div className="cover-requests-grid">
-                {myAssignments.map((assignment) => (
-                  <MyAssignmentCard
-                    key={assignment.assignment_id}
-                    assignment={assignment}
-                    onRequestCover={handleRequestCover}
-                    loading={requestingAssignmentId === assignment.assignment_id}
-                  />
-                ))}
+                      return (
+                        <CoverRequestCard
+                          key={coverRequest.id}
+                          coverRequest={coverRequest}
+                          loadingActionId={actionLoadingId}
+                          isRequestedByMe={isRequestedByMe}
+                          isClaimedByMe={isClaimedByMe}
+                          canCancel={isRequestedByMe && coverRequest.status === "PENDING"}
+                          canWithdrawClaim={isClaimedByMe && coverRequest.status === "CLAIMED"}
+                          onCancel={handleCancel}
+                          onWithdrawClaim={handleWithdrawClaim}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
+
+            <button
+              type="button"
+              className="cover-requests-section-toggle"
+              onClick={() => toggleSection("manageCoverRequests")}
+              aria-expanded={expandedSections.manageCoverRequests}
+            >
+              <span>{expandedSections.manageCoverRequests ? "Collapse" : "Expand"}</span>
+              <span className="cover-requests-section-toggle-icon" aria-hidden="true">
+                {expandedSections.manageCoverRequests ? "^" : "v"}
+              </span>
+            </button>
           </section>
 
-          <section className="cover-requests-section">
+          <section
+            className={`cover-requests-section ${
+              expandedSections.availableCoverRequests ? "expanded" : "collapsed"
+            }`}
+          >
             <div className="cover-requests-section-header">
-              <h2>Cover Requests I Can Take</h2>
+              <h2>Find Games to Cover</h2>
               <p>Open requests from other referees that you can claim.</p>
             </div>
 
-            {availableCoverRequests.length === 0 ? (
-              <div className="cover-requests-empty">
-                <p>No cover requests available right now.</p>
-              </div>
-            ) : (
-              <div className="cover-requests-grid">
-                {availableCoverRequests.map((coverRequest) => (
-                  <CoverRequestCard
-                    key={coverRequest.id}
-                    coverRequest={coverRequest}
-                    canClaim
-                    onClaim={handleClaim}
-                    loadingActionId={actionLoadingId}
-                  />
-                ))}
+            {expandedSections.availableCoverRequests && (
+              <div className="cover-requests-section-content">
+                {availableCoverRequests.length === 0 ? (
+                  <div className="cover-requests-empty">
+                    <p>No cover requests available right now.</p>
+                  </div>
+                ) : (
+                  <div className="cover-requests-grid">
+                    {availableCoverRequests.map((coverRequest) => (
+                      <CoverRequestCard
+                        key={coverRequest.id}
+                        coverRequest={coverRequest}
+                        canClaim
+                        onClaim={handleClaim}
+                        loadingActionId={actionLoadingId}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
+
+            <button
+              type="button"
+              className="cover-requests-section-toggle"
+              onClick={() => toggleSection("availableCoverRequests")}
+              aria-expanded={expandedSections.availableCoverRequests}
+            >
+              <span>{expandedSections.availableCoverRequests ? "Collapse" : "Expand"}</span>
+              <span className="cover-requests-section-toggle-icon" aria-hidden="true">
+                {expandedSections.availableCoverRequests ? "^" : "v"}
+              </span>
+            </button>
           </section>
         </>
       )}

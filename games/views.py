@@ -10,6 +10,8 @@ from .serializers import (
     NonAppointedSlotSerializer,
     RefereeAssignmentSerializer,
     NonAppointedGameUploadSerializer,
+    NonAppointedGameManageSerializer,
+    UploadedGameSerializer,
     OpportunityFeedItemSerializer,
 )
 from users.models import RefereeProfile
@@ -18,6 +20,34 @@ from events.models import Event
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from datetime import datetime, time as dt_time
+
+MANAGEABLE_UPLOAD_GAME_TYPES = [
+    Game.GameType.CLUB,
+    Game.GameType.SCHOOL,
+    Game.GameType.COLLEGE,
+    Game.GameType.FRIENDLY,
+]
+
+
+def _uploaded_games_queryset():
+    return Game.objects.select_related(
+        "venue",
+        "division",
+        "home_team__club",
+        "away_team__club",
+        "created_by",
+    ).prefetch_related(
+        "non_appointed_slots",
+        "non_appointed_slots__claimed_by__user",
+    )
+
+
+def _get_uploaded_game_for_user(user, pk):
+    return _uploaded_games_queryset().filter(
+        pk=pk,
+        game_type__in=MANAGEABLE_UPLOAD_GAME_TYPES,
+        non_appointed_slots__posted_by=user,
+    ).first()
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -254,6 +284,90 @@ class NonAppointedGameUploadAPIView(generics.CreateAPIView):
 
         output_serializer = GameSerializer(game, context={"request": request})
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MyUploadedGamesAPIView(generics.ListAPIView):
+    serializer_class = UploadedGameSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            _uploaded_games_queryset()
+            .filter(
+                game_type__in=MANAGEABLE_UPLOAD_GAME_TYPES,
+                non_appointed_slots__posted_by=self.request.user,
+            )
+            .distinct()
+            .order_by("date", "time")
+        )
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
+
+class MyUploadedGameUpdateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        game = _get_uploaded_game_for_user(request.user, pk)
+        if not game:
+            return Response(
+                {"detail": "Uploaded game not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = NonAppointedGameManageSerializer(
+            game,
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        updated_game = serializer.save()
+
+        output_serializer = UploadedGameSerializer(
+            updated_game,
+            context={"request": request},
+        )
+        return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
+class MyUploadedGameDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        game = _get_uploaded_game_for_user(request.user, pk)
+        if not game:
+            return Response(
+                {"detail": "Uploaded game not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        foreign_slots = game.non_appointed_slots.exclude(posted_by=request.user)
+        if foreign_slots.exists():
+            return Response(
+                {
+                    "detail": (
+                        "You can only delete uploads where all opportunity slots "
+                        "were created by you."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        claimed_slots = game.non_appointed_slots.filter(
+            is_active=True,
+            status=NonAppointedSlot.Status.CLAIMED,
+        )
+        if claimed_slots.exists():
+            return Response(
+                {"detail": "You cannot delete this game while one or more slots are claimed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        game.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class OpportunityFeedAPIView(APIView):

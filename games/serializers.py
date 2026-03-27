@@ -101,6 +101,68 @@ class NonAppointedSlotSerializer(serializers.ModelSerializer):
         ]
 
 
+class UploadedGameSlotSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    claimed_by_name = serializers.CharField(source="claimed_by.user.get_full_name", read_only=True)
+
+    class Meta:
+        model = NonAppointedSlot
+        fields = [
+            "id",
+            "role",
+            "role_display",
+            "status",
+            "status_display",
+            "description",
+            "is_active",
+            "claimed_by_name",
+        ]
+
+
+class UploadedGameSerializer(GameSerializer):
+    uploaded_slots = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
+
+    class Meta(GameSerializer.Meta):
+        fields = GameSerializer.Meta.fields + [
+            "uploaded_slots",
+            "can_edit",
+            "can_delete",
+        ]
+
+    def _uploaded_slots_queryset(self, obj: Game):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return obj.non_appointed_slots.none()
+        return obj.non_appointed_slots.filter(posted_by=user)
+
+    def get_uploaded_slots(self, obj: Game):
+        slots = self._uploaded_slots_queryset(obj).order_by("role")
+        return UploadedGameSlotSerializer(slots, many=True).data
+
+    def _has_claimed_slots(self, obj: Game) -> bool:
+        return self._uploaded_slots_queryset(obj).filter(
+            is_active=True,
+            status=NonAppointedSlot.Status.CLAIMED,
+        ).exists()
+
+    def _has_foreign_slots(self, obj: Game) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return True
+        return obj.non_appointed_slots.exclude(posted_by=user).exists()
+
+    def get_can_edit(self, obj: Game) -> bool:
+        return (not self._has_claimed_slots(obj)) and (not self._has_foreign_slots(obj))
+
+    def get_can_delete(self, obj: Game) -> bool:
+        return (not self._has_claimed_slots(obj)) and (not self._has_foreign_slots(obj))
+
+
 class RefereeAssignmentSerializer(serializers.ModelSerializer):
     referee_name = serializers.CharField(source="referee.user.get_full_name", read_only=True)
     referee_bipin = serializers.CharField(source="referee.user.bipin_number", read_only=True)
@@ -281,6 +343,67 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
             )
 
         return game
+
+
+class NonAppointedGameManageSerializer(NonAppointedGameUploadSerializer):
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        if not self.instance:
+            return attrs
+
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError("Authentication is required.")
+
+        foreign_slots = self.instance.non_appointed_slots.exclude(posted_by=request.user)
+        if foreign_slots.exists():
+            raise serializers.ValidationError(
+                {
+                    "detail": (
+                        "You can only edit uploads where all opportunity slots "
+                        "were created by you."
+                    )
+                }
+            )
+
+        claimed_slots = self.instance.non_appointed_slots.filter(
+            is_active=True,
+            status=NonAppointedSlot.Status.CLAIMED,
+        )
+        if claimed_slots.exists():
+            raise serializers.ValidationError(
+                {
+                    "detail": (
+                        "You cannot edit this game while one or more slots are claimed."
+                    )
+                }
+            )
+
+        return attrs
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        slots_data = validated_data.pop("slots")
+        request = self.context["request"]
+
+        for field_name, value in validated_data.items():
+            setattr(instance, field_name, value)
+
+        instance.save()
+
+        instance.non_appointed_slots.filter(posted_by=request.user).delete()
+
+        for slot_data in slots_data:
+            NonAppointedSlot.objects.create(
+                game=instance,
+                posted_by=request.user,
+                status=NonAppointedSlot.Status.OPEN,
+                is_active=True,
+                **slot_data,
+            )
+
+        return instance
 
 class OpportunityFeedItemSerializer(serializers.Serializer):
     type = serializers.CharField()

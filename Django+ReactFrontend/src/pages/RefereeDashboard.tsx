@@ -13,6 +13,7 @@ type GameDetails = {
   home_team_name?: string | null;
   away_team_name?: string | null;
   division_name?: string | null;
+  division_gender?: string | null;
   game_type_display?: string | null;
 };
 
@@ -148,6 +149,33 @@ function getMonthLabel(date: Date) {
     month: "long",
     year: "numeric",
   });
+}
+
+function formatAgeGroupWithGender(
+  ageGroup: string | null | undefined,
+  gender: string | null | undefined
+) {
+  const safeAgeGroup = ageGroup || "Age Group TBC";
+  if (!gender) {
+    return safeAgeGroup;
+  }
+
+  const normalized = gender.trim().toLowerCase();
+  let shortLabel = "";
+
+  if (normalized.startsWith("m")) {
+    shortLabel = "M";
+  } else if (normalized.startsWith("f")) {
+    shortLabel = "F";
+  } else {
+    shortLabel = gender.trim().charAt(0).toUpperCase();
+  }
+
+  if (!shortLabel) {
+    return safeAgeGroup;
+  }
+
+  return `${safeAgeGroup} (${shortLabel})`;
 }
 
 function enumerateDateRange(startDate: string, endDate: string) {
@@ -300,7 +328,10 @@ export default function RefereeDashboard() {
 
       results.push({
         id: `assignment-${assignment.assignment_id}`,
-        ageGroup: assignment.game_details?.division_name || "Age Group TBC",
+        ageGroup: formatAgeGroupWithGender(
+          assignment.game_details?.division_name,
+          assignment.game_details?.division_gender
+        ),
         date: dateValue,
         time: timeValue,
         timestamp: parsedDate.getTime(),
@@ -318,7 +349,10 @@ export default function RefereeDashboard() {
 
       results.push({
         id: `claimed-${claimedGame.id}`,
-        ageGroup: claimedGame.game_details?.division_name || "Age Group TBC",
+        ageGroup: formatAgeGroupWithGender(
+          claimedGame.game_details?.division_name,
+          claimedGame.game_details?.division_gender
+        ),
         date: dateValue,
         time: timeValue,
         timestamp: parsedDate.getTime(),

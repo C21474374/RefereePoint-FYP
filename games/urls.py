@@ -8,6 +8,9 @@ from .views import (
     NonAppointedSlotDetailAPIView,
     ClaimNonAppointedSlotAPIView,
     NonAppointedGameUploadAPIView,
+    MyUploadedGamesAPIView,
+    MyUploadedGameUpdateAPIView,
+    MyUploadedGameDeleteAPIView,
     OpportunityFeedAPIView,
     UploadGameAvailabilityView,
     CsrfCookieAPIView,
@@ -49,6 +52,24 @@ urlpatterns = [
     "upload/",
     NonAppointedGameUploadAPIView.as_view(),
     name="non-appointed-game-upload",
+    ),
+
+    path(
+    "my-uploads/",
+    MyUploadedGamesAPIView.as_view(),
+    name="my-uploaded-games",
+    ),
+
+    path(
+    "my-uploads/<int:pk>/update/",
+    MyUploadedGameUpdateAPIView.as_view(),
+    name="my-uploaded-game-update",
+    ),
+
+    path(
+    "my-uploads/<int:pk>/delete/",
+    MyUploadedGameDeleteAPIView.as_view(),
+    name="my-uploaded-game-delete",
     ),
 
     path(

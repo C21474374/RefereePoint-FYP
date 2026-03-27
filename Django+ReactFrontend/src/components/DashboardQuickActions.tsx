@@ -7,7 +7,7 @@ export default function DashboardQuickActions() {
       <h2>Quick Actions</h2>
 
       <div className="dashboard-action-grid">
-        <Link to="/games" className="dashboard-action-card primary">
+        <Link to="/games" className="dashboard-action-card secondary">
           <h3>Browse Games</h3>
           <p>Find open opportunities and claim available slots.</p>
         </Link>

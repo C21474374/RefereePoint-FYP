@@ -246,32 +246,213 @@
   cursor: pointer;
 }
 
-.games-upload-section {
+.games-manage-section {
   margin-top: 18px;
   border-radius: 18px;
   border: 1px solid var(--color-border);
   background: var(--color-card);
   padding: 16px;
-  scroll-margin-top: 82px;
 }
 
-.games-upload-header {
+.games-manage-header {
   margin-bottom: 12px;
 }
 
-.games-upload-header h2 {
+.games-manage-header h2 {
   margin: 0;
   font-size: 1.22rem;
 }
 
-.games-upload-header p {
+.games-manage-header p {
   margin-top: 6px;
   color: var(--color-text-muted);
   font-size: 0.92rem;
 }
 
-.games-upload-section .upload-game-form {
+.games-manage-error {
+  margin: 0 0 10px;
+  border: 1px solid var(--color-accent);
+  background: var(--color-error-bg);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+}
+
+.games-manage-empty {
+  margin: 10px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+}
+
+.games-manage-list {
+  margin-top: 10px;
+  max-height: min(48vh, 420px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.games-manage-item {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-secondary);
+  padding: 12px;
+}
+
+.games-manage-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.games-manage-item h3 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.games-manage-item p {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.86rem;
+}
+
+.games-manage-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.games-manage-button {
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  padding: 8px 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.games-manage-button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.games-manage-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.games-manage-button-danger {
+  border-color: var(--color-accent);
+}
+
+.games-manage-lock-reason {
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+.games-manage-tags {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.games-manage-tags span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  padding: 4px 8px;
+}
+
+.manage-game-modal {
+  width: min(960px, 100%);
+}
+
+.games-manage-form {
+  display: grid;
   gap: 12px;
+}
+
+.games-manage-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.games-manage-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.games-manage-form-grid label span {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.games-manage-form-grid input,
+.games-manage-form-grid select,
+.games-manage-form-grid textarea {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  padding: 10px 12px;
+}
+
+.games-manage-form-wide {
+  grid-column: 1 / -1;
+}
+
+.games-manage-role-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.games-manage-role-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-bg-panel);
+  padding: 8px 10px;
+  font-size: 0.88rem;
+}
+
+.games-manage-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.games-manage-form-actions button {
+  border-radius: 9px;
+  padding: 9px 13px;
+  font-weight: 700;
+}
+
+.games-manage-form-actions button[type="submit"] {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.games-manage-form-actions button[type="button"] {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
 }
 
 @media (max-width: 1000px) {
@@ -300,8 +481,29 @@
     align-items: stretch;
   }
 
-  .games-upload-section {
+  .games-manage-section {
     padding: 12px;
     border-radius: 14px;
+  }
+
+  .games-manage-item-top {
+    flex-direction: column;
+  }
+
+  .games-manage-actions {
+    width: 100%;
+  }
+
+  .games-manage-button {
+    flex: 1;
+  }
+
+  .games-manage-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .games-manage-form-actions {
+    justify-content: stretch;
+    flex-direction: column;
   }
 }

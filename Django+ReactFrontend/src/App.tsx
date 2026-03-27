@@ -5,7 +5,6 @@ import RefereeSignup from './pages/RefereeSignup'
 import RefereeLogin from './pages/RefereeLogin'
 import RefereeDashboard from './pages/RefereeDashboard'
 import Games from './pages/Games'
-import UploadGame from './pages/UploadGame'
 import CoverRequests from './pages/CoverRequests'
 import Events from './pages/Events'
 import Reports from './pages/Reports'
@@ -30,7 +29,7 @@ function App() {
         >
           <Route path="/dashboard" element={<RefereeDashboard />} />
           <Route path="/games" element={<Games />} />
-          <Route path="/upload-game" element={<UploadGame />} />
+          <Route path="/upload-game" element={<Navigate to="/games" replace />} />
           <Route path="/cover-requests" element={<CoverRequests />} />
           <Route path="/events" element={<Events />} />
           <Route path="/reports" element={<Reports />} />

@@ -34,11 +34,6 @@
   border-color: var(--color-accent);
 }
 
-.dashboard-action-card.primary {
-  border-color: var(--color-accent);
-  background: var(--color-bg-panel);
-}
-
 .dashboard-action-card h3 {
   margin: 0;
   font-size: 1.02rem;
