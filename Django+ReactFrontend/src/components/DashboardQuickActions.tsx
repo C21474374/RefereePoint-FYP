@@ -17,7 +17,7 @@ export default function DashboardQuickActions() {
           <p>Check current cover requests and manage replacements.</p>
         </Link>
 
-        <Link to="/upload-game" className="dashboard-action-card secondary">
+        <Link to="/games#upload-game" className="dashboard-action-card secondary">
           <h3>Upload Game</h3>
           <p>Post a game and create referee opportunities.</p>
         </Link>
