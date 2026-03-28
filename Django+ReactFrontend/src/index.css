@@ -77,10 +77,10 @@
   --color-link: #1f1b20;
   --color-link-hover: #d2232a;
 
-  --color-error-bg: rgba(210, 35, 42, 0.12);
-  --color-error-border: rgba(210, 35, 42, 0.28);
+  --color-error-bg: rgba(210, 35, 42, 0.16);
+  --color-error-border: rgba(210, 35, 42, 0.35);
   --color-accent-soft: rgba(210, 35, 42, 0.12);
-  --color-accent-soft-strong: rgba(210, 35, 42, 0.18);
+  --color-accent-soft-strong: rgba(210, 35, 42, 0.2);
 
   --app-background-image: none;
 }

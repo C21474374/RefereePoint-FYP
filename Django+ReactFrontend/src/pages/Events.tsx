@@ -266,7 +266,7 @@ export default function Events() {
             }`}
           >
             <div className="events-section-header">
-              <h2>Manage Events</h2>
+              <h2>Manage Uploaded Events</h2>
               <p>Events you uploaded. Use this section to manage or delete your events.</p>
             </div>
 

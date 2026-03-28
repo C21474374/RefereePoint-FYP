@@ -463,7 +463,7 @@ export default function Games() {
 
       <section className="games-manage-section">
         <div className="games-manage-header">
-          <h2>Manage Games</h2>
+          <h2>Manage Uploaded Games</h2>
           <p>Games you uploaded. Edit or delete your uploaded game opportunities.</p>
         </div>
 

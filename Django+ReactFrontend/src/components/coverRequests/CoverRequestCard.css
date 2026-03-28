@@ -46,8 +46,8 @@
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid var(--color-error-border);
-  background: var(--color-error-bg);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-soft);
   color: var(--color-text);
   font-size: 0.78rem;
   font-weight: 600;
@@ -55,9 +55,9 @@
 }
 
 .cover-request-card-tag-claimed {
-  background: var(--color-accent);
+  background: var(--color-accent-soft);
   border-color: var(--color-accent);
-  color: var(--color-text-inverse);
+  color: var(--color-text);
 }
 
 .cover-request-meta-grid {

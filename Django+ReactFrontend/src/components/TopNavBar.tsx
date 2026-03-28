@@ -23,28 +23,45 @@ const uploadItems: Array<{ label: string; type: Exclude<UploadModalType, null> }
   { label: "Upload Cover Request", type: "cover_request" },
 ];
 
+function buildUserInitials(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+  email: string | null | undefined
+) {
+  const first = (firstName || "").trim().charAt(0).toUpperCase();
+  const last = (lastName || "").trim().charAt(0).toUpperCase();
+
+  if (first && last) {
+    return `${first}${last}`;
+  }
+  if (first) {
+    return first;
+  }
+  if (email) {
+    return email.charAt(0).toUpperCase();
+  }
+  return "R";
+}
+
+function detectMobileNav() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.matchMedia("(max-width: 900px)").matches;
+}
+
 const TopNavBar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  const [isMobileNav, setIsMobileNav] = useState(detectMobileNav);
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [activeUploadModal, setActiveUploadModal] = useState<UploadModalType>(null);
   const navRef = useRef<HTMLElement | null>(null);
-
-  const handleMenuToggle = () => {
-    setMenuOpen((prev) => {
-      const next = !prev;
-      if (!next) {
-        setUploadMenuOpen(false);
-      }
-      return next;
-    });
-  };
-
-  const handleUploadMenuToggle = () => {
-    setUploadMenuOpen((prev) => !prev);
-  };
+  const mobileDrawerRef = useRef<HTMLDivElement | null>(null);
 
   const closeUploadModal = () => {
     setActiveUploadModal(null);
@@ -61,46 +78,108 @@ const TopNavBar: React.FC = () => {
     closeUploadModal();
   };
 
+  const handleMenuToggle = () => {
+    setProfileMenuOpen(false);
+    setMenuOpen((prev) => {
+      const next = !prev;
+      if (!next) {
+        setUploadMenuOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const handleUploadMenuToggle = () => {
+    if (!isMobileNav) {
+      return;
+    }
+    setUploadMenuOpen((prev) => !prev);
+  };
+
   const handleLinkClick = () => {
     setMenuOpen(false);
     setUploadMenuOpen(false);
+    setProfileMenuOpen(false);
+  };
+
+  const handleLogout = () => {
+    setMenuOpen(false);
+    setUploadMenuOpen(false);
+    setProfileMenuOpen(false);
+    logout();
+  };
+
+  const handleProfileToggle = () => {
+    if (!isMobileNav) {
+      return;
+    }
+    setProfileMenuOpen((prev) => !prev);
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+    const mediaQuery = window.matchMedia("(max-width: 900px)");
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      setIsMobileNav(event.matches);
+      if (!event.matches) {
         setMenuOpen(false);
         setUploadMenuOpen(false);
+        setProfileMenuOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener("change", handleMediaChange);
+    } else {
+      mediaQuery.addListener(handleMediaChange);
+    }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener("change", handleMediaChange);
+      } else {
+        mediaQuery.removeListener(handleMediaChange);
+      }
     };
   }, []);
 
   useEffect(() => {
     setMenuOpen(false);
     setUploadMenuOpen(false);
+    setProfileMenuOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setActiveUploadModal(null);
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const clickedInsideNav = navRef.current?.contains(target);
+      const clickedInsideMobilePanel = mobileDrawerRef.current?.contains(target);
+
+      if (!clickedInsideNav && !clickedInsideMobilePanel) {
+        setMenuOpen(false);
+        setUploadMenuOpen(false);
+        setProfileMenuOpen(false);
       }
     };
 
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setActiveUploadModal(null);
+        setMenuOpen(false);
+        setUploadMenuOpen(false);
+        setProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
     return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
   useEffect(() => {
-    if (!activeUploadModal) {
+    if (!activeUploadModal && !(isMobileNav && menuOpen)) {
       return undefined;
     }
 
@@ -110,7 +189,7 @@ const TopNavBar: React.FC = () => {
     return () => {
       document.body.style.overflow = originalOverflow;
     };
-  }, [activeUploadModal]);
+  }, [activeUploadModal, isMobileNav, menuOpen]);
 
   const uploadModalTitle =
     activeUploadModal === "game"
@@ -120,29 +199,31 @@ const TopNavBar: React.FC = () => {
         : activeUploadModal === "cover_request"
           ? "Upload Cover Request"
           : "";
+  const userDisplayName =
+    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || user?.email || "Referee";
+  const userInitials = buildUserInitials(user?.first_name, user?.last_name, user?.email);
 
   return (
     <>
       <nav className="top-nav-bar" ref={navRef}>
         <div className="nav-left">
+          <button
+            className={`burger-button ${menuOpen ? "open" : ""}`}
+            onClick={handleMenuToggle}
+            aria-label="Toggle navigation menu"
+            aria-expanded={menuOpen}
+            type="button"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
           <Link to="/dashboard" className="nav-title">
             RefereePoint
           </Link>
         </div>
 
-        <button
-          className={`burger-button ${menuOpen ? "open" : ""}`}
-          onClick={handleMenuToggle}
-          aria-label="Toggle navigation menu"
-          aria-expanded={menuOpen}
-          type="button"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-
-        <div className={`nav-center ${menuOpen ? "open" : ""}`}>
+        <div className="nav-center">
           {navLinks.map((link) => (
             <Link
               key={link.name}
@@ -154,11 +235,11 @@ const TopNavBar: React.FC = () => {
             </Link>
           ))}
 
-          <div className={`upload-menu ${uploadMenuOpen ? "open" : ""}`}>
+          <div className="upload-menu">
             <button
               className={`nav-link upload-menu-trigger ${activeUploadModal ? "active" : ""}`}
               onClick={handleUploadMenuToggle}
-              aria-expanded={uploadMenuOpen}
+              aria-expanded={isMobileNav ? uploadMenuOpen : undefined}
               aria-haspopup="menu"
               type="button"
             >
@@ -191,17 +272,118 @@ const TopNavBar: React.FC = () => {
           </button>
 
           {user ? (
-            <>
-              <span className="nav-user">{user.first_name || user.email}</span>
-              <button onClick={logout} type="button">
-                Logout
+            <div className={`profile-menu ${profileMenuOpen ? "open" : ""}`}>
+              <button
+                className="profile-menu-trigger"
+                onClick={handleProfileToggle}
+                aria-expanded={isMobileNav ? profileMenuOpen : undefined}
+                aria-haspopup="menu"
+                type="button"
+                title={userDisplayName}
+              >
+                <span className="profile-avatar-wrap" aria-hidden="true">
+                  <span className="profile-avatar">{userInitials}</span>
+                  <span className="profile-avatar-caret">v</span>
+                </span>
               </button>
-            </>
+              <div className="profile-menu-panel" role="menu">
+                <Link
+                  to="/account-settings"
+                  onClick={handleLinkClick}
+                  className="profile-menu-link"
+                  role="menuitem"
+                >
+                  Account Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="profile-menu-link profile-menu-action profile-menu-action-danger"
+                  role="menuitem"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
           ) : (
             <Link to="/login">Login</Link>
           )}
         </div>
       </nav>
+
+      {isMobileNav && (
+        <div
+          className={`mobile-drawer-overlay ${menuOpen ? "open" : ""}`}
+          onClick={() => {
+            setMenuOpen(false);
+            setUploadMenuOpen(false);
+          }}
+        >
+          <div
+            ref={mobileDrawerRef}
+            className={`mobile-drawer ${menuOpen ? "open" : ""}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mobile-drawer-header">
+              <div className="mobile-drawer-title">RefereePoint</div>
+            </div>
+            <div className="mobile-drawer-divider" />
+
+            <div className="mobile-drawer-nav">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={handleLinkClick}
+                  className={`mobile-menu-link ${location.pathname === link.path ? "active" : ""}`}
+                >
+                  {link.name}
+                </Link>
+              ))}
+
+              <div className={`mobile-upload ${uploadMenuOpen ? "open" : ""}`}>
+                <button
+                  type="button"
+                  className="mobile-menu-action mobile-upload-trigger"
+                  onClick={handleUploadMenuToggle}
+                  aria-expanded={uploadMenuOpen}
+                >
+                  +Upload
+                </button>
+                <div className="mobile-upload-panel">
+                  {uploadItems.map((item) => (
+                    <button
+                      key={item.type}
+                      type="button"
+                      onClick={() => openUploadModal(item.type)}
+                      className="mobile-upload-item"
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mobile-drawer-bottom">
+              <div className="mobile-theme-row">
+                <span className="mobile-theme-label">Change theme</span>
+                <button
+                  type="button"
+                  className={`mobile-theme-switch ${theme === "light" ? "on" : "off"}`}
+                  onClick={toggleTheme}
+                  aria-pressed={theme === "light"}
+                  aria-label="Toggle light mode"
+                >
+                  <span className="mobile-theme-switch-track">
+                    <span className="mobile-theme-switch-thumb" />
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeUploadModal && (
         <div className="upload-modal-overlay" onClick={closeUploadModal}>

@@ -51,6 +51,11 @@ const GameCard = ({
   const isNonAppointed = opportunity.type === "NON_APPOINTED_SLOT";
   const isCoverRequest = opportunity.type === "COVER_REQUEST";
   const isEvent = opportunity.type === "EVENT";
+  const typeClassName = isNonAppointed
+    ? "non-appointed"
+    : isCoverRequest
+      ? "cover-request"
+      : "event";
 
   const actionLabel = isNonAppointed
     ? "Take Game"
@@ -87,7 +92,7 @@ const GameCard = ({
   return (
     <div className="game-card">
       <div className="game-card-top">
-        <span className={`game-card-type ${isNonAppointed ? "non-appointed" : "cover-request"}`}>
+        <span className={`game-card-type ${typeClassName}`}>
           {isNonAppointed ? "Non-Appointed Game" : isCoverRequest ? "Cover Request" : "Event"}
         </span>
 

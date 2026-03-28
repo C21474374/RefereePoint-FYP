@@ -139,7 +139,6 @@
 }
 
 .game-card-type.non-appointed,
-.game-card-type.cover-request,
 .game-card-role,
 .game-tag {
   background: var(--color-bg-secondary);
@@ -147,17 +146,30 @@
   border: 1px solid var(--color-border);
 }
 
+.game-card-type.cover-request {
+  border: 1px solid var(--color-error-border);
+  background: var(--color-error-bg);
+  color: var(--color-text);
+}
+
+.game-card-type.event {
+  border: 1px dashed var(--color-border-hover);
+  background: var(--color-bg-panel-2);
+  color: var(--color-text);
+  letter-spacing: 0.03em;
+}
+
 .game-tag-primary,
 .game-tag-payment {
-  border-color: var(--color-accent);
-  color: var(--color-text);
-  background: var(--color-accent-soft);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-bg-secondary);
 }
 
 .game-tag-claimed {
-  border-color: var(--color-accent);
-  color: var(--color-text);
-  background: var(--color-accent-soft);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-bg-secondary);
 }
 
 .game-card-title {
