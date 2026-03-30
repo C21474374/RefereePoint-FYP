@@ -22,6 +22,12 @@ def _can_manage_event(user, event: Event):
     return user.is_staff or event.created_by_id == user.id
 
 
+def _get_event_upload_types_for_user(user):
+    if not user.is_authenticated:
+        return set()
+    return set(user.get_allowed_upload_event_types())
+
+
 class EventListAPIView(generics.ListAPIView):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
@@ -43,6 +49,10 @@ class EventListAPIView(generics.ListAPIView):
         venue_id = self.request.query_params.get("venue")
         if venue_id:
             queryset = queryset.filter(venue_id=venue_id)
+
+        event_type = self.request.query_params.get("event_type")
+        if event_type:
+            queryset = queryset.filter(event_type=event_type)
 
         joined = self.request.query_params.get("joined")
         if joined and hasattr(self.request.user, "referee_profile"):
@@ -79,15 +89,45 @@ class EventCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if _get_referee_profile_or_none(request.user) is None:
+        allowed_event_types = _get_event_upload_types_for_user(request.user)
+        if not allowed_event_types:
             return Response(
-                {"detail": "Only referees can create events."},
+                {
+                    "detail": (
+                        "Your account cannot upload events. "
+                        "Only approved Club, School, and College roles can upload events."
+                    )
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        serializer = EventCreateUpdateSerializer(data=request.data)
+        requested_event_type = request.data.get("event_type")
+        if requested_event_type:
+            event_type = str(requested_event_type).upper()
+            if event_type not in allowed_event_types:
+                return Response(
+                    {
+                        "detail": (
+                            "You can only upload events for your own role type."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        else:
+            if request.user.account_type in allowed_event_types:
+                event_type = request.user.account_type
+            elif request.user.is_team_manager and request.user.manager_scope in allowed_event_types:
+                event_type = request.user.manager_scope
+            else:
+                event_type = sorted(allowed_event_types)[0]
+
+        payload = request.data.copy()
+        if "event_type" in payload:
+            payload.pop("event_type")
+
+        serializer = EventCreateUpdateSerializer(data=payload)
         serializer.is_valid(raise_exception=True)
-        event = serializer.save(created_by=request.user)
+        event = serializer.save(created_by=request.user, event_type=event_type)
 
         response_serializer = EventSerializer(event, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import Game, NonAppointedSlot, RefereeAssignment
 from django.db import transaction
-from users.models import RefereeProfile
+from users.models import User
 
 class GameSerializer(serializers.ModelSerializer):
     venue_name = serializers.CharField(source="venue.name", read_only=True)
@@ -197,7 +197,12 @@ class NonAppointedSlotCreateSerializer(serializers.Serializer):
 
 
 class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
-    slots = NonAppointedSlotCreateSerializer(many=True, write_only=True)
+    slots = NonAppointedSlotCreateSerializer(
+        many=True,
+        write_only=True,
+        required=False,
+        default=list,
+    )
 
     class Meta:
         model = Game
@@ -216,22 +221,60 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
             "slots",
         ]
 
-    def validate_game_type(self, value):
-        if value in {Game.GameType.DOA, Game.GameType.NL}:
-            raise serializers.ValidationError(
-                "Referees cannot upload DOA or National League games."
-            )
-        return value
+    NON_APPOINTED_GAME_TYPES = {
+        Game.GameType.CLUB,
+        Game.GameType.SCHOOL,
+        Game.GameType.COLLEGE,
+        Game.GameType.FRIENDLY,
+    }
+
+    APPOINTED_GAME_TYPES = {
+        Game.GameType.DOA,
+        Game.GameType.NL,
+    }
 
     def validate(self, attrs):
         request = self.context.get("request")
         slots = attrs.get("slots", [])
+        game_type = attrs.get("game_type")
 
         if not request or not request.user.is_authenticated:
             raise serializers.ValidationError("Authentication is required.")
 
-        if not RefereeProfile.objects.filter(user=request.user).exists():
-            raise serializers.ValidationError("Only referees can upload games.")
+        user: User = request.user
+
+        if not user.bipin_verified or not user.doa_approved:
+            raise serializers.ValidationError(
+                "Your account must be BIPIN verified and approved by DOA admin to upload games."
+            )
+
+        allowed_game_types = user.get_allowed_upload_game_types()
+
+        if game_type not in allowed_game_types:
+            account_type_display = user.get_account_type_display()
+            if user.account_type == User.AccountType.REFEREE:
+                raise serializers.ValidationError(
+                    "Referee accounts cannot upload games in the new workflow."
+                )
+            raise serializers.ValidationError(
+                (
+                    f"{account_type_display} accounts cannot upload this game type. "
+                    "Check your account type and approval settings."
+                )
+            )
+
+        if game_type in self.APPOINTED_GAME_TYPES:
+            if slots:
+                raise serializers.ValidationError(
+                    {"slots": "Appointed games do not accept non-appointed referee slots."}
+                )
+
+            if attrs.get("payment_type") != Game.PaymentType.CLAIM:
+                raise serializers.ValidationError(
+                    {"payment_type": "DOA and NL uploads must use Claim payment type."}
+                )
+
+            return attrs
 
         if not slots:
             raise serializers.ValidationError(
@@ -274,8 +317,30 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        slots_data = validated_data.pop("slots")
+        slots_data = validated_data.pop("slots", [])
         request = self.context["request"]
+        game_type = validated_data.get("game_type")
+
+        if game_type in self.APPOINTED_GAME_TYPES:
+            existing_game = Game.objects.filter(
+                home_team=validated_data.get("home_team"),
+                away_team=validated_data.get("away_team"),
+                venue=validated_data.get("venue"),
+                date=validated_data.get("date"),
+                time=validated_data.get("time"),
+                game_type=validated_data.get("game_type"),
+            ).first()
+
+            if existing_game:
+                raise serializers.ValidationError(
+                    "An appointed game with the same teams, venue, date, and time already exists."
+                )
+
+            return Game.objects.create(
+                created_by=request.user,
+                status=Game.Status.OPEN,
+                **validated_data,
+            )
 
         matching_game = Game.objects.filter(
             home_team=validated_data.get("home_team"),

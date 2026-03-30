@@ -25,13 +25,19 @@ type UploadGameFormProps = {
   divisions: SimpleOption[];
   venues: SimpleOption[];
   teams: TeamOption[];
+  allowedGameTypes: Array<"CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY" | "DOA" | "NL">;
+  accountTypeDisplay: string;
+  canUploadGames: boolean;
   embedded?: boolean;
   onPosted?: () => void;
 };
 
+type GameUploadType = "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY" | "DOA" | "NL";
+type PaymentType = "CASH" | "REVOLUT" | "CLAIM";
+
 type FormState = {
-  game_type: "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY";
-  payment_type: "CASH" | "REVOLUT";
+  game_type: GameUploadType;
+  payment_type: PaymentType;
   division: string;
   date: string;
   time: string;
@@ -44,6 +50,28 @@ type FormState = {
   second_ref_needed: boolean;
   description: string;
 };
+
+const NON_APPOINTED_GAME_TYPES: GameUploadType[] = [
+  "CLUB",
+  "SCHOOL",
+  "COLLEGE",
+  "FRIENDLY",
+];
+
+const APPOINTED_GAME_TYPES: GameUploadType[] = ["DOA", "NL"];
+
+const GAME_TYPE_LABELS: Record<GameUploadType, string> = {
+  CLUB: "Club",
+  SCHOOL: "School",
+  COLLEGE: "College",
+  FRIENDLY: "Friendly",
+  DOA: "DOA",
+  NL: "National League",
+};
+
+function defaultPaymentType(gameType: GameUploadType): PaymentType {
+  return APPOINTED_GAME_TYPES.includes(gameType) ? "CLAIM" : "CASH";
+}
 
 const initialForm: FormState = {
   game_type: "CLUB",
@@ -113,10 +141,18 @@ export default function UploadGameForm({
   divisions,
   venues,
   teams,
+  allowedGameTypes,
+  accountTypeDisplay,
+  canUploadGames,
   embedded = false,
   onPosted,
 }: UploadGameFormProps) {
-  const [form, setForm] = useState<FormState>(initialForm);
+  const firstAllowedGameType = (allowedGameTypes[0] || "CLUB") as GameUploadType;
+  const [form, setForm] = useState<FormState>(() => ({
+    ...initialForm,
+    game_type: firstAllowedGameType,
+    payment_type: defaultPaymentType(firstAllowedGameType),
+  }));
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -124,6 +160,11 @@ export default function UploadGameForm({
   const [successMessage, setSuccessMessage] = useState("");
 
   const canCheckAvailability = useMemo(() => {
+    const isNonAppointedType = NON_APPOINTED_GAME_TYPES.includes(form.game_type);
+    if (!isNonAppointedType) {
+      return false;
+    }
+
     return (
       form.home_team.trim() !== "" &&
       form.away_team.trim() !== "" &&
@@ -131,7 +172,24 @@ export default function UploadGameForm({
       form.date.trim() !== "" &&
       form.time.trim() !== ""
     );
-  }, [form.home_team, form.away_team, form.venue, form.date, form.time]);
+  }, [form.game_type, form.home_team, form.away_team, form.venue, form.date, form.time]);
+
+  useEffect(() => {
+    if (allowedGameTypes.length === 0) {
+      return;
+    }
+
+    if (!allowedGameTypes.includes(form.game_type)) {
+      const nextGameType = allowedGameTypes[0] as GameUploadType;
+      setForm((prev) => ({
+        ...prev,
+        game_type: nextGameType,
+        payment_type: defaultPaymentType(nextGameType),
+        requesting_side: "",
+        second_ref_needed: false,
+      }));
+    }
+  }, [allowedGameTypes, form.game_type]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -208,6 +266,7 @@ export default function UploadGameForm({
   const homeDisabled = availability ? !availability.home_available : false;
   const awayDisabled = availability ? !availability.away_available : false;
   const bothSidesBlocked = homeDisabled && awayDisabled;
+  const isNonAppointedType = NON_APPOINTED_GAME_TYPES.includes(form.game_type);
 
   function handleChange(
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -215,14 +274,31 @@ export default function UploadGameForm({
     const { name, value, type } = event.target;
     const checked = (event.target as HTMLInputElement).checked;
 
+    if (name === "game_type") {
+      const nextGameType = value as GameUploadType;
+      const isNextAppointed = APPOINTED_GAME_TYPES.includes(nextGameType);
+
+      setForm((prev) => ({
+        ...prev,
+        game_type: nextGameType,
+        payment_type: isNextAppointed
+          ? "CLAIM"
+          : prev.payment_type === "CLAIM"
+            ? "CASH"
+            : prev.payment_type,
+        requesting_side: isNextAppointed ? "" : prev.requesting_side,
+        second_ref_needed: isNextAppointed ? false : prev.second_ref_needed,
+      }));
+      setAvailability(null);
+      setErrorMessage("");
+      setSuccessMessage("");
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    
-    if (name === "game_type") {
-      setAvailability(null);
-    }
 
     setErrorMessage("");
     setSuccessMessage("");
@@ -232,6 +308,20 @@ export default function UploadGameForm({
     event.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
+
+    if (!canUploadGames || allowedGameTypes.length === 0) {
+      setErrorMessage(
+        "Your account is not approved to upload games yet. Ask DOA admin to verify and approve your account."
+      );
+      return;
+    }
+
+    if (!allowedGameTypes.includes(form.game_type)) {
+      setErrorMessage(
+        `Your ${accountTypeDisplay} account cannot upload ${GAME_TYPE_LABELS[form.game_type]} games.`
+      );
+      return;
+    }
 
     if (!form.division || !form.venue || !form.home_team || !form.away_team) {
       setErrorMessage("Please complete all required game fields.");
@@ -248,21 +338,25 @@ export default function UploadGameForm({
       return;
     }
 
-    if (!form.requesting_side) {
-      setErrorMessage("Please choose which team needs a referee.");
-      return;
+    if (isNonAppointedType) {
+      if (!form.requesting_side) {
+        setErrorMessage("Please choose which team needs a referee.");
+        return;
+      }
+
+      if (bothSidesBlocked) {
+        setErrorMessage("This game already has both referee requests recorded.");
+        return;
+      }
     }
 
-    if (bothSidesBlocked) {
-      setErrorMessage("This game already has both referee requests recorded.");
-      return;
-    }
-
-    const slots = buildSlots(
-      form.requesting_side,
-      form.second_ref_needed,
-      form.description
-    );
+    const slots = isNonAppointedType
+      ? buildSlots(
+          form.requesting_side,
+          form.second_ref_needed,
+          form.description
+        )
+      : [];
 
     try {
       setSubmitting(true);
@@ -307,7 +401,12 @@ if (!token) {
       }
 
       setSuccessMessage("Game posted successfully.");
-      setForm(initialForm);
+      const resetGameType = (allowedGameTypes[0] || "CLUB") as GameUploadType;
+      setForm({
+        ...initialForm,
+        game_type: resetGameType,
+        payment_type: defaultPaymentType(resetGameType),
+      });
       setAvailability(null);
       onPosted?.();
     } catch (error) {
@@ -323,6 +422,16 @@ if (!token) {
     <form className="upload-game-form" onSubmit={handleSubmit}>
       {errorMessage && <div className="upload-message error">{errorMessage}</div>}
       {successMessage && <div className="upload-message success">{successMessage}</div>}
+      {!canUploadGames && (
+        <div className="upload-message error">
+          Your account is pending approval. Uploads are available after BIPIN verification and DOA admin approval.
+        </div>
+      )}
+      {canUploadGames && allowedGameTypes.length === 0 && (
+        <div className="upload-message error">
+          Your account currently has no upload permissions for game types.
+        </div>
+      )}
 
       <section className="upload-section">
         <h2>Game Details</h2>
@@ -330,19 +439,39 @@ if (!token) {
         <div className="upload-grid">
           <div className="form-field">
             <label>Game Type</label>
-           <select name="game_type" value={form.game_type} onChange={handleChange}>
-              <option value="CLUB">Club</option>
-              <option value="SCHOOL">School</option>
-              <option value="COLLEGE">College</option>
-              <option value="FRIENDLY">Friendly</option>
+            <select
+              name="game_type"
+              value={form.game_type}
+              onChange={handleChange}
+              disabled={!canUploadGames || allowedGameTypes.length === 0}
+            >
+              {allowedGameTypes.map((gameType) => (
+                <option key={gameType} value={gameType}>
+                  {GAME_TYPE_LABELS[gameType]}
+                </option>
+              ))}
             </select>
           </div>
 
           <div className="form-field">
             <label>Payment Type</label>
-            <select name="payment_type" value={form.payment_type} onChange={handleChange}>
-              <option value="CASH">Cash</option>
-              <option value="REVOLUT">Revolut</option>
+            <select
+              name="payment_type"
+              value={form.payment_type}
+              onChange={handleChange}
+              disabled={
+                !canUploadGames ||
+                APPOINTED_GAME_TYPES.includes(form.game_type)
+              }
+            >
+              {APPOINTED_GAME_TYPES.includes(form.game_type) ? (
+                <option value="CLAIM">Claim</option>
+              ) : (
+                <>
+                  <option value="CASH">Cash</option>
+                  <option value="REVOLUT">Revolut</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -406,83 +535,100 @@ if (!token) {
         </div>
       </section>
 
-      <section className="upload-section">
-        <h2>Referee Requirement</h2>
+      {isNonAppointedType ? (
+        <section className="upload-section">
+          <h2>Referee Requirement</h2>
 
-        <div className="radio-group">
-          <p className="radio-title">Which team needs a referee?</p>
+          <div className="radio-group">
+            <p className="radio-title">Which team needs a referee?</p>
 
-          {checkingAvailability && (
-            <p className="availability-text">Checking if this game already exists...</p>
-          )}
+            {checkingAvailability && (
+              <p className="availability-text">Checking if this game already exists...</p>
+            )}
 
-          {availability?.exists && !bothSidesBlocked && (
-            <p className="availability-text warning">
-              This game already exists. You can only request the missing side.
-            </p>
-          )}
+            {availability?.exists && !bothSidesBlocked && (
+              <p className="availability-text warning">
+                This game already exists. You can only request the missing side.
+              </p>
+            )}
 
-          {bothSidesBlocked && (
-            <p className="availability-text danger">
-              Both referee requests already exist for this game.
-            </p>
-          )}
+            {bothSidesBlocked && (
+              <p className="availability-text danger">
+                Both referee requests already exist for this game.
+              </p>
+            )}
 
-          <label className={`radio-option ${homeDisabled ? "disabled" : ""}`}>
+            <label className={`radio-option ${homeDisabled ? "disabled" : ""}`}>
+              <input
+                type="radio"
+                name="requesting_side"
+                value="HOME"
+                checked={form.requesting_side === "HOME"}
+                onChange={handleChange}
+                disabled={homeDisabled}
+              />
+              Home Team
+            </label>
+
+            <label className={`radio-option ${awayDisabled ? "disabled" : ""}`}>
+              <input
+                type="radio"
+                name="requesting_side"
+                value="AWAY"
+                checked={form.requesting_side === "AWAY"}
+                onChange={handleChange}
+                disabled={awayDisabled}
+              />
+              Away Team
+            </label>
+          </div>
+
+          <label className="checkbox-option">
             <input
-              type="radio"
-              name="requesting_side"
-              value="HOME"
-              checked={form.requesting_side === "HOME"}
+              type="checkbox"
+              name="second_ref_needed"
+              checked={form.second_ref_needed}
               onChange={handleChange}
-              disabled={homeDisabled}
             />
-            Home Team
+            Second referee also needed
           </label>
 
-          <label className={`radio-option ${awayDisabled ? "disabled" : ""}`}>
-            <input
-              type="radio"
-              name="requesting_side"
-              value="AWAY"
-              checked={form.requesting_side === "AWAY"}
-              onChange={handleChange}
-              disabled={awayDisabled}
-            />
-            Away Team
-          </label>
-        </div>
-
-        <label className="checkbox-option">
-          <input
-            type="checkbox"
-            name="second_ref_needed"
-            checked={form.second_ref_needed}
-            onChange={handleChange}
-          />
-          Second referee also needed
-        </label>
-
-        <div className="helper-box">
-          <strong>Slot logic:</strong>
-          <span>
-            Home team request creates a Crew Chief slot. Away team request creates an Umpire 1
-            slot. If second referee is ticked, both slots are created.
-          </span>
-        </div>
-      </section>
+          <div className="helper-box">
+            <strong>Slot logic:</strong>
+            <span>
+              Home team request creates a Crew Chief slot. Away team request creates an Umpire 1
+              slot. If second referee is ticked, both slots are created.
+            </span>
+          </div>
+        </section>
+      ) : (
+        <section className="upload-section">
+          <h2>Appointed Upload</h2>
+          <div className="helper-box">
+            <strong>Appointed game flow:</strong>
+            <span>
+              DOA/NL uploads create the game record only (Claim payment). Referee slots are not
+              created in this form.
+            </span>
+          </div>
+        </section>
+      )}
 
       <section className="upload-section">
         <h2>Extra Details</h2>
 
         <div className="form-field">
-          <label>Slot Description</label>
+          <label>{isNonAppointedType ? "Slot Description" : "Upload Description"}</label>
           <textarea
             name="description"
             value={form.description}
             onChange={handleChange}
             rows={3}
-            placeholder="Optional short description for the opportunity"
+            placeholder={
+              isNonAppointedType
+                ? "Optional short description for the opportunity"
+                : "Optional short description for this appointed game upload"
+            }
           />
         </div>
 
@@ -510,7 +656,15 @@ if (!token) {
       </section>
 
       <div className="upload-actions">
-        <button type="submit" disabled={submitting || bothSidesBlocked}>
+        <button
+          type="submit"
+          disabled={
+            submitting ||
+            !canUploadGames ||
+            allowedGameTypes.length === 0 ||
+            (isNonAppointedType && bothSidesBlocked)
+          }
+        >
           {submitting ? "Posting..." : "Post Game"}
         </button>
       </div>

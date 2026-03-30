@@ -1,31 +1,56 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import "./DashboardQuickActions.css";
 
+const baseActions = [
+  {
+    name: "Opportunities",
+    path: "/games",
+    description: "Find open games, cover requests, and available opportunities.",
+  },
+  {
+    name: "Cover Requests",
+    path: "/cover-requests",
+    description: "Manage your requests and see games that need cover.",
+  },
+  {
+    name: "Events",
+    path: "/events",
+    description: "View event assignments and join open event opportunities.",
+  },
+  {
+    name: "Reports",
+    path: "/reports",
+    description: "Submit and track reports for your recently completed games.",
+  },
+  {
+    name: "Earnings",
+    path: "/earnings",
+    description: "Track your claims, mileage totals, and payment breakdowns.",
+  },
+] as const;
+
 export default function DashboardQuickActions() {
+  const { user } = useAuth();
+
+  const isRefereeUser = Boolean(user?.referee_profile);
+  const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
+
+  const actions = baseActions.filter(
+    (action) => !((isRefereeUser && !hasEventManagerScope) && action.path === "/events")
+  );
+
   return (
     <section className="dashboard-quick-actions">
       <h2>Quick Actions</h2>
 
       <div className="dashboard-action-grid">
-        <Link to="/games" className="dashboard-action-card secondary">
-          <h3>Browse Games</h3>
-          <p>Find open opportunities and claim available slots.</p>
-        </Link>
-
-        <Link to="/cover-requests" className="dashboard-action-card secondary">
-          <h3>Cover Requests</h3>
-          <p>Check current cover requests and manage replacements.</p>
-        </Link>
-
-        <Link to="/games#upload-game" className="dashboard-action-card secondary">
-          <h3>Upload Game</h3>
-          <p>Post a game and create referee opportunities.</p>
-        </Link>
-
-        <Link to="/earnings" className="dashboard-action-card secondary">
-          <h3>Earnings</h3>
-          <p>Track monthly claim totals and travel amounts.</p>
-        </Link>
+        {actions.map((action) => (
+          <Link key={action.path} to={action.path} className="dashboard-action-card">
+            <h3>{action.name}</h3>
+            <p>{action.description}</p>
+          </Link>
+        ))}
       </div>
     </section>
   );

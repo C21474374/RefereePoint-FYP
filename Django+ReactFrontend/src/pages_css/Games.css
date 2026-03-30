@@ -177,6 +177,18 @@
   font-size: 1.04rem;
 }
 
+.game-card-title-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.game-card-title-button:hover .game-card-title {
+  color: var(--color-link-hover);
+}
+
 .game-card-meta,
 .game-card-venue {
   color: var(--color-text-muted);
@@ -209,8 +221,20 @@
 .game-card-actions {
   margin-top: 10px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  justify-content: flex-end;
+}
+
+.game-card-view-btn {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  padding: 8px 12px;
+  font-weight: 700;
+}
+
+.game-card-view-btn:hover {
+  border-color: var(--color-accent);
 }
 
 .take-game-btn {

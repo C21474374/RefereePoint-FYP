@@ -9,6 +9,8 @@ export type EventReferee = {
 
 export type EventItem = {
   id: number;
+  event_type: "CLUB" | "SCHOOL" | "COLLEGE";
+  event_type_display: string;
   start_date: string;
   end_date: string;
   venue: number | null;
@@ -32,6 +34,7 @@ export type EventVenueOption = {
 };
 
 export type EventPayload = {
+  event_type?: "CLUB" | "SCHOOL" | "COLLEGE";
   start_date: string;
   end_date: string;
   venue: number | null;

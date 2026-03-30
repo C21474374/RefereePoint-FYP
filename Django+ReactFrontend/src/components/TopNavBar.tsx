@@ -2,25 +2,18 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import UploadCoverRequestPanel from "./UploadCoverRequestPanel";
-import UploadEventPanel from "./UploadEventPanel";
 import UploadGamePanel from "./UploadGamePanel";
+import UploadEventPanel from "./UploadEventPanel";
 
-type UploadModalType = "game" | "event" | "cover_request" | null;
+type UploadModalType = "game" | "event" | null;
 
-const navLinks = [
+const baseNavLinks = [
   { name: "Dashboard", path: "/dashboard" },
-  { name: "Games", path: "/games" },
+  { name: "Opportunities", path: "/games" },
   { name: "Cover Requests", path: "/cover-requests" },
   { name: "Events", path: "/events" },
   { name: "Reports", path: "/reports" },
   { name: "Earnings", path: "/earnings" },
-];
-
-const uploadItems: Array<{ label: string; type: Exclude<UploadModalType, null> }> = [
-  { label: "Upload Game", type: "game" },
-  { label: "Upload Event", type: "event" },
-  { label: "Upload Cover Request", type: "cover_request" },
 ];
 
 function buildUserInitials(
@@ -196,12 +189,25 @@ const TopNavBar: React.FC = () => {
       ? "Upload Game"
       : activeUploadModal === "event"
         ? "Upload Event"
-        : activeUploadModal === "cover_request"
-          ? "Upload Cover Request"
-          : "";
+        : "";
   const userDisplayName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || user?.email || "Referee";
   const userInitials = buildUserInitials(user?.first_name, user?.last_name, user?.email);
+  const isRefereeUser = Boolean(user?.referee_profile);
+  const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
+  const navLinks = baseNavLinks.filter(
+    (link) => !((isRefereeUser && !hasEventManagerScope) && link.path === "/events")
+  );
+  const canUploadGame =
+    Boolean(user?.bipin_verified && user?.doa_approved) &&
+    Boolean(user?.allowed_upload_game_types?.length);
+  const canUploadEvent =
+    Boolean(user?.bipin_verified && user?.doa_approved) &&
+    Boolean(user?.allowed_upload_event_types?.length);
+  const uploadItems: Array<{ label: string; type: Exclude<UploadModalType, null> }> = [
+    ...(canUploadGame ? [{ label: "Upload Game", type: "game" as const }] : []),
+    ...(canUploadEvent ? [{ label: "Upload Event", type: "event" as const }] : []),
+  ];
 
   return (
     <>
@@ -235,30 +241,32 @@ const TopNavBar: React.FC = () => {
             </Link>
           ))}
 
-          <div className="upload-menu">
-            <button
-              className={`nav-link upload-menu-trigger ${activeUploadModal ? "active" : ""}`}
-              onClick={handleUploadMenuToggle}
-              aria-expanded={isMobileNav ? uploadMenuOpen : undefined}
-              aria-haspopup="menu"
-              type="button"
-            >
-              +Upload
-            </button>
-            <div className="upload-menu-panel" role="menu">
-              {uploadItems.map((item) => (
-                <button
-                  key={item.type}
-                  type="button"
-                  onClick={() => openUploadModal(item.type)}
-                  className="upload-menu-link upload-menu-action"
-                  role="menuitem"
-                >
-                  {item.label}
-                </button>
-              ))}
+          {uploadItems.length > 0 && (
+            <div className="upload-menu">
+              <button
+                className={`nav-link upload-menu-trigger ${activeUploadModal ? "active" : ""}`}
+                onClick={handleUploadMenuToggle}
+                aria-expanded={isMobileNav ? uploadMenuOpen : undefined}
+                aria-haspopup="menu"
+                type="button"
+              >
+                +Upload
+              </button>
+              <div className="upload-menu-panel" role="menu">
+                {uploadItems.map((item) => (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => openUploadModal(item.type)}
+                    className="upload-menu-link upload-menu-action"
+                    role="menuitem"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="nav-right">
@@ -341,28 +349,30 @@ const TopNavBar: React.FC = () => {
                 </Link>
               ))}
 
-              <div className={`mobile-upload ${uploadMenuOpen ? "open" : ""}`}>
-                <button
-                  type="button"
-                  className="mobile-menu-action mobile-upload-trigger"
-                  onClick={handleUploadMenuToggle}
-                  aria-expanded={uploadMenuOpen}
-                >
-                  +Upload
-                </button>
-                <div className="mobile-upload-panel">
-                  {uploadItems.map((item) => (
-                    <button
-                      key={item.type}
-                      type="button"
-                      onClick={() => openUploadModal(item.type)}
-                      className="mobile-upload-item"
-                    >
-                      {item.label}
-                    </button>
-                  ))}
+              {uploadItems.length > 0 && (
+                <div className={`mobile-upload ${uploadMenuOpen ? "open" : ""}`}>
+                  <button
+                    type="button"
+                    className="mobile-menu-action mobile-upload-trigger"
+                    onClick={handleUploadMenuToggle}
+                    aria-expanded={uploadMenuOpen}
+                  >
+                    +Upload
+                  </button>
+                  <div className="mobile-upload-panel">
+                    {uploadItems.map((item) => (
+                      <button
+                        key={item.type}
+                        type="button"
+                        onClick={() => openUploadModal(item.type)}
+                        className="mobile-upload-item"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="mobile-drawer-bottom">
@@ -399,15 +409,8 @@ const TopNavBar: React.FC = () => {
               </button>
             </div>
             <div className="upload-modal-body">
-              {activeUploadModal === "game" && (
-                <UploadGamePanel embedded onPosted={handleUploaded} />
-              )}
-              {activeUploadModal === "event" && (
-                <UploadEventPanel onUploaded={handleUploaded} />
-              )}
-              {activeUploadModal === "cover_request" && (
-                <UploadCoverRequestPanel onUploaded={handleUploaded} />
-              )}
+              {activeUploadModal === "game" && <UploadGamePanel embedded onPosted={handleUploaded} />}
+              {activeUploadModal === "event" && <UploadEventPanel onUploaded={handleUploaded} />}
             </div>
           </div>
         </div>

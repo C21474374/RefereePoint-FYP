@@ -11,6 +11,7 @@ class EventRefereeSerializer(serializers.Serializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
+    event_type_display = serializers.CharField(source="get_event_type_display", read_only=True)
     venue_name = serializers.CharField(source="venue.name", read_only=True)
     created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
     joined_referees_count = serializers.SerializerMethodField()
@@ -23,6 +24,8 @@ class EventSerializer(serializers.ModelSerializer):
         model = Event
         fields = [
             "id",
+            "event_type",
+            "event_type_display",
             "start_date",
             "end_date",
             "venue",

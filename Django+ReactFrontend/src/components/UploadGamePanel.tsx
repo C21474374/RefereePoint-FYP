@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import UploadGameForm from "./UploadGameForm";
 import { getAccessToken } from "../services/auth";
+import { useAuth } from "../context/AuthContext";
 
 type SimpleOption = {
   id: number;
@@ -16,6 +17,8 @@ export default function UploadGamePanel({
   embedded = false,
   onPosted,
 }: UploadGamePanelProps) {
+  const { user } = useAuth();
+
   const [divisions, setDivisions] = useState<SimpleOption[]>([]);
   const [venues, setVenues] = useState<SimpleOption[]>([]);
   const [teams, setTeams] = useState<SimpleOption[]>([]);
@@ -98,11 +101,18 @@ export default function UploadGamePanel({
     return <p className="upload-panel-state error">{errorMessage}</p>;
   }
 
+  const allowedGameTypes = (user?.allowed_upload_game_types || []).filter((value) =>
+    ["CLUB", "SCHOOL", "COLLEGE", "FRIENDLY", "DOA", "NL"].includes(value)
+  ) as Array<"CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY" | "DOA" | "NL">;
+
   return (
     <UploadGameForm
       divisions={divisions}
       venues={venues}
       teams={teams}
+      allowedGameTypes={allowedGameTypes}
+      accountTypeDisplay={user?.account_type_display || "User"}
+      canUploadGames={Boolean(user?.bipin_verified && user?.doa_approved)}
       embedded={embedded}
       onPosted={onPosted}
     />

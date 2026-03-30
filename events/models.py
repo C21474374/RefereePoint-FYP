@@ -3,7 +3,17 @@ from django.db import models
 
 class Event(models.Model):
     """Events - specific instances of games at venues (tournaments, etc.)."""
+
+    class EventType(models.TextChoices):
+        CLUB = "CLUB", "Club"
+        SCHOOL = "SCHOOL", "School"
+        COLLEGE = "COLLEGE", "College"
     
+    event_type = models.CharField(
+        max_length=20,
+        choices=EventType.choices,
+        default=EventType.CLUB,
+    )
     start_date = models.DateField()
     end_date = models.DateField()
     venue = models.ForeignKey(

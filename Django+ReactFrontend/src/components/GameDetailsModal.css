@@ -1,0 +1,208 @@
+.game-details-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+  display: grid;
+  place-items: center;
+  z-index: 1600;
+  padding: 14px;
+}
+
+.game-details-modal {
+  width: min(980px, 100%);
+  max-height: 92vh;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  overflow: hidden;
+}
+
+.game-details-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+}
+
+.game-details-modal-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.game-details-modal-header p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.game-details-modal-header button {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-weight: 600;
+}
+
+.game-details-modal-body {
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-details-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.game-details-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.game-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.game-details-field {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-panel);
+  padding: 10px;
+}
+
+.game-details-field span {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.game-details-field p {
+  margin-top: 5px;
+  color: var(--color-text);
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.game-details-block {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-panel);
+  padding: 10px;
+}
+
+.game-details-block h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.game-details-block p {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.game-details-map-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+}
+
+.game-details-map {
+  width: 100%;
+  height: 260px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.game-details-no-map {
+  margin: 0;
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-panel);
+  color: var(--color-text-muted);
+  padding: 12px;
+  text-align: center;
+}
+
+.game-details-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.game-details-primary,
+.game-details-secondary {
+  border-radius: 10px;
+  padding: 9px 13px;
+  font-weight: 700;
+}
+
+.game-details-primary {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.game-details-secondary {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+}
+
+.game-details-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.game-details-help {
+  margin: 0;
+  padding: 0 16px 12px;
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 900px) {
+  .game-details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .game-details-modal {
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .game-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .game-details-map {
+    height: 220px;
+  }
+
+  .game-details-modal-actions {
+    flex-direction: column-reverse;
+  }
+}

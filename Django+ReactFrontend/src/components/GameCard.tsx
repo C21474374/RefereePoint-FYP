@@ -1,5 +1,7 @@
+import { useMemo, useState } from "react";
 import type { Opportunity } from "../pages/Games";
 import { useAuth } from "../context/AuthContext";
+import GameDetailsModal, { type GameDetailsModalData } from "./GameDetailsModal";
 
 type GameCardProps = {
   opportunity: Opportunity;
@@ -69,6 +71,7 @@ const GameCard = ({
     opportunity.role !== "CREW_CHIEF" || userGrade !== "INTRO";
 
   const isClaimingThisCard = claimingKey === `${opportunity.type}-${opportunity.id}`;
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const actionDisabled =
     !isAuthenticated ||
@@ -89,145 +92,113 @@ const GameCard = ({
     onJoinEvent(opportunity.id);
   };
 
+  const typeLabel = isNonAppointed
+    ? "Non-Appointed Game"
+    : isCoverRequest
+      ? "Cover Request"
+      : "Event";
+
+  const actionHelpText =
+    !isAuthenticated
+      ? "Log in to take games."
+      : !canTakeCrewChief
+        ? "Intro referees cannot take Crew Chief."
+        : null;
+
+  const modalDetails = useMemo<GameDetailsModalData>(() => {
+    const divisionDisplay = opportunity.division_name
+      ? `${opportunity.division_name}${opportunity.division_gender ? ` ${opportunity.division_gender}` : ""}`
+      : null;
+
+    return {
+      id: `${opportunity.type}-${opportunity.id}`,
+      title: buildTitle(opportunity),
+      typeLabel,
+      badge: opportunity.status_display,
+      date: opportunity.date,
+      time: isEvent ? null : opportunity.time,
+      endDate: opportunity.event_end_date || null,
+      venueName: opportunity.venue_name || "Venue TBC",
+      latitude: opportunity.lat,
+      longitude: opportunity.lng,
+      roleDisplay: opportunity.role_display,
+      gameTypeDisplay: opportunity.game_type_display,
+      divisionDisplay,
+      paymentTypeDisplay: opportunity.payment_type_display,
+      statusDisplay: opportunity.status_display,
+      description: opportunity.description || null,
+      reason: opportunity.reason || null,
+      originalRefereeName: opportunity.original_referee_name || null,
+      requestedByName: opportunity.requested_by_name || null,
+      claimedByName: opportunity.claimed_by_name || null,
+      postedByName: opportunity.posted_by_name || null,
+      feePerGame: opportunity.fee_per_game || null,
+      joinedRefereesCount: opportunity.joined_referees_count ?? null,
+      slotsLeft: opportunity.slots_left ?? null,
+    };
+  }, [isEvent, opportunity, typeLabel]);
+
   return (
-    <div className="game-card">
-      <div className="game-card-top">
-        <span className={`game-card-type ${typeClassName}`}>
-          {isNonAppointed ? "Non-Appointed Game" : isCoverRequest ? "Cover Request" : "Event"}
-        </span>
+    <>
+      <div className="game-card">
+        <div className="game-card-top">
+          <span className={`game-card-type ${typeClassName}`}>{typeLabel}</span>
 
-        {opportunity.role_display && (
-          <span className="game-card-role">{opportunity.role_display}</span>
-        )}
-      </div>
-
-      <h3 className="game-card-title">{buildTitle(opportunity)}</h3>
-
-      <div className="game-card-meta">
-        {isEvent ? (
-          <span>
-            {formatDate(opportunity.date)}
-            {opportunity.event_end_date ? ` to ${formatDate(opportunity.event_end_date)}` : ""}
-          </span>
-        ) : (
-          <>
-            <span>{formatDate(opportunity.date)}</span>
-            <span>|</span>
-            <span>{formatTime(opportunity.time)}</span>
-          </>
-        )}
-      </div>
-
-      <div className="game-card-venue">{opportunity.venue_name ?? "Venue TBC"}</div>
-
-      <div className="game-card-tags">
-        {opportunity.game_type_display && (
-          <span className="game-tag game-tag-primary">
-            {opportunity.game_type_display}
-          </span>
-        )}
-
-        {opportunity.role_display && (
-          <span className="game-tag game-tag-role">
-            {opportunity.role_display}
-          </span>
-        )}
-
-        {opportunity.division_name && (
-          <span className="game-tag">
-            {opportunity.division_name}
-            {opportunity.division_gender ? ` ${opportunity.division_gender}` : ""}
-          </span>
-        )}
-
-        {opportunity.payment_type_display && (
-          <span className="game-tag game-tag-payment">
-            {opportunity.payment_type_display}
-          </span>
-        )}
-
-        {opportunity.status === "CLAIMED" && opportunity.claimed_by_name && (
-          <span className="game-tag game-tag-claimed">
-            Claimed by {opportunity.claimed_by_name}
-          </span>
-        )}
-
-        {isEvent && opportunity.joined_referees_count !== undefined && (
-          <span className="game-tag">
-            {opportunity.joined_referees_count} joined
-          </span>
-        )}
-
-        {isEvent && opportunity.slots_left !== undefined && opportunity.slots_left !== null && (
-          <span className="game-tag">
-            {opportunity.slots_left} slots left
-          </span>
-        )}
-      </div>
-
-      {isNonAppointed && opportunity.description && (
-        <p className="game-card-extra">{opportunity.description}</p>
-      )}
-
-      {isCoverRequest && (
-        <div className="game-card-extra">
-          {opportunity.original_referee_name && (
-            <p>
-              <strong>Original ref:</strong> {opportunity.original_referee_name}
-            </p>
-          )}
-          {opportunity.requested_by_name && (
-            <p>
-              <strong>Requested by:</strong> {opportunity.requested_by_name}
-            </p>
-          )}
-          {opportunity.reason && (
-            <p>
-              <strong>Reason:</strong> {opportunity.reason}
-            </p>
+          {opportunity.role_display && (
+            <span className="game-card-role">{opportunity.role_display}</span>
           )}
         </div>
-      )}
 
-      {isEvent && (
-        <div className="game-card-extra">
-          {opportunity.description && <p>{opportunity.description}</p>}
-          {opportunity.fee_per_game && (
-            <p>
-              <strong>Fee per game:</strong> EUR {opportunity.fee_per_game}
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="game-card-actions">
         <button
-          className="take-game-btn"
-          onClick={handleActionClick}
-          disabled={actionDisabled}
+          type="button"
+          className="game-card-title-button"
+          onClick={() => setDetailsOpen(true)}
         >
-          {isClaimingThisCard
-            ? isNonAppointed
-              ? "Claiming..."
-              : isCoverRequest
-                ? "Offering..."
-                : "Joining..."
-            : actionLabel}
+          <h3 className="game-card-title">{buildTitle(opportunity)}</h3>
         </button>
 
-        {!isAuthenticated && (
-          <small className="game-card-warning">
-            Log in to take games.
-          </small>
-        )}
+        <div className="game-card-meta">
+          {isEvent ? (
+            <span>
+              {formatDate(opportunity.date)}
+              {opportunity.event_end_date ? ` to ${formatDate(opportunity.event_end_date)}` : ""}
+            </span>
+          ) : (
+            <>
+              <span>{formatDate(opportunity.date)}</span>
+              <span>|</span>
+              <span>{formatTime(opportunity.time)}</span>
+            </>
+          )}
+        </div>
 
-        {isAuthenticated && !canTakeCrewChief && (
-          <small className="game-card-warning">
-            Intro referees cannot take Crew Chief.
-          </small>
-        )}
+        <div className="game-card-venue">{opportunity.venue_name ?? "Venue TBC"}</div>
+
+        <div className="game-card-actions">
+          <button
+            type="button"
+            className="game-card-view-btn"
+            onClick={() => setDetailsOpen(true)}
+          >
+            View Details
+          </button>
+        </div>
       </div>
-    </div>
+
+      <GameDetailsModal
+        open={detailsOpen}
+        details={modalDetails}
+        onClose={() => setDetailsOpen(false)}
+        onAction={handleActionClick}
+        actionLabel={actionLabel}
+        actionDisabled={actionDisabled}
+        actionBusy={isClaimingThisCard}
+        actionBusyLabel={
+          isNonAppointed ? "Claiming..." : isCoverRequest ? "Offering..." : "Joining..."
+        }
+        actionHelpText={actionHelpText}
+      />
+    </>
   );
 };
 

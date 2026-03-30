@@ -12,6 +12,7 @@ import {
   getAccessToken,
   type CurrentUser,
 } from "../services/auth";
+import UploadCoverRequestPanel from "../components/UploadCoverRequestPanel";
 import CoverRequestCard from "../components/coverRequests/CoverRequestCard";
 import "../pages_css/CoverRequests.css";
 
@@ -26,6 +27,7 @@ export default function CoverRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<CoverSectionKey, boolean>>({
     manageCoverRequests: false,
     availableCoverRequests: false,
@@ -124,11 +126,25 @@ export default function CoverRequestsPage() {
   return (
     <div className="cover-requests-page">
       <div className="cover-requests-page-header">
-        <h1>Cover Requests</h1>
-        <p>
-          Request cover for your games or claim open cover requests from other
-          referees.
-        </p>
+        <div>
+          <h1>Cover Requests</h1>
+          <p>
+            Request cover for your games or claim open cover requests from other
+            referees.
+          </p>
+        </div>
+        {currentUser?.referee_profile && (
+          <button
+            type="button"
+            className="cover-request-create-btn"
+            onClick={() => {
+              setError("");
+              setShowRequestModal(true);
+            }}
+          >
+            Request Cover
+          </button>
+        )}
       </div>
 
       {loading && (
@@ -243,6 +259,35 @@ export default function CoverRequestsPage() {
             </button>
           </section>
         </>
+      )}
+
+      {showRequestModal && (
+        <div
+          className="upload-modal-overlay"
+          onClick={() => setShowRequestModal(false)}
+        >
+          <div className="upload-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="upload-modal-header">
+              <h2>Request Cover</h2>
+              <button
+                type="button"
+                className="upload-modal-close"
+                onClick={() => setShowRequestModal(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="upload-modal-body">
+              <UploadCoverRequestPanel
+                onUploaded={async () => {
+                  setShowRequestModal(false);
+                  await fetchData();
+                  window.dispatchEvent(new Event("refereepoint:data-refresh"));
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

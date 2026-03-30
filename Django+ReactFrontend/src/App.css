@@ -205,6 +205,15 @@
   position: relative;
 }
 
+.upload-menu::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: max(100%, 160px);
+  height: 12px;
+}
+
 .upload-menu-trigger {
   border: none;
   background: transparent;

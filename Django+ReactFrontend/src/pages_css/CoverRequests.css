@@ -8,6 +8,10 @@
 }
 
 .cover-requests-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 18px;
 }
 
@@ -20,6 +24,17 @@
   margin-top: 8px;
   color: var(--color-text-muted);
   font-size: 1rem;
+}
+
+.cover-request-create-btn {
+  border: none;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 10px 14px;
+  white-space: nowrap;
 }
 
 .cover-requests-page-message,
@@ -126,6 +141,11 @@
 @media (max-width: 760px) {
   .cover-requests-page {
     padding: 22px 16px 30px;
+  }
+
+  .cover-requests-page-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .cover-requests-section {

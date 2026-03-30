@@ -5,14 +5,66 @@ from .models import User, RefereeProfile, RefereeAvailability
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('email', 'first_name', 'last_name', 'is_active', 'is_staff', 'date_joined')
-    list_filter = ('is_active', 'is_staff', 'is_superuser', 'date_joined')
-    search_fields = ('email', 'first_name', 'last_name', 'bipin_number')
+    list_display = (
+        'email',
+        'first_name',
+        'last_name',
+        'account_type',
+        'is_team_manager',
+        'manager_scope',
+        'managed_team',
+        'bipin_verified',
+        'doa_approved',
+        'is_active',
+        'is_staff',
+        'date_joined',
+    )
+    list_filter = (
+        'account_type',
+        'is_team_manager',
+        'manager_scope',
+        'bipin_verified',
+        'doa_approved',
+        'is_active',
+        'is_staff',
+        'is_superuser',
+        'date_joined',
+    )
+    search_fields = (
+        'email',
+        'first_name',
+        'last_name',
+        'bipin_number',
+        'organization_name',
+        'managed_team__club__name',
+        'managed_team__division__name',
+    )
     ordering = ('-date_joined',)
+    raw_id_fields = ('managed_team',)
 
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
-        ('Personal Info', {'fields': ('first_name', 'last_name', 'phone_number', 'bipin_number')}),
+        (
+            'Personal Info',
+            {'fields': ('first_name', 'last_name', 'phone_number', 'bipin_number')},
+        ),
+        (
+            'Account Access',
+            {
+                'fields': (
+                    'account_type',
+                    'is_team_manager',
+                    'manager_scope',
+                    'managed_team',
+                    'organization_name',
+                    'verification_id_number',
+                    'verification_id_photo',
+                    'institution_head_phone',
+                    'bipin_verified',
+                    'doa_approved',
+                )
+            },
+        ),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login',)}),
     )
@@ -20,7 +72,24 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'first_name', 'last_name', 'password1', 'password2', 'bipin_number'),
+            'fields': (
+                'email',
+                'first_name',
+                'last_name',
+                'password1',
+                'password2',
+                'bipin_number',
+                'account_type',
+                'is_team_manager',
+                'manager_scope',
+                'managed_team',
+                'organization_name',
+                'verification_id_number',
+                'verification_id_photo',
+                'institution_head_phone',
+                'bipin_verified',
+                'doa_approved',
+            ),
         }),
     )
 

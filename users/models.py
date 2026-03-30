@@ -29,12 +29,54 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     """Custom User model with email as the unique identifier."""
+
+    class AccountType(models.TextChoices):
+        REFEREE = "REFEREE", "Referee"
+        CLUB = "CLUB", "Club"
+        SCHOOL = "SCHOOL", "School"
+        COLLEGE = "COLLEGE", "College"
+        DOA = "DOA", "DOA"
+        NL = "NL", "National League"
+
+    class ManagerScope(models.TextChoices):
+        NONE = "NONE", "None"
+        CLUB = "CLUB", "Club"
+        SCHOOL = "SCHOOL", "School"
+        COLLEGE = "COLLEGE", "College"
     
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     bipin_number = models.CharField(max_length=50, blank=True, null=True)
+    account_type = models.CharField(
+        max_length=30,
+        choices=AccountType.choices,
+        default=AccountType.REFEREE,
+    )
+    is_team_manager = models.BooleanField(default=False)
+    manager_scope = models.CharField(
+        max_length=20,
+        choices=ManagerScope.choices,
+        default=ManagerScope.NONE,
+    )
+    managed_team = models.ForeignKey(
+        "clubs.Team",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="managers",
+    )
+    organization_name = models.CharField(max_length=200, blank=True, default="")
+    verification_id_number = models.CharField(max_length=120, blank=True, default="")
+    verification_id_photo = models.FileField(
+        upload_to="verification_ids/",
+        blank=True,
+        null=True,
+    )
+    institution_head_phone = models.CharField(max_length=30, blank=True, default="")
+    bipin_verified = models.BooleanField(default=False)
+    doa_approved = models.BooleanField(default=False)
     home_address = models.TextField(blank=True, default="")
     home_lat = models.FloatField(null=True, blank=True)
     home_lon = models.FloatField(null=True, blank=True)
@@ -45,7 +87,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
     
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name','bipin_number']
+    REQUIRED_FIELDS = ['first_name', 'last_name']
     
     class Meta:
         db_table = 'users_user'
@@ -55,6 +97,110 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    def is_approved_for_uploads(self):
+        """
+        Approval gate for upload permissions.
+        - All roles require manual admin approval.
+        - BIPIN-based roles also require BIPIN verification.
+        - School/College use photo-ID verification instead of BIPIN.
+        """
+        if not self.doa_approved:
+            return False
+
+        bipin_roles = {
+            self.AccountType.REFEREE,
+            self.AccountType.CLUB,
+            self.AccountType.DOA,
+            self.AccountType.NL,
+        }
+        photo_id_roles = {
+            self.AccountType.SCHOOL,
+            self.AccountType.COLLEGE,
+        }
+
+        if self.account_type in bipin_roles:
+            return bool(self.bipin_verified)
+
+        if self.account_type in photo_id_roles:
+            return bool(self.verification_id_photo)
+
+        return False
+
+    def get_allowed_upload_game_types(self):
+        from games.models import Game
+
+        if not self.is_approved_for_uploads():
+            return set()
+
+        account_type_mapping = {
+            self.AccountType.CLUB: {
+                Game.GameType.CLUB,
+                Game.GameType.FRIENDLY,
+            },
+            self.AccountType.SCHOOL: {
+                Game.GameType.SCHOOL,
+                Game.GameType.FRIENDLY,
+            },
+            self.AccountType.COLLEGE: {
+                Game.GameType.COLLEGE,
+                Game.GameType.FRIENDLY,
+            },
+            self.AccountType.DOA: {
+                Game.GameType.DOA,
+            },
+            self.AccountType.NL: {
+                Game.GameType.NL,
+            },
+        }
+
+        manager_scope_mapping = {
+            self.ManagerScope.CLUB: {
+                Game.GameType.CLUB,
+                Game.GameType.FRIENDLY,
+            },
+            self.ManagerScope.SCHOOL: {
+                Game.GameType.SCHOOL,
+                Game.GameType.FRIENDLY,
+            },
+            self.ManagerScope.COLLEGE: {
+                Game.GameType.COLLEGE,
+                Game.GameType.FRIENDLY,
+            },
+        }
+
+        allowed_types = set(account_type_mapping.get(self.account_type, set()))
+
+        if self.is_team_manager and self.manager_scope != self.ManagerScope.NONE:
+            allowed_types.update(manager_scope_mapping.get(self.manager_scope, set()))
+
+        return allowed_types
+
+    def get_allowed_upload_event_types(self):
+        """
+        Event uploader scope. Referees do not upload events unless they also
+        carry a manager scope.
+        """
+        if not self.is_approved_for_uploads():
+            return set()
+
+        account_scope = {
+            self.AccountType.CLUB: {"CLUB"},
+            self.AccountType.SCHOOL: {"SCHOOL"},
+            self.AccountType.COLLEGE: {"COLLEGE"},
+        }
+
+        manager_scope = {
+            self.ManagerScope.CLUB: {"CLUB"},
+            self.ManagerScope.SCHOOL: {"SCHOOL"},
+            self.ManagerScope.COLLEGE: {"COLLEGE"},
+        }
+
+        allowed = set(account_scope.get(self.account_type, set()))
+        if self.is_team_manager and self.manager_scope != self.ManagerScope.NONE:
+            allowed.update(manager_scope.get(self.manager_scope, set()))
+
+        return allowed
 
 
 class RefereeProfile(models.Model):

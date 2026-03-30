@@ -3,6 +3,9 @@ import { useAuth } from "../context/AuthContext";
 import DashboardHero from "../components/DashboardHero";
 import DashboardStats from "../components/DashboardStats";
 import DashboardQuickActions from "../components/DashboardQuickActions";
+import GameDetailsModal, {
+  type GameDetailsModalData,
+} from "../components/GameDetailsModal";
 import { getAccessToken } from "../services/auth";
 import "../pages_css/RefereeDashboard.css";
 
@@ -10,11 +13,15 @@ type GameDetails = {
   date?: string;
   time?: string;
   venue_name?: string | null;
+  lat?: number | null;
+  lng?: number | null;
   home_team_name?: string | null;
   away_team_name?: string | null;
   division_name?: string | null;
   division_gender?: string | null;
   game_type_display?: string | null;
+  payment_type_display?: string | null;
+  status_display?: string | null;
 };
 
 type MyClaimedGame = {
@@ -29,26 +36,14 @@ type UpcomingAssignment = {
   game_details: GameDetails;
 };
 
-type OpportunityFeedItem = {
-  type: "NON_APPOINTED_SLOT" | "COVER_REQUEST" | "EVENT";
-  id: number;
-  date: string;
-  time: string;
-  event_end_date?: string | null;
-  venue_name: string | null;
-  home_team_name: string | null;
-  away_team_name: string | null;
-  game_type_display: string | null;
-  role_display: string | null;
-  description?: string;
-};
-
 type JoinedEvent = {
   id: number;
   start_date: string;
   end_date: string;
   venue_name: string | null;
   description: string;
+  lat?: number | null;
+  lng?: number | null;
 };
 
 type MonthlyEarningsSummary = {
@@ -74,6 +69,7 @@ type CalendarItem = {
   badge: string;
   venueName: string | null;
   isTaken: boolean;
+  details: GameDetailsModalData;
 };
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
@@ -178,6 +174,17 @@ function formatAgeGroupWithGender(
   return `${safeAgeGroup} (${shortLabel})`;
 }
 
+function buildDivisionDisplay(
+  divisionName: string | null | undefined,
+  divisionGender: string | null | undefined
+) {
+  if (!divisionName) {
+    return null;
+  }
+
+  return `${divisionName}${divisionGender ? ` ${divisionGender}` : ""}`;
+}
+
 function enumerateDateRange(startDate: string, endDate: string) {
   const start = parseDateTime(startDate, "00:00:00");
   const end = parseDateTime(endDate, "00:00:00");
@@ -202,7 +209,6 @@ export default function RefereeDashboard() {
 
   const [myClaimedGames, setMyClaimedGames] = useState<MyClaimedGame[]>([]);
   const [myUpcomingAssignments, setMyUpcomingAssignments] = useState<UpcomingAssignment[]>([]);
-  const [openOpportunities, setOpenOpportunities] = useState<OpportunityFeedItem[]>([]);
   const [myJoinedEvents, setMyJoinedEvents] = useState<JoinedEvent[]>([]);
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarningsSummary | null>(null);
 
@@ -214,6 +220,7 @@ export default function RefereeDashboard() {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [selectedCalendarItem, setSelectedCalendarItem] = useState<CalendarItem | null>(null);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -226,7 +233,6 @@ export default function RefereeDashboard() {
         if (!token) {
           setMyClaimedGames([]);
           setMyUpcomingAssignments([]);
-          setOpenOpportunities([]);
           setMyJoinedEvents([]);
           setMonthlyEarnings(null);
           return;
@@ -239,7 +245,6 @@ export default function RefereeDashboard() {
         const [
           claimedGamesResponse,
           upcomingAssignmentsResponse,
-          opportunitiesResponse,
           joinedEventsResponse,
           earningsResponse,
         ] = await Promise.all([
@@ -247,9 +252,6 @@ export default function RefereeDashboard() {
             headers: authHeaders,
           }),
           fetch(`${API_BASE_URL}/cover-requests/my-upcoming-assignments/`, {
-            headers: authHeaders,
-          }),
-          fetch(`${API_BASE_URL}/games/opportunities/`, {
             headers: authHeaders,
           }),
           fetch(`${API_BASE_URL}/events/?upcoming=true&joined=true`, {
@@ -275,12 +277,6 @@ export default function RefereeDashboard() {
           throw new Error(upcomingAssignmentsData.detail || "Failed to load appointed games.");
         }
         setMyUpcomingAssignments(upcomingAssignmentsData);
-
-        const opportunitiesData = await opportunitiesResponse.json();
-        if (!opportunitiesResponse.ok) {
-          throw new Error(opportunitiesData.detail || "Failed to load opportunities.");
-        }
-        setOpenOpportunities(opportunitiesData);
 
         const joinedEventsData = await joinedEventsResponse.json();
         if (!joinedEventsResponse.ok) {
@@ -388,6 +384,7 @@ export default function RefereeDashboard() {
   const upcomingCalendarItems = useMemo(() => {
     const nowMs = Date.now();
     const items: CalendarItem[] = [];
+    const openOpportunities: any[] = [];
 
     openOpportunities.forEach((opportunity) => {
       if (opportunity.type === "EVENT") {
@@ -414,6 +411,26 @@ export default function RefereeDashboard() {
             badge: "Event Opportunity",
             venueName: opportunity.venue_name,
             isTaken: false,
+            details: {
+              id: `open-event-${opportunity.id}-${dateKey}`,
+              title: opportunity.venue_name
+                ? `Open Event at ${opportunity.venue_name}`
+                : "Open Event",
+              typeLabel: "Event",
+              badge: "Event Opportunity",
+              date: dateKey,
+              time: null,
+              venueName: opportunity.venue_name,
+              latitude: opportunity.lat ?? null,
+              longitude: opportunity.lng ?? null,
+              gameTypeDisplay: opportunity.game_type_display,
+              statusDisplay: opportunity.status_display ?? null,
+              description: opportunity.description?.trim() || null,
+              postedByName: opportunity.posted_by_name ?? null,
+              feePerGame: opportunity.fee_per_game ?? null,
+              joinedRefereesCount: opportunity.joined_referees_count ?? null,
+              slotsLeft: opportunity.slots_left ?? null,
+            },
           });
         });
 
@@ -439,6 +456,31 @@ export default function RefereeDashboard() {
           badge: "Cover Request",
           venueName: opportunity.venue_name,
           isTaken: false,
+          details: {
+            id: `open-cover-${opportunity.id}`,
+            title: `${homeTeam} vs ${awayTeam}`,
+            typeLabel: "Cover Request",
+            badge: "Cover Request",
+            date: opportunity.date,
+            time: opportunity.time,
+            venueName: opportunity.venue_name,
+            latitude: opportunity.lat ?? null,
+            longitude: opportunity.lng ?? null,
+            roleDisplay: opportunity.role_display,
+            gameTypeDisplay: opportunity.game_type_display,
+            divisionDisplay: buildDivisionDisplay(
+              opportunity.division_name,
+              opportunity.division_gender
+            ),
+            paymentTypeDisplay: opportunity.payment_type_display ?? null,
+            statusDisplay: opportunity.status_display ?? null,
+            description: opportunity.description?.trim() || null,
+            reason: opportunity.reason ?? null,
+            postedByName: opportunity.posted_by_name ?? null,
+            requestedByName: opportunity.requested_by_name ?? null,
+            originalRefereeName: opportunity.original_referee_name ?? null,
+            claimedByName: opportunity.claimed_by_name ?? null,
+          },
         });
         return;
       }
@@ -453,6 +495,28 @@ export default function RefereeDashboard() {
         badge: "Open Game",
         venueName: opportunity.venue_name,
         isTaken: false,
+        details: {
+          id: `open-slot-${opportunity.id}`,
+          title: `${homeTeam} vs ${awayTeam}`,
+          typeLabel: "Non-Appointed Game",
+          badge: "Open Game",
+          date: opportunity.date,
+          time: opportunity.time,
+          venueName: opportunity.venue_name,
+          latitude: opportunity.lat ?? null,
+          longitude: opportunity.lng ?? null,
+          roleDisplay: opportunity.role_display,
+          gameTypeDisplay: opportunity.game_type_display,
+          divisionDisplay: buildDivisionDisplay(
+            opportunity.division_name,
+            opportunity.division_gender
+          ),
+          paymentTypeDisplay: opportunity.payment_type_display ?? null,
+          statusDisplay: opportunity.status_display ?? null,
+          description: opportunity.description?.trim() || null,
+          postedByName: opportunity.posted_by_name ?? null,
+          claimedByName: opportunity.claimed_by_name ?? null,
+        },
       });
     });
 
@@ -478,6 +542,25 @@ export default function RefereeDashboard() {
         badge: "My Assignment",
         venueName: assignment.game_details?.venue_name || null,
         isTaken: true,
+        details: {
+          id: `my-assignment-${assignment.assignment_id}`,
+          title: `${homeTeam} vs ${awayTeam}`,
+          typeLabel: "Assignment",
+          badge: "My Assignment",
+          date: dateValue,
+          time: timeValue,
+          venueName: assignment.game_details?.venue_name || null,
+          latitude: assignment.game_details?.lat ?? null,
+          longitude: assignment.game_details?.lng ?? null,
+          roleDisplay: assignment.role_display,
+          gameTypeDisplay: assignment.game_details?.game_type_display || null,
+          divisionDisplay: buildDivisionDisplay(
+            assignment.game_details?.division_name,
+            assignment.game_details?.division_gender
+          ),
+          paymentTypeDisplay: assignment.game_details?.payment_type_display || null,
+          statusDisplay: assignment.game_details?.status_display || null,
+        },
       });
     });
 
@@ -503,6 +586,26 @@ export default function RefereeDashboard() {
         badge: "Taken Game",
         venueName: claimedGame.game_details?.venue_name || null,
         isTaken: true,
+        details: {
+          id: `my-claimed-${claimedGame.id}`,
+          title: `${homeTeam} vs ${awayTeam}`,
+          typeLabel: "Taken Game",
+          badge: "Taken Game",
+          date: dateValue,
+          time: timeValue,
+          venueName: claimedGame.game_details?.venue_name || null,
+          latitude: claimedGame.game_details?.lat ?? null,
+          longitude: claimedGame.game_details?.lng ?? null,
+          roleDisplay: claimedGame.role_display,
+          gameTypeDisplay: claimedGame.game_details?.game_type_display || null,
+          divisionDisplay: buildDivisionDisplay(
+            claimedGame.game_details?.division_name,
+            claimedGame.game_details?.division_gender
+          ),
+          paymentTypeDisplay: claimedGame.game_details?.payment_type_display || null,
+          statusDisplay: claimedGame.game_details?.status_display || null,
+          claimedByName: "You",
+        },
       });
     });
 
@@ -525,6 +628,19 @@ export default function RefereeDashboard() {
           badge: "My Event",
           venueName: event.venue_name,
           isTaken: true,
+          details: {
+            id: `my-event-${event.id}-${dateKey}`,
+            title: event.venue_name ? `My Event at ${event.venue_name}` : "My Event",
+            typeLabel: "Event",
+            badge: "My Event",
+            date: dateKey,
+            time: null,
+            endDate: event.end_date,
+            venueName: event.venue_name,
+            latitude: event.lat ?? null,
+            longitude: event.lng ?? null,
+            description: event.description?.trim() || null,
+          },
         });
       });
     });
@@ -532,7 +648,7 @@ export default function RefereeDashboard() {
     return items
       .filter((item) => item.timestamp >= nowMs)
       .sort((a, b) => a.timestamp - b.timestamp);
-  }, [myClaimedGames, myJoinedEvents, myUpcomingAssignments, openOpportunities]);
+  }, [myClaimedGames, myJoinedEvents, myUpcomingAssignments]);
 
   const calendarItemsByDate = useMemo(() => {
     const grouped: Record<string, CalendarItem[]> = {};
@@ -557,7 +673,7 @@ export default function RefereeDashboard() {
       return;
     }
 
-    if (!selectedDateKey || !calendarItemsByDate[selectedDateKey]?.length) {
+    if (!selectedDateKey) {
       const firstDate = upcomingCalendarItems[0].date;
       setSelectedDateKey(firstDate);
 
@@ -566,7 +682,7 @@ export default function RefereeDashboard() {
         setCalendarMonth(new Date(year, month - 1, 1));
       }
     }
-  }, [calendarItemsByDate, upcomingCalendarItems, selectedDateKey]);
+  }, [upcomingCalendarItems, selectedDateKey]);
 
   const selectedDayItems = selectedDateKey
     ? (calendarItemsByDate[selectedDateKey] || [])
@@ -661,7 +777,12 @@ export default function RefereeDashboard() {
                     key={dayKey}
                     type="button"
                     className={classes.join(" ")}
-                    onClick={() => setSelectedDateKey(dayKey)}
+                    onClick={() => {
+                      setSelectedDateKey(dayKey);
+                      if (!isCurrentMonth) {
+                        setCalendarMonth(new Date(day.getFullYear(), day.getMonth(), 1));
+                      }
+                    }}
                   >
                     <span className="dashboard-calendar-day-number">{day.getDate()}</span>
                     {hasItems && <span className="dashboard-calendar-dot" />}
@@ -691,16 +812,18 @@ export default function RefereeDashboard() {
                           {toDisplayTime(item.time)}
                         </span>
                       </div>
-                      <p className="dashboard-day-item-subtitle">{item.subtitle}</p>
-                      <div className="dashboard-day-item-meta">
-                        <span
-                          className={`dashboard-day-badge ${item.isTaken ? "taken" : "open"}`}
+                      <p className="dashboard-day-item-subtitle">
+                        {item.badge}
+                        {item.venueName ? ` • ${item.venueName}` : ""}
+                      </p>
+                      <div className="dashboard-day-item-actions">
+                        <button
+                          type="button"
+                          className="dashboard-day-view-btn"
+                          onClick={() => setSelectedCalendarItem(item)}
                         >
-                          {item.badge}
-                        </span>
-                        {item.venueName && (
-                          <span className="dashboard-day-venue">{item.venueName}</span>
-                        )}
+                          View Details
+                        </button>
                       </div>
                     </article>
                   ))}
@@ -718,6 +841,12 @@ export default function RefereeDashboard() {
           </>
         )}
       </section>
+
+      <GameDetailsModal
+        open={Boolean(selectedCalendarItem)}
+        details={selectedCalendarItem?.details || null}
+        onClose={() => setSelectedCalendarItem(null)}
+      />
 
       <DashboardQuickActions />
 
