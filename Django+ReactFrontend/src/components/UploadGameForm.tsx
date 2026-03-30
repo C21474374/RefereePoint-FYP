@@ -5,6 +5,7 @@ import { getAccessToken } from "../services/auth";
 type SimpleOption = {
   id: number;
   name: string;
+  requires_appointed_referees?: boolean;
 };
 
 type TeamOption = {
@@ -267,6 +268,27 @@ export default function UploadGameForm({
   const awayDisabled = availability ? !availability.away_available : false;
   const bothSidesBlocked = homeDisabled && awayDisabled;
   const isNonAppointedType = NON_APPOINTED_GAME_TYPES.includes(form.game_type);
+  const availableDivisions = useMemo(() => {
+    const isAppointedType = APPOINTED_GAME_TYPES.includes(form.game_type);
+    return divisions.filter((division) =>
+      isAppointedType
+        ? Boolean(division.requires_appointed_referees)
+        : !Boolean(division.requires_appointed_referees)
+    );
+  }, [divisions, form.game_type]);
+
+  useEffect(() => {
+    if (!form.division) {
+      return;
+    }
+
+    const stillValid = availableDivisions.some(
+      (division) => String(division.id) === form.division
+    );
+    if (!stillValid) {
+      setForm((prev) => ({ ...prev, division: "" }));
+    }
+  }, [availableDivisions, form.division]);
 
   function handleChange(
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -424,7 +446,7 @@ if (!token) {
       {successMessage && <div className="upload-message success">{successMessage}</div>}
       {!canUploadGames && (
         <div className="upload-message error">
-          Your account is pending approval. Uploads are available after BIPIN verification and DOA admin approval.
+          Your account is pending approval. Uploads are available after required verification and admin approval.
         </div>
       )}
       {canUploadGames && allowedGameTypes.length === 0 && (
@@ -479,7 +501,7 @@ if (!token) {
             <label>Division</label>
             <select name="division" value={form.division} onChange={handleChange}>
               <option value="">Select division</option>
-              {divisions.map((division) => (
+              {availableDivisions.map((division) => (
                 <option key={division.id} value={division.id}>
                   {division.name}
                 </option>

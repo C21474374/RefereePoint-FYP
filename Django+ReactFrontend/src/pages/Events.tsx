@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import EventCard from "../components/events/EventCard";
 import EventForm from "../components/events/EventForm";
+import { useAuth } from "../context/AuthContext";
 import {
   deleteEvent,
   getEventVenueOptions,
@@ -17,6 +18,9 @@ import "../pages_css/Events.css";
 type EventSectionKey = "manageEvents" | "myEvents" | "openEvents" | "fullEvents";
 
 export default function Events() {
+  const { user } = useAuth();
+  const isRefereeUser = Boolean(user?.referee_profile);
+
   const [events, setEvents] = useState<EventItem[]>([]);
   const [venues, setVenues] = useState<EventVenueOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,20 +214,24 @@ export default function Events() {
       <div className="events-page-header">
         <h1>Events</h1>
         <p>
-          Join tournament events, track referee coverage, and manage who is assigned.
+          {isRefereeUser
+            ? "Join tournament events, track referee coverage, and manage who is assigned."
+            : "Upload and manage tournament events created by your organisation."}
         </p>
       </div>
 
       {!loading && (
         <div className="events-filters">
-          <label className="events-filter-toggle">
-            <input
-              type="checkbox"
-              checked={myEventsOnly}
-              onChange={(e) => setMyEventsOnly(e.target.checked)}
-            />
-            <span>My events only</span>
-          </label>
+          {isRefereeUser && (
+            <label className="events-filter-toggle">
+              <input
+                type="checkbox"
+                checked={myEventsOnly}
+                onChange={(e) => setMyEventsOnly(e.target.checked)}
+              />
+              <span>My events only</span>
+            </label>
+          )}
 
           <select
             className="events-filter-select"
@@ -305,132 +313,136 @@ export default function Events() {
             </button>
           </section>
 
-          <section
-            className={`events-section ${
-              expandedSections.myEvents ? "expanded" : "collapsed"
-            }`}
-          >
-            <div className="events-section-header">
-              <h2>My Event Assignments</h2>
-              <p>Events you are currently assigned to referee.</p>
-            </div>
-
-            {expandedSections.myEvents && (
-              <div className="events-section-content">
-                {myEvents.length === 0 ? (
-                  <div className="events-empty">
-                    <p>You have not joined any upcoming events yet.</p>
-                  </div>
-                ) : (
-                  <div className="events-grid">
-                    {myEvents.map((event) => (
-                      <EventCard
-                        key={event.id}
-                        event={event}
-                        actionLoadingId={actionLoadingId}
-                        onLeave={handleLeave}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="events-section-toggle"
-              onClick={() => toggleSection("myEvents")}
-              aria-expanded={expandedSections.myEvents}
-            >
-              <span>{expandedSections.myEvents ? "Collapse" : "Expand"}</span>
-              <span className="events-section-toggle-icon" aria-hidden="true">
-                {expandedSections.myEvents ? "^" : "v"}
-              </span>
-            </button>
-          </section>
-
-          <section
-            className={`events-section ${
-              expandedSections.openEvents ? "expanded" : "collapsed"
-            }`}
-          >
-            <div className="events-section-header">
-              <h2>Open Tournament Events</h2>
-              <p>Join open events and help cover tournament schedules.</p>
-            </div>
-
-            {expandedSections.openEvents && (
-              <div className="events-section-content">
-                {openEvents.length === 0 ? (
-                  <div className="events-empty">
-                    <p>No open events right now.</p>
-                  </div>
-                ) : (
-                  <div className="events-grid">
-                    {openEvents.map((event) => (
-                      <EventCard
-                        key={event.id}
-                        event={event}
-                        actionLoadingId={actionLoadingId}
-                        onJoin={handleJoin}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="events-section-toggle"
-              onClick={() => toggleSection("openEvents")}
-              aria-expanded={expandedSections.openEvents}
-            >
-              <span>{expandedSections.openEvents ? "Collapse" : "Expand"}</span>
-              <span className="events-section-toggle-icon" aria-hidden="true">
-                {expandedSections.openEvents ? "^" : "v"}
-              </span>
-            </button>
-          </section>
-
-          {fullEvents.length > 0 && (
-            <section
-              className={`events-section ${
-                expandedSections.fullEvents ? "expanded" : "collapsed"
-              }`}
-            >
-              <div className="events-section-header">
-                <h2>Currently Full</h2>
-                <p>Events that are at capacity and waiting for a spot.</p>
-              </div>
-
-              {expandedSections.fullEvents && (
-                <div className="events-section-content">
-                  <div className="events-grid">
-                    {fullEvents.map((event) => (
-                      <EventCard
-                        key={event.id}
-                        event={event}
-                        actionLoadingId={actionLoadingId}
-                        onJoin={handleJoin}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="events-section-toggle"
-                onClick={() => toggleSection("fullEvents")}
-                aria-expanded={expandedSections.fullEvents}
+          {isRefereeUser && (
+            <>
+              <section
+                className={`events-section ${
+                  expandedSections.myEvents ? "expanded" : "collapsed"
+                }`}
               >
-                <span>{expandedSections.fullEvents ? "Collapse" : "Expand"}</span>
-                <span className="events-section-toggle-icon" aria-hidden="true">
-                  {expandedSections.fullEvents ? "^" : "v"}
-                </span>
-              </button>
-            </section>
+                <div className="events-section-header">
+                  <h2>My Event Assignments</h2>
+                  <p>Events you are currently assigned to referee.</p>
+                </div>
+
+                {expandedSections.myEvents && (
+                  <div className="events-section-content">
+                    {myEvents.length === 0 ? (
+                      <div className="events-empty">
+                        <p>You have not joined any upcoming events yet.</p>
+                      </div>
+                    ) : (
+                      <div className="events-grid">
+                        {myEvents.map((event) => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            actionLoadingId={actionLoadingId}
+                            onLeave={handleLeave}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="events-section-toggle"
+                  onClick={() => toggleSection("myEvents")}
+                  aria-expanded={expandedSections.myEvents}
+                >
+                  <span>{expandedSections.myEvents ? "Collapse" : "Expand"}</span>
+                  <span className="events-section-toggle-icon" aria-hidden="true">
+                    {expandedSections.myEvents ? "^" : "v"}
+                  </span>
+                </button>
+              </section>
+
+              <section
+                className={`events-section ${
+                  expandedSections.openEvents ? "expanded" : "collapsed"
+                }`}
+              >
+                <div className="events-section-header">
+                  <h2>Open Tournament Events</h2>
+                  <p>Join open events and help cover tournament schedules.</p>
+                </div>
+
+                {expandedSections.openEvents && (
+                  <div className="events-section-content">
+                    {openEvents.length === 0 ? (
+                      <div className="events-empty">
+                        <p>No open events right now.</p>
+                      </div>
+                    ) : (
+                      <div className="events-grid">
+                        {openEvents.map((event) => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            actionLoadingId={actionLoadingId}
+                            onJoin={handleJoin}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="events-section-toggle"
+                  onClick={() => toggleSection("openEvents")}
+                  aria-expanded={expandedSections.openEvents}
+                >
+                  <span>{expandedSections.openEvents ? "Collapse" : "Expand"}</span>
+                  <span className="events-section-toggle-icon" aria-hidden="true">
+                    {expandedSections.openEvents ? "^" : "v"}
+                  </span>
+                </button>
+              </section>
+
+              {fullEvents.length > 0 && (
+                <section
+                  className={`events-section ${
+                    expandedSections.fullEvents ? "expanded" : "collapsed"
+                  }`}
+                >
+                  <div className="events-section-header">
+                    <h2>Currently Full</h2>
+                    <p>Events that are at capacity and waiting for a spot.</p>
+                  </div>
+
+                  {expandedSections.fullEvents && (
+                    <div className="events-section-content">
+                      <div className="events-grid">
+                        {fullEvents.map((event) => (
+                          <EventCard
+                            key={event.id}
+                            event={event}
+                            actionLoadingId={actionLoadingId}
+                            onJoin={handleJoin}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    className="events-section-toggle"
+                    onClick={() => toggleSection("fullEvents")}
+                    aria-expanded={expandedSections.fullEvents}
+                  >
+                    <span>{expandedSections.fullEvents ? "Collapse" : "Expand"}</span>
+                    <span className="events-section-toggle-icon" aria-hidden="true">
+                      {expandedSections.fullEvents ? "^" : "v"}
+                    </span>
+                  </button>
+                </section>
+              )}
+            </>
           )}
         </>
       )}

@@ -24,6 +24,7 @@ class Division(models.Model):
     
     name = models.CharField(max_length=50)  # e.g., U12, U14, U16, O40s, Senior
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    requires_appointed_referees = models.BooleanField(default=False)
     
     class Meta:
         db_table = 'clubs_division'

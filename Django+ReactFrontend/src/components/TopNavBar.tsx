@@ -7,13 +7,18 @@ import UploadEventPanel from "./UploadEventPanel";
 
 type UploadModalType = "game" | "event" | null;
 
-const baseNavLinks = [
+const refereeNavLinks = [
   { name: "Dashboard", path: "/dashboard" },
   { name: "Opportunities", path: "/games" },
   { name: "Cover Requests", path: "/cover-requests" },
   { name: "Events", path: "/events" },
   { name: "Reports", path: "/reports" },
   { name: "Earnings", path: "/earnings" },
+];
+
+const managerBaseNavLinks = [
+  { name: "Games", path: "/games" },
+  { name: "Events", path: "/events" },
 ];
 
 function buildUserInitials(
@@ -195,14 +200,21 @@ const TopNavBar: React.FC = () => {
   const userInitials = buildUserInitials(user?.first_name, user?.last_name, user?.email);
   const isRefereeUser = Boolean(user?.referee_profile);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
-  const navLinks = baseNavLinks.filter(
-    (link) => !((isRefereeUser && !hasEventManagerScope) && link.path === "/events")
-  );
+  const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const managerNavLinks = [
+    ...managerBaseNavLinks.filter((link) => hasEventManagerScope || link.path !== "/events"),
+    ...(canApproveAccounts ? [{ name: "Account Approvals", path: "/account-approvals" }] : []),
+  ];
+  const navLinks = isRefereeUser
+    ? refereeNavLinks.filter(
+        (link) => !((isRefereeUser && !hasEventManagerScope) && link.path === "/events")
+      )
+    : managerNavLinks;
   const canUploadGame =
-    Boolean(user?.bipin_verified && user?.doa_approved) &&
+    Boolean(user?.uploads_approved) &&
     Boolean(user?.allowed_upload_game_types?.length);
   const canUploadEvent =
-    Boolean(user?.bipin_verified && user?.doa_approved) &&
+    Boolean(user?.uploads_approved) &&
     Boolean(user?.allowed_upload_event_types?.length);
   const uploadItems: Array<{ label: string; type: Exclude<UploadModalType, null> }> = [
     ...(canUploadGame ? [{ label: "Upload Game", type: "game" as const }] : []),

@@ -46,6 +46,37 @@ type JoinedEvent = {
   lng?: number | null;
 };
 
+type UploadedManagedGame = {
+  id: number;
+  date: string;
+  time?: string | null;
+  venue_name?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  home_team_name?: string | null;
+  away_team_name?: string | null;
+  division_name?: string | null;
+  division_gender?: string | null;
+  game_type_display?: string | null;
+  payment_type_display?: string | null;
+  status_display?: string | null;
+};
+
+type ManagedEvent = {
+  id: number;
+  start_date: string;
+  end_date: string;
+  venue_name: string | null;
+  description: string;
+  lat?: number | null;
+  lng?: number | null;
+  event_type_display?: string;
+  fee_per_game?: string | null;
+  joined_referees_count?: number | null;
+  slots_left?: number | null;
+  can_manage?: boolean;
+};
+
 type MonthlyEarningsSummary = {
   total_claim_amount: string;
   mileage_km_total: string;
@@ -204,12 +235,25 @@ function enumerateDateRange(startDate: string, endDate: string) {
   return result;
 }
 
+function getResponseErrorMessage(data: unknown, fallback: string) {
+  if (data && typeof data === "object") {
+    const detail = (data as { detail?: string }).detail;
+    if (typeof detail === "string" && detail.trim()) {
+      return detail;
+    }
+  }
+  return fallback;
+}
+
 export default function RefereeDashboard() {
   const { user } = useAuth();
+  const isRefereeUser = Boolean(user?.referee_profile);
 
   const [myClaimedGames, setMyClaimedGames] = useState<MyClaimedGame[]>([]);
   const [myUpcomingAssignments, setMyUpcomingAssignments] = useState<UpcomingAssignment[]>([]);
   const [myJoinedEvents, setMyJoinedEvents] = useState<JoinedEvent[]>([]);
+  const [myUploadedGames, setMyUploadedGames] = useState<UploadedManagedGame[]>([]);
+  const [myManagedEvents, setMyManagedEvents] = useState<ManagedEvent[]>([]);
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarningsSummary | null>(null);
 
   const [loadingDashboard, setLoadingDashboard] = useState(true);
@@ -229,11 +273,12 @@ export default function RefereeDashboard() {
         setDashboardError("");
 
         const token = getAccessToken();
-
         if (!token) {
           setMyClaimedGames([]);
           setMyUpcomingAssignments([]);
           setMyJoinedEvents([]);
+          setMyUploadedGames([]);
+          setMyManagedEvents([]);
           setMonthlyEarnings(null);
           return;
         }
@@ -242,56 +287,104 @@ export default function RefereeDashboard() {
           Authorization: `Bearer ${token}`,
         };
 
-        const [
-          claimedGamesResponse,
-          upcomingAssignmentsResponse,
-          joinedEventsResponse,
-          earningsResponse,
-        ] = await Promise.all([
-          fetch(`${API_BASE_URL}/games/my-games/`, {
+        if (isRefereeUser) {
+          const [
+            claimedGamesResponse,
+            upcomingAssignmentsResponse,
+            joinedEventsResponse,
+            earningsResponse,
+          ] = await Promise.all([
+            fetch(`${API_BASE_URL}/games/my-games/`, {
+              headers: authHeaders,
+            }),
+            fetch(`${API_BASE_URL}/cover-requests/my-upcoming-assignments/`, {
+              headers: authHeaders,
+            }),
+            fetch(`${API_BASE_URL}/events/?upcoming=true&joined=true`, {
+              headers: authHeaders,
+            }),
+            fetch(`${API_BASE_URL}/expenses/earnings/?period=month`, {
+              headers: authHeaders,
+            }),
+          ]);
+
+          if (claimedGamesResponse.status === 404) {
+            setMyClaimedGames([]);
+          } else {
+            const claimedGamesData = await claimedGamesResponse.json();
+            if (!claimedGamesResponse.ok) {
+              throw new Error(
+                getResponseErrorMessage(claimedGamesData, "Failed to load claimed games.")
+              );
+            }
+            setMyClaimedGames(claimedGamesData as MyClaimedGame[]);
+          }
+
+          const upcomingAssignmentsData = await upcomingAssignmentsResponse.json();
+          if (!upcomingAssignmentsResponse.ok) {
+            throw new Error(
+              getResponseErrorMessage(upcomingAssignmentsData, "Failed to load appointed games.")
+            );
+          }
+          setMyUpcomingAssignments(upcomingAssignmentsData as UpcomingAssignment[]);
+
+          const joinedEventsData = await joinedEventsResponse.json();
+          if (!joinedEventsResponse.ok) {
+            throw new Error(
+              getResponseErrorMessage(joinedEventsData, "Failed to load joined events.")
+            );
+          }
+          setMyJoinedEvents(joinedEventsData as JoinedEvent[]);
+
+          const earningsData = await earningsResponse.json();
+          if (!earningsResponse.ok) {
+            throw new Error(
+              getResponseErrorMessage(earningsData, "Failed to load earnings summary.")
+            );
+          }
+          const totals = (earningsData as { totals?: MonthlyEarningsSummary }).totals;
+          setMonthlyEarnings({
+            total_claim_amount: totals?.total_claim_amount ?? "0.00",
+            mileage_km_total: totals?.mileage_km_total ?? "0.00",
+          });
+
+          setMyUploadedGames([]);
+          setMyManagedEvents([]);
+          return;
+        }
+
+        const [uploadedGamesResponse, eventsResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/games/my-uploads/`, {
             headers: authHeaders,
           }),
-          fetch(`${API_BASE_URL}/cover-requests/my-upcoming-assignments/`, {
-            headers: authHeaders,
-          }),
-          fetch(`${API_BASE_URL}/events/?upcoming=true&joined=true`, {
-            headers: authHeaders,
-          }),
-          fetch(`${API_BASE_URL}/expenses/earnings/?period=month`, {
+          fetch(`${API_BASE_URL}/events/?upcoming=true`, {
             headers: authHeaders,
           }),
         ]);
 
-        if (claimedGamesResponse.status === 404) {
-          setMyClaimedGames([]);
-        } else {
-          const claimedGamesData = await claimedGamesResponse.json();
-          if (!claimedGamesResponse.ok) {
-            throw new Error(claimedGamesData.detail || "Failed to load claimed games.");
-          }
-          setMyClaimedGames(claimedGamesData);
+        const uploadedGamesData = await uploadedGamesResponse.json();
+        if (!uploadedGamesResponse.ok) {
+          throw new Error(
+            getResponseErrorMessage(uploadedGamesData, "Failed to load uploaded games.")
+          );
         }
+        setMyUploadedGames(uploadedGamesData as UploadedManagedGame[]);
 
-        const upcomingAssignmentsData = await upcomingAssignmentsResponse.json();
-        if (!upcomingAssignmentsResponse.ok) {
-          throw new Error(upcomingAssignmentsData.detail || "Failed to load appointed games.");
+        const eventsData = await eventsResponse.json();
+        if (!eventsResponse.ok) {
+          throw new Error(
+            getResponseErrorMessage(eventsData, "Failed to load uploaded events.")
+          );
         }
-        setMyUpcomingAssignments(upcomingAssignmentsData);
+        const manageableEvents = (eventsData as ManagedEvent[]).filter((event) =>
+          Boolean(event.can_manage)
+        );
+        setMyManagedEvents(manageableEvents);
 
-        const joinedEventsData = await joinedEventsResponse.json();
-        if (!joinedEventsResponse.ok) {
-          throw new Error(joinedEventsData.detail || "Failed to load joined events.");
-        }
-        setMyJoinedEvents(joinedEventsData);
-
-        const earningsData = await earningsResponse.json();
-        if (!earningsResponse.ok) {
-          throw new Error(earningsData.detail || "Failed to load earnings summary.");
-        }
-        setMonthlyEarnings({
-          total_claim_amount: earningsData.totals.total_claim_amount,
-          mileage_km_total: earningsData.totals.mileage_km_total,
-        });
+        setMyClaimedGames([]);
+        setMyUpcomingAssignments([]);
+        setMyJoinedEvents([]);
+        setMonthlyEarnings(null);
       } catch (error) {
         setDashboardError(
           error instanceof Error ? error.message : "Failed to load dashboard data."
@@ -302,12 +395,16 @@ export default function RefereeDashboard() {
     }
 
     loadDashboardData();
-  }, []);
+  }, [isRefereeUser]);
 
   const fullName =
-    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Referee";
-
+    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
+    (isRefereeUser ? "Referee" : "Manager");
   const displayGrade = user?.referee_profile?.grade?.replaceAll("_", " ") || "N/A";
+  const heroBadgeLabel = isRefereeUser ? displayGrade : user?.account_type_display || "Manager";
+  const heroSubtitle = isRefereeUser
+    ? "Ready to referee? Check your next game and take action."
+    : "Manage uploaded games and events for your organisation.";
 
   const upcomingTakenGames = useMemo(() => {
     const nowMs = Date.now();
@@ -356,42 +453,106 @@ export default function RefereeDashboard() {
     });
 
     return results.sort((a, b) => a.timestamp - b.timestamp);
-  }, [myUpcomingAssignments, myClaimedGames]);
+  }, [myClaimedGames, myUpcomingAssignments]);
 
   const nextTakenGame = upcomingTakenGames.length > 0 ? upcomingTakenGames[0] : null;
-
-  const stats = useMemo(
-    () => [
-      {
-        label: "Next Game",
-        value: nextTakenGame ? nextTakenGame.ageGroup : "No upcoming game",
-        detail: nextTakenGame
-          ? `${toDisplayDate(nextTakenGame.date)} • ${toDisplayTime(nextTakenGame.time)}`
-          : "No assigned games yet",
-      },
-      {
-        label: "This Month Claim",
-        value: `EUR ${monthlyEarnings?.total_claim_amount ?? "0.00"}`,
-      },
-      {
-        label: "Mileage This Month",
-        value: `${monthlyEarnings?.mileage_km_total ?? "0.00"} km`,
-      },
-    ],
-    [monthlyEarnings, nextTakenGame]
-  );
 
   const upcomingCalendarItems = useMemo(() => {
     const nowMs = Date.now();
     const items: CalendarItem[] = [];
-    const openOpportunities: any[] = [];
 
-    openOpportunities.forEach((opportunity) => {
-      if (opportunity.type === "EVENT") {
-        const dates = enumerateDateRange(
-          opportunity.date,
-          opportunity.event_end_date || opportunity.date
-        );
+    if (isRefereeUser) {
+      myUpcomingAssignments.forEach((assignment) => {
+        const dateValue = assignment.game_details?.date;
+        const timeValue = assignment.game_details?.time || null;
+        const parsedDate = parseDateTime(dateValue, timeValue);
+
+        if (!dateValue || !parsedDate) {
+          return;
+        }
+
+        const homeTeam = assignment.game_details?.home_team_name || "Home Team";
+        const awayTeam = assignment.game_details?.away_team_name || "Away Team";
+
+        items.push({
+          id: `my-assignment-${assignment.assignment_id}`,
+          date: dateValue,
+          time: timeValue,
+          timestamp: parsedDate.getTime(),
+          title: `${homeTeam} vs ${awayTeam}`,
+          subtitle: `${assignment.game_details?.game_type_display || "Game"} - ${assignment.role_display}`,
+          badge: "My Assignment",
+          venueName: assignment.game_details?.venue_name || null,
+          isTaken: true,
+          details: {
+            id: `my-assignment-${assignment.assignment_id}`,
+            title: `${homeTeam} vs ${awayTeam}`,
+            typeLabel: "Assignment",
+            badge: "My Assignment",
+            date: dateValue,
+            time: timeValue,
+            venueName: assignment.game_details?.venue_name || null,
+            latitude: assignment.game_details?.lat ?? null,
+            longitude: assignment.game_details?.lng ?? null,
+            roleDisplay: assignment.role_display,
+            gameTypeDisplay: assignment.game_details?.game_type_display || null,
+            divisionDisplay: buildDivisionDisplay(
+              assignment.game_details?.division_name,
+              assignment.game_details?.division_gender
+            ),
+            paymentTypeDisplay: assignment.game_details?.payment_type_display || null,
+            statusDisplay: assignment.game_details?.status_display || null,
+          },
+        });
+      });
+
+      myClaimedGames.forEach((claimedGame) => {
+        const dateValue = claimedGame.game_details?.date;
+        const timeValue = claimedGame.game_details?.time || null;
+        const parsedDate = parseDateTime(dateValue, timeValue);
+
+        if (!dateValue || !parsedDate) {
+          return;
+        }
+
+        const homeTeam = claimedGame.game_details?.home_team_name || "Home Team";
+        const awayTeam = claimedGame.game_details?.away_team_name || "Away Team";
+
+        items.push({
+          id: `my-claimed-${claimedGame.id}`,
+          date: dateValue,
+          time: timeValue,
+          timestamp: parsedDate.getTime(),
+          title: `${homeTeam} vs ${awayTeam}`,
+          subtitle: `${claimedGame.role_display} - ${claimedGame.game_details?.game_type_display || "Game"}`,
+          badge: "Taken Game",
+          venueName: claimedGame.game_details?.venue_name || null,
+          isTaken: true,
+          details: {
+            id: `my-claimed-${claimedGame.id}`,
+            title: `${homeTeam} vs ${awayTeam}`,
+            typeLabel: "Taken Game",
+            badge: "Taken Game",
+            date: dateValue,
+            time: timeValue,
+            venueName: claimedGame.game_details?.venue_name || null,
+            latitude: claimedGame.game_details?.lat ?? null,
+            longitude: claimedGame.game_details?.lng ?? null,
+            roleDisplay: claimedGame.role_display,
+            gameTypeDisplay: claimedGame.game_details?.game_type_display || null,
+            divisionDisplay: buildDivisionDisplay(
+              claimedGame.game_details?.division_name,
+              claimedGame.game_details?.division_gender
+            ),
+            paymentTypeDisplay: claimedGame.game_details?.payment_type_display || null,
+            statusDisplay: claimedGame.game_details?.status_display || null,
+            claimedByName: "You",
+          },
+        });
+      });
+
+      myJoinedEvents.forEach((event) => {
+        const dates = enumerateDateRange(event.start_date, event.end_date);
 
         dates.forEach((dateKey) => {
           const parsedDate = parseDateTime(dateKey, null, true);
@@ -400,255 +561,177 @@ export default function RefereeDashboard() {
           }
 
           items.push({
-            id: `open-event-${opportunity.id}-${dateKey}`,
+            id: `my-event-${event.id}-${dateKey}`,
             date: dateKey,
             time: null,
             timestamp: parsedDate.getTime(),
-            title: opportunity.venue_name
-              ? `Open Event at ${opportunity.venue_name}`
-              : "Open Event",
-            subtitle: opportunity.description?.trim() || "Tournament event opportunity",
-            badge: "Event Opportunity",
-            venueName: opportunity.venue_name,
-            isTaken: false,
+            title: event.venue_name ? `My Event at ${event.venue_name}` : "My Event",
+            subtitle: event.description?.trim() || "Joined event assignment",
+            badge: "My Event",
+            venueName: event.venue_name,
+            isTaken: true,
             details: {
-              id: `open-event-${opportunity.id}-${dateKey}`,
-              title: opportunity.venue_name
-                ? `Open Event at ${opportunity.venue_name}`
-                : "Open Event",
+              id: `my-event-${event.id}-${dateKey}`,
+              title: event.venue_name ? `My Event at ${event.venue_name}` : "My Event",
               typeLabel: "Event",
-              badge: "Event Opportunity",
+              badge: "My Event",
               date: dateKey,
               time: null,
-              venueName: opportunity.venue_name,
-              latitude: opportunity.lat ?? null,
-              longitude: opportunity.lng ?? null,
-              gameTypeDisplay: opportunity.game_type_display,
-              statusDisplay: opportunity.status_display ?? null,
-              description: opportunity.description?.trim() || null,
-              postedByName: opportunity.posted_by_name ?? null,
-              feePerGame: opportunity.fee_per_game ?? null,
-              joinedRefereesCount: opportunity.joined_referees_count ?? null,
-              slotsLeft: opportunity.slots_left ?? null,
+              endDate: event.end_date,
+              venueName: event.venue_name,
+              latitude: event.lat ?? null,
+              longitude: event.lng ?? null,
+              description: event.description?.trim() || null,
             },
           });
         });
-
-        return;
-      }
-
-      const parsedDate = parseDateTime(opportunity.date, opportunity.time);
-      if (!parsedDate) {
-        return;
-      }
-
-      const homeTeam = opportunity.home_team_name || "Home Team";
-      const awayTeam = opportunity.away_team_name || "Away Team";
-
-      if (opportunity.type === "COVER_REQUEST") {
-        items.push({
-          id: `open-cover-${opportunity.id}`,
-          date: opportunity.date,
-          time: opportunity.time,
-          timestamp: parsedDate.getTime(),
-          title: `${homeTeam} vs ${awayTeam}`,
-          subtitle: `Cover request • ${opportunity.role_display || "Role TBC"}`,
-          badge: "Cover Request",
-          venueName: opportunity.venue_name,
-          isTaken: false,
-          details: {
-            id: `open-cover-${opportunity.id}`,
-            title: `${homeTeam} vs ${awayTeam}`,
-            typeLabel: "Cover Request",
-            badge: "Cover Request",
-            date: opportunity.date,
-            time: opportunity.time,
-            venueName: opportunity.venue_name,
-            latitude: opportunity.lat ?? null,
-            longitude: opportunity.lng ?? null,
-            roleDisplay: opportunity.role_display,
-            gameTypeDisplay: opportunity.game_type_display,
-            divisionDisplay: buildDivisionDisplay(
-              opportunity.division_name,
-              opportunity.division_gender
-            ),
-            paymentTypeDisplay: opportunity.payment_type_display ?? null,
-            statusDisplay: opportunity.status_display ?? null,
-            description: opportunity.description?.trim() || null,
-            reason: opportunity.reason ?? null,
-            postedByName: opportunity.posted_by_name ?? null,
-            requestedByName: opportunity.requested_by_name ?? null,
-            originalRefereeName: opportunity.original_referee_name ?? null,
-            claimedByName: opportunity.claimed_by_name ?? null,
-          },
-        });
-        return;
-      }
-
-      items.push({
-        id: `open-slot-${opportunity.id}`,
-        date: opportunity.date,
-        time: opportunity.time,
-        timestamp: parsedDate.getTime(),
-        title: `${homeTeam} vs ${awayTeam}`,
-        subtitle: `${opportunity.game_type_display || "Game"} • ${opportunity.role_display || "Role TBC"}`,
-        badge: "Open Game",
-        venueName: opportunity.venue_name,
-        isTaken: false,
-        details: {
-          id: `open-slot-${opportunity.id}`,
-          title: `${homeTeam} vs ${awayTeam}`,
-          typeLabel: "Non-Appointed Game",
-          badge: "Open Game",
-          date: opportunity.date,
-          time: opportunity.time,
-          venueName: opportunity.venue_name,
-          latitude: opportunity.lat ?? null,
-          longitude: opportunity.lng ?? null,
-          roleDisplay: opportunity.role_display,
-          gameTypeDisplay: opportunity.game_type_display,
-          divisionDisplay: buildDivisionDisplay(
-            opportunity.division_name,
-            opportunity.division_gender
-          ),
-          paymentTypeDisplay: opportunity.payment_type_display ?? null,
-          statusDisplay: opportunity.status_display ?? null,
-          description: opportunity.description?.trim() || null,
-          postedByName: opportunity.posted_by_name ?? null,
-          claimedByName: opportunity.claimed_by_name ?? null,
-        },
       });
-    });
+    } else {
+      myUploadedGames.forEach((game) => {
+        const dateValue = game.date;
+        const timeValue = game.time || null;
+        const parsedDate = parseDateTime(dateValue, timeValue);
 
-    myUpcomingAssignments.forEach((assignment) => {
-      const dateValue = assignment.game_details?.date;
-      const timeValue = assignment.game_details?.time || null;
-      const parsedDate = parseDateTime(dateValue, timeValue);
-
-      if (!dateValue || !parsedDate) {
-        return;
-      }
-
-      const homeTeam = assignment.game_details?.home_team_name || "Home Team";
-      const awayTeam = assignment.game_details?.away_team_name || "Away Team";
-
-      items.push({
-        id: `my-assignment-${assignment.assignment_id}`,
-        date: dateValue,
-        time: timeValue,
-        timestamp: parsedDate.getTime(),
-        title: `${homeTeam} vs ${awayTeam}`,
-        subtitle: `${assignment.game_details?.game_type_display || "Game"} • ${assignment.role_display}`,
-        badge: "My Assignment",
-        venueName: assignment.game_details?.venue_name || null,
-        isTaken: true,
-        details: {
-          id: `my-assignment-${assignment.assignment_id}`,
-          title: `${homeTeam} vs ${awayTeam}`,
-          typeLabel: "Assignment",
-          badge: "My Assignment",
-          date: dateValue,
-          time: timeValue,
-          venueName: assignment.game_details?.venue_name || null,
-          latitude: assignment.game_details?.lat ?? null,
-          longitude: assignment.game_details?.lng ?? null,
-          roleDisplay: assignment.role_display,
-          gameTypeDisplay: assignment.game_details?.game_type_display || null,
-          divisionDisplay: buildDivisionDisplay(
-            assignment.game_details?.division_name,
-            assignment.game_details?.division_gender
-          ),
-          paymentTypeDisplay: assignment.game_details?.payment_type_display || null,
-          statusDisplay: assignment.game_details?.status_display || null,
-        },
-      });
-    });
-
-    myClaimedGames.forEach((claimedGame) => {
-      const dateValue = claimedGame.game_details?.date;
-      const timeValue = claimedGame.game_details?.time || null;
-      const parsedDate = parseDateTime(dateValue, timeValue);
-
-      if (!dateValue || !parsedDate) {
-        return;
-      }
-
-      const homeTeam = claimedGame.game_details?.home_team_name || "Home Team";
-      const awayTeam = claimedGame.game_details?.away_team_name || "Away Team";
-
-      items.push({
-        id: `my-claimed-${claimedGame.id}`,
-        date: dateValue,
-        time: timeValue,
-        timestamp: parsedDate.getTime(),
-        title: `${homeTeam} vs ${awayTeam}`,
-        subtitle: `${claimedGame.role_display} • ${claimedGame.game_details?.game_type_display || "Game"}`,
-        badge: "Taken Game",
-        venueName: claimedGame.game_details?.venue_name || null,
-        isTaken: true,
-        details: {
-          id: `my-claimed-${claimedGame.id}`,
-          title: `${homeTeam} vs ${awayTeam}`,
-          typeLabel: "Taken Game",
-          badge: "Taken Game",
-          date: dateValue,
-          time: timeValue,
-          venueName: claimedGame.game_details?.venue_name || null,
-          latitude: claimedGame.game_details?.lat ?? null,
-          longitude: claimedGame.game_details?.lng ?? null,
-          roleDisplay: claimedGame.role_display,
-          gameTypeDisplay: claimedGame.game_details?.game_type_display || null,
-          divisionDisplay: buildDivisionDisplay(
-            claimedGame.game_details?.division_name,
-            claimedGame.game_details?.division_gender
-          ),
-          paymentTypeDisplay: claimedGame.game_details?.payment_type_display || null,
-          statusDisplay: claimedGame.game_details?.status_display || null,
-          claimedByName: "You",
-        },
-      });
-    });
-
-    myJoinedEvents.forEach((event) => {
-      const dates = enumerateDateRange(event.start_date, event.end_date);
-
-      dates.forEach((dateKey) => {
-        const parsedDate = parseDateTime(dateKey, null, true);
-        if (!parsedDate) {
+        if (!dateValue || !parsedDate) {
           return;
         }
 
+        const homeTeam = game.home_team_name || "Home Team";
+        const awayTeam = game.away_team_name || "Away Team";
+
         items.push({
-          id: `my-event-${event.id}-${dateKey}`,
-          date: dateKey,
-          time: null,
+          id: `uploaded-game-${game.id}`,
+          date: dateValue,
+          time: timeValue,
           timestamp: parsedDate.getTime(),
-          title: event.venue_name ? `My Event at ${event.venue_name}` : "My Event",
-          subtitle: event.description?.trim() || "Joined event assignment",
-          badge: "My Event",
-          venueName: event.venue_name,
+          title: `${homeTeam} vs ${awayTeam}`,
+          subtitle: `${game.game_type_display || "Game"} upload`,
+          badge: "Uploaded Game",
+          venueName: game.venue_name || null,
           isTaken: true,
           details: {
-            id: `my-event-${event.id}-${dateKey}`,
-            title: event.venue_name ? `My Event at ${event.venue_name}` : "My Event",
-            typeLabel: "Event",
-            badge: "My Event",
-            date: dateKey,
-            time: null,
-            endDate: event.end_date,
-            venueName: event.venue_name,
-            latitude: event.lat ?? null,
-            longitude: event.lng ?? null,
-            description: event.description?.trim() || null,
+            id: `uploaded-game-${game.id}`,
+            title: `${homeTeam} vs ${awayTeam}`,
+            typeLabel: "Uploaded Game",
+            badge: "Uploaded Game",
+            date: dateValue,
+            time: timeValue,
+            venueName: game.venue_name || null,
+            latitude: game.lat ?? null,
+            longitude: game.lng ?? null,
+            gameTypeDisplay: game.game_type_display || null,
+            divisionDisplay: buildDivisionDisplay(game.division_name, game.division_gender),
+            paymentTypeDisplay: game.payment_type_display || null,
+            statusDisplay: game.status_display || null,
           },
         });
       });
-    });
+
+      myManagedEvents.forEach((event) => {
+        const dates = enumerateDateRange(event.start_date, event.end_date);
+
+        dates.forEach((dateKey) => {
+          const parsedDate = parseDateTime(dateKey, null, true);
+          if (!parsedDate) {
+            return;
+          }
+
+          items.push({
+            id: `uploaded-event-${event.id}-${dateKey}`,
+            date: dateKey,
+            time: null,
+            timestamp: parsedDate.getTime(),
+            title: event.venue_name ? `Uploaded Event at ${event.venue_name}` : "Uploaded Event",
+            subtitle: event.description?.trim() || "Uploaded event",
+            badge: "Uploaded Event",
+            venueName: event.venue_name,
+            isTaken: true,
+            details: {
+              id: `uploaded-event-${event.id}-${dateKey}`,
+              title: event.venue_name ? `Uploaded Event at ${event.venue_name}` : "Uploaded Event",
+              typeLabel: "Uploaded Event",
+              badge: "Uploaded Event",
+              date: dateKey,
+              time: null,
+              endDate: event.end_date,
+              venueName: event.venue_name,
+              latitude: event.lat ?? null,
+              longitude: event.lng ?? null,
+              gameTypeDisplay: event.event_type_display || "Event",
+              description: event.description?.trim() || null,
+              feePerGame: event.fee_per_game ?? null,
+              joinedRefereesCount: event.joined_referees_count ?? null,
+              slotsLeft: event.slots_left ?? null,
+            },
+          });
+        });
+      });
+    }
 
     return items
       .filter((item) => item.timestamp >= nowMs)
       .sort((a, b) => a.timestamp - b.timestamp);
-  }, [myClaimedGames, myJoinedEvents, myUpcomingAssignments]);
+  }, [
+    isRefereeUser,
+    myClaimedGames,
+    myJoinedEvents,
+    myManagedEvents,
+    myUpcomingAssignments,
+    myUploadedGames,
+  ]);
+
+  const nextManagedCalendarItem =
+    !isRefereeUser && upcomingCalendarItems.length > 0 ? upcomingCalendarItems[0] : null;
+
+  const stats = useMemo(() => {
+    if (isRefereeUser) {
+      return [
+        {
+          label: "Next Game",
+          value: nextTakenGame ? nextTakenGame.ageGroup : "No upcoming game",
+          detail: nextTakenGame
+            ? `${toDisplayDate(nextTakenGame.date)} - ${toDisplayTime(nextTakenGame.time)}`
+            : "No assigned games yet",
+        },
+        {
+          label: "This Month Claim",
+          value: `EUR ${monthlyEarnings?.total_claim_amount ?? "0.00"}`,
+        },
+        {
+          label: "Mileage This Month",
+          value: `${monthlyEarnings?.mileage_km_total ?? "0.00"} km`,
+        },
+      ];
+    }
+
+    return [
+      {
+        label: "Uploaded Games",
+        value: String(myUploadedGames.length),
+      },
+      {
+        label: "Uploaded Events",
+        value: String(myManagedEvents.length),
+      },
+      {
+        label: "Next Upload",
+        value: nextManagedCalendarItem
+          ? toDisplayDate(nextManagedCalendarItem.date)
+          : "No upcoming upload",
+        detail: nextManagedCalendarItem
+          ? `${nextManagedCalendarItem.title} - ${toDisplayTime(nextManagedCalendarItem.time)}`
+          : "No upcoming games or events in your uploads",
+      },
+    ];
+  }, [
+    isRefereeUser,
+    monthlyEarnings?.mileage_km_total,
+    monthlyEarnings?.total_claim_amount,
+    myManagedEvents.length,
+    myUploadedGames.length,
+    nextManagedCalendarItem,
+    nextTakenGame,
+  ]);
 
   const calendarItemsByDate = useMemo(() => {
     const grouped: Record<string, CalendarItem[]> = {};
@@ -682,11 +765,9 @@ export default function RefereeDashboard() {
         setCalendarMonth(new Date(year, month - 1, 1));
       }
     }
-  }, [upcomingCalendarItems, selectedDateKey]);
+  }, [selectedDateKey, upcomingCalendarItems]);
 
-  const selectedDayItems = selectedDateKey
-    ? (calendarItemsByDate[selectedDateKey] || [])
-    : [];
+  const selectedDayItems = selectedDateKey ? (calendarItemsByDate[selectedDateKey] || []) : [];
 
   const calendarDays = useMemo(() => {
     const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
@@ -701,20 +782,24 @@ export default function RefereeDashboard() {
   }, [calendarMonth]);
 
   const currentDateKey = formatDateKey(new Date());
+  const calendarSectionTitle = isRefereeUser
+    ? "Upcoming Games Calendar"
+    : "Uploaded Schedule Calendar";
 
   return (
     <div className="dashboard-page">
       <DashboardHero
         name={fullName}
-        grade={displayGrade}
+        badgeLabel={heroBadgeLabel}
         email={user?.email || ""}
+        subtitle={heroSubtitle}
       />
 
       <DashboardStats stats={stats} />
 
       <section className="dashboard-calendar-section">
         <div className="dashboard-calendar-header">
-          <h2>Upcoming Opportunities Calendar</h2>
+          <h2>{calendarSectionTitle}</h2>
           <div className="dashboard-calendar-nav">
             <button
               type="button"
@@ -742,11 +827,11 @@ export default function RefereeDashboard() {
 
         {loadingDashboard ? (
           <div className="dashboard-no-games-message">
-            <p>Loading upcoming opportunities...</p>
+            <p>{isRefereeUser ? "Loading upcoming games..." : "Loading uploaded schedule..."}</p>
           </div>
         ) : upcomingCalendarItems.length === 0 ? (
           <div className="dashboard-no-games-message">
-            <p>No upcoming opportunities found.</p>
+            <p>{isRefereeUser ? "No upcoming games found." : "No upcoming uploads found."}</p>
           </div>
         ) : (
           <>
@@ -808,13 +893,11 @@ export default function RefereeDashboard() {
                     <article key={item.id} className="dashboard-day-item">
                       <div className="dashboard-day-item-top">
                         <h4>{item.title}</h4>
-                        <span className="dashboard-day-item-time">
-                          {toDisplayTime(item.time)}
-                        </span>
+                        <span className="dashboard-day-item-time">{toDisplayTime(item.time)}</span>
                       </div>
                       <p className="dashboard-day-item-subtitle">
                         {item.badge}
-                        {item.venueName ? ` • ${item.venueName}` : ""}
+                        {item.venueName ? ` - ${item.venueName}` : ""}
                       </p>
                       <div className="dashboard-day-item-actions">
                         <button
@@ -832,8 +915,10 @@ export default function RefereeDashboard() {
                 <div className="dashboard-no-games-message">
                   <p>
                     {selectedDateKey
-                      ? "No opportunities on this date."
-                      : "Select a date with a red dot to view opportunities."}
+                      ? isRefereeUser
+                        ? "No games on this date."
+                        : "No uploads on this date."
+                      : "Select a date to view schedule items."}
                   </p>
                 </div>
               )}

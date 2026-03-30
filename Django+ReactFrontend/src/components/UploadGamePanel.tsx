@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 type SimpleOption = {
   id: number;
   name: string;
+  requires_appointed_referees?: boolean;
 };
 
 type UploadGamePanelProps = {
@@ -62,6 +63,7 @@ export default function UploadGamePanel({
           divisionsData.map((division: any) => ({
             id: division.id,
             name: division.display || `${division.name} (${division.gender})`,
+            requires_appointed_referees: Boolean(division.requires_appointed_referees),
           }))
         );
 
@@ -112,7 +114,7 @@ export default function UploadGamePanel({
       teams={teams}
       allowedGameTypes={allowedGameTypes}
       accountTypeDisplay={user?.account_type_display || "User"}
-      canUploadGames={Boolean(user?.bipin_verified && user?.doa_approved)}
+      canUploadGames={Boolean(user?.uploads_approved)}
       embedded={embedded}
       onPosted={onPosted}
     />

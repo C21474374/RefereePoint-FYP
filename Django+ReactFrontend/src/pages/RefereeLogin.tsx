@@ -21,7 +21,12 @@ export default function LoginPage() {
       await login(email, password);
       navigate("/games");
     } catch (err) {
-      setError("Invalid email or password");
+      const message = err instanceof Error ? err.message : "Login failed";
+      if (message === "No active account found with the given credentials") {
+        setError("Invalid email or password");
+      } else {
+        setError(message);
+      }
     } finally {
       setSubmitting(false);
     }

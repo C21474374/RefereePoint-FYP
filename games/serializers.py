@@ -243,9 +243,9 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
 
         user: User = request.user
 
-        if not user.bipin_verified or not user.doa_approved:
+        if not user.is_approved_for_uploads():
             raise serializers.ValidationError(
-                "Your account must be BIPIN verified and approved by DOA admin to upload games."
+                "Your account must be manually approved before uploads are enabled."
             )
 
         allowed_game_types = user.get_allowed_upload_game_types()
@@ -262,6 +262,32 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                     "Check your account type and approval settings."
                 )
             )
+
+        if user.account_type == User.AccountType.CLUB and game_type != Game.GameType.FRIENDLY:
+            attrs["game_type"] = Game.GameType.CLUB
+            game_type = attrs["game_type"]
+
+        division = attrs.get("division")
+        if division:
+            requires_appointed = bool(getattr(division, "requires_appointed_referees", False))
+            if game_type in self.NON_APPOINTED_GAME_TYPES and requires_appointed:
+                raise serializers.ValidationError(
+                    {
+                        "division": (
+                            "This division is appointed-only and cannot be uploaded as a "
+                            "non-appointed game."
+                        )
+                    }
+                )
+            if game_type in self.APPOINTED_GAME_TYPES and not requires_appointed:
+                raise serializers.ValidationError(
+                    {
+                        "division": (
+                            "This division is configured as non-appointed. "
+                            "Choose an appointed division for DOA/NL uploads."
+                        )
+                    }
+                )
 
         if game_type in self.APPOINTED_GAME_TYPES:
             if slots:

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import "./DashboardQuickActions.css";
 
-const baseActions = [
+const refereeActions = [
   {
     name: "Opportunities",
     path: "/games",
@@ -30,15 +30,43 @@ const baseActions = [
   },
 ] as const;
 
+const managerBaseActions = [
+  {
+    name: "Games",
+    path: "/games",
+    description: "Upload and manage games posted by your organisation.",
+  },
+  {
+    name: "Events",
+    path: "/events",
+    description: "Upload and manage tournament events for your organisation.",
+  },
+] as const;
+
 export default function DashboardQuickActions() {
   const { user } = useAuth();
 
   const isRefereeUser = Boolean(user?.referee_profile);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
+  const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const managerActions = [
+    ...managerBaseActions.filter(
+      (action) => hasEventManagerScope || action.path !== "/events"
+    ),
+    ...(canApproveAccounts
+      ? [
+          {
+            name: "Account Approvals",
+            path: "/account-approvals",
+            description: "Review and approve pending account registrations.",
+          },
+        ]
+      : []),
+  ];
 
-  const actions = baseActions.filter(
-    (action) => !((isRefereeUser && !hasEventManagerScope) && action.path === "/events")
-  );
+  const actions = isRefereeUser
+    ? refereeActions.filter((action) => hasEventManagerScope || action.path !== "/events")
+    : managerActions;
 
   return (
     <section className="dashboard-quick-actions">

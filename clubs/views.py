@@ -20,6 +20,7 @@ def _division_to_dict(division: Division) -> dict:
         "id": division.id,
         "name": division.name,
         "gender": division.gender,
+        "requires_appointed_referees": division.requires_appointed_referees,
         "display": str(division),
     }
 

@@ -3,6 +3,7 @@ import axiosInstance from "./axiosInstance";
 export type SimpleOption = {
   id: number;
   name: string;
+  requires_appointed_referees?: boolean;
 };
 
 export type TeamOption = {
@@ -76,6 +77,7 @@ type DivisionApiOption = {
   id: number;
   name: string;
   gender: string;
+  requires_appointed_referees: boolean;
   display: string;
 };
 
@@ -132,6 +134,7 @@ export const getUploadGameFormOptions = async (): Promise<{
     divisions: divisionResponse.data.map((division) => ({
       id: division.id,
       name: division.display || `${division.name} (${division.gender})`,
+      requires_appointed_referees: Boolean(division.requires_appointed_referees),
     })),
     venues: venueResponse.data.map((venue) => ({
       id: venue.id,

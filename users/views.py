@@ -33,6 +33,7 @@ def _user_to_dict(user: User) -> dict:
         "institution_head_phone": user.institution_head_phone,
         "bipin_verified": user.bipin_verified,
         "doa_approved": user.doa_approved,
+        "uploads_approved": user.is_approved_for_uploads(),
         "allowed_upload_game_types": sorted(user.get_allowed_upload_game_types()),
         "allowed_upload_event_types": sorted(user.get_allowed_upload_event_types()),
         "home_address": user.home_address,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import GamesMap from "../components/GamesMap";
 import Gameslist from "../components/Gameslist";
 import { getAccessToken } from "../services/auth";
+import { useAuth } from "../context/AuthContext";
 import {
   deleteUploadedGame,
   getMyUploadedGames,
@@ -53,6 +54,13 @@ export type Opportunity = {
 
 type EditableGameType = "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY";
 type EditablePaymentType = "CASH" | "REVOLUT";
+
+const EDITABLE_GAME_TYPE_LABELS: Record<EditableGameType, string> = {
+  CLUB: "Club",
+  SCHOOL: "School",
+  COLLEGE: "College",
+  FRIENDLY: "Friendly",
+};
 
 type ManageForm = {
   game_type: EditableGameType;
@@ -146,6 +154,9 @@ function formFromGame(game: UploadedGame): ManageForm {
 }
 
 export default function Games() {
+  const { user } = useAuth();
+  const isRefereeUser = Boolean(user?.referee_profile);
+
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [uploadedGames, setUploadedGames] = useState<UploadedGame[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
@@ -176,9 +187,11 @@ export default function Games() {
 
       const token = getAccessToken();
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const opportunitiesPromise = fetch(`${API_BASE_URL}/games/opportunities/`, {
-        headers: authHeaders,
-      });
+      const opportunitiesPromise = isRefereeUser
+        ? fetch(`${API_BASE_URL}/games/opportunities/`, {
+            headers: authHeaders,
+          })
+        : Promise.resolve(null);
       const uploadsPromise = token ? getMyUploadedGames() : Promise.resolve([]);
 
       const [opportunitiesResponse, uploads] = await Promise.all([
@@ -186,18 +199,21 @@ export default function Games() {
         uploadsPromise,
       ]);
 
-      if (!opportunitiesResponse.ok) {
-        throw new Error("Failed to fetch opportunities.");
+      if (opportunitiesResponse) {
+        if (!opportunitiesResponse.ok) {
+          throw new Error("Failed to fetch opportunities.");
+        }
+        setOpportunities((await opportunitiesResponse.json()) as Opportunity[]);
+      } else {
+        setOpportunities([]);
       }
-
-      setOpportunities((await opportunitiesResponse.json()) as Opportunity[]);
       setUploadedGames(uploads);
     } catch (err) {
       setError(getErrorMessage(err, "Something went wrong."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isRefereeUser]);
 
   useEffect(() => {
     loadPageData();
@@ -409,38 +425,61 @@ export default function Games() {
     [uploadedGames]
   );
 
+  const editableDivisionOptions = useMemo(
+    () => formOptions.divisions.filter((division) => !division.requires_appointed_referees),
+    [formOptions.divisions]
+  );
+
+  const editableGameTypeOptions = useMemo(() => {
+    const allowed = (user?.allowed_upload_game_types || []).filter((gameType) =>
+      ["CLUB", "SCHOOL", "COLLEGE", "FRIENDLY"].includes(gameType)
+    ) as EditableGameType[];
+
+    if (allowed.length > 0) {
+      return allowed;
+    }
+
+    return ["CLUB", "SCHOOL", "COLLEGE", "FRIENDLY"] as EditableGameType[];
+  }, [user?.allowed_upload_game_types]);
+
   return (
     <div className="games-page">
       <div className="games-header">
         <div>
-          <h1>Opportunities</h1>
-          <p>Find non-appointed games, cover requests, and events.</p>
+          <h1>{isRefereeUser ? "Opportunities" : "Games"}</h1>
+          <p>
+            {isRefereeUser
+              ? "Find non-appointed games, cover requests, and events."
+              : "Upload and manage the games your organisation has posted."}
+          </p>
         </div>
-        <div className="games-filters">
-          <select
-            value={selectedType}
-            onChange={(event) => setSelectedType(event.target.value)}
-            className="games-filter-select"
-          >
-            <option value="ALL">All Opportunities</option>
-            <option value="NON_APPOINTED_SLOT">Non-Appointed Games</option>
-            <option value="COVER_REQUEST">Cover Requests</option>
-            <option value="EVENT">Events</option>
-          </select>
-          <button
-            className="clear-venue-btn"
-            onClick={() => setSelectedVenueId(null)}
-            disabled={selectedVenueId === null}
-          >
-            Clear Venue
-          </button>
-        </div>
+        {isRefereeUser && (
+          <div className="games-filters">
+            <select
+              value={selectedType}
+              onChange={(event) => setSelectedType(event.target.value)}
+              className="games-filter-select"
+            >
+              <option value="ALL">All Opportunities</option>
+              <option value="NON_APPOINTED_SLOT">Non-Appointed Games</option>
+              <option value="COVER_REQUEST">Cover Requests</option>
+              <option value="EVENT">Events</option>
+            </select>
+            <button
+              className="clear-venue-btn"
+              onClick={() => setSelectedVenueId(null)}
+              disabled={selectedVenueId === null}
+            >
+              Clear Venue
+            </button>
+          </div>
+        )}
       </div>
 
       {loading && <p className="games-info-message">Loading opportunities...</p>}
       {error && <p className="games-error-message">{error}</p>}
 
-      {!loading && !error && (
+      {!loading && !error && isRefereeUser && (
         <div className="games-content">
           <div className="games-map-panel">
             <GamesMap
@@ -535,9 +574,9 @@ export default function Games() {
               ) : (
                 <form className="games-manage-form" onSubmit={saveEditedGame}>
                   <div className="games-manage-form-grid">
-                    <label><span>Game Type</span><select value={editForm.game_type} onChange={(e) => setEditForm((prev) => ({ ...prev, game_type: e.target.value as EditableGameType }))}><option value="CLUB">Club</option><option value="SCHOOL">School</option><option value="COLLEGE">College</option><option value="FRIENDLY">Friendly</option></select></label>
+                    <label><span>Game Type</span><select value={editForm.game_type} onChange={(e) => setEditForm((prev) => ({ ...prev, game_type: e.target.value as EditableGameType }))}>{editableGameTypeOptions.map((gameType) => <option key={gameType} value={gameType}>{EDITABLE_GAME_TYPE_LABELS[gameType]}</option>)}</select></label>
                     <label><span>Payment Type</span><select value={editForm.payment_type} onChange={(e) => setEditForm((prev) => ({ ...prev, payment_type: e.target.value as EditablePaymentType }))}><option value="CASH">Cash</option><option value="REVOLUT">Revolut</option></select></label>
-                    <label><span>Division</span><select value={editForm.division} onChange={(e) => setEditForm((prev) => ({ ...prev, division: e.target.value }))} required><option value="">Select division</option>{formOptions.divisions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+                    <label><span>Division</span><select value={editForm.division} onChange={(e) => setEditForm((prev) => ({ ...prev, division: e.target.value }))} required><option value="">Select division</option>{editableDivisionOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
                     <label><span>Venue</span><select value={editForm.venue} onChange={(e) => setEditForm((prev) => ({ ...prev, venue: e.target.value }))} required><option value="">Select venue</option>{formOptions.venues.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
                     <label><span>Home Team</span><select value={editForm.home_team} onChange={(e) => setEditForm((prev) => ({ ...prev, home_team: e.target.value }))} required><option value="">Select home team</option>{formOptions.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
                     <label><span>Away Team</span><select value={editForm.away_team} onChange={(e) => setEditForm((prev) => ({ ...prev, away_team: e.target.value }))} required><option value="">Select away team</option>{formOptions.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

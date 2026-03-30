@@ -22,10 +22,12 @@ function getInitials(
 
 export default function AccountSettings() {
   const { user } = useAuth();
+  const isRefereeUser = Boolean(user?.referee_profile);
 
   const fullName =
-    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "Referee";
+    `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "User";
   const grade = user?.referee_profile?.grade?.replaceAll("_", " ") || "N/A";
+  const roleLabel = user?.account_type_display || "Not set";
   const initials = getInitials(user?.first_name, user?.last_name, user?.email);
 
   return (
@@ -52,8 +54,8 @@ export default function AccountSettings() {
         <h2>Profile Details</h2>
         <div className="account-settings-grid">
           <article>
-            <span>Grade</span>
-            <p>{grade}</p>
+            <span>{isRefereeUser ? "Grade" : "Role"}</span>
+            <p>{isRefereeUser ? grade : roleLabel}</p>
           </article>
           <article>
             <span>Phone Number</span>

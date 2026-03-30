@@ -10,6 +10,7 @@ import Events from './pages/Events'
 import Reports from './pages/Reports'
 import Earnings from './pages/Earnings'
 import AccountSettings from './pages/AccountSettings'
+import AccountApprovals from './pages/AccountApprovals'
 import { ThemeProvider } from './context/ThemeContext'
 import './App.css'
 
@@ -35,6 +36,7 @@ function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/earnings" element={<Earnings />} />
+          <Route path="/account-approvals" element={<AccountApprovals />} />
           <Route path="/account-settings" element={<AccountSettings />} />
         </Route>
 

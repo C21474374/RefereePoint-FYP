@@ -30,12 +30,42 @@ export interface CurrentUser {
   institution_head_phone: string;
   bipin_verified: boolean;
   doa_approved: boolean;
+  uploads_approved: boolean;
+  can_approve_accounts: boolean;
   allowed_upload_game_types: string[];
   allowed_upload_event_types: string[];
   home_address: string;
   home_lat: number | null;
   home_lon: number | null;
   referee_profile: RefereeProfile | null;
+}
+
+function extractApiErrorMessage(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") {
+    return fallback;
+  }
+
+  const payload = data as Record<string, unknown>;
+
+  if (typeof payload.detail === "string" && payload.detail.trim()) {
+    return payload.detail;
+  }
+
+  const nonFieldErrors = payload.non_field_errors;
+  if (Array.isArray(nonFieldErrors) && typeof nonFieldErrors[0] === "string") {
+    return nonFieldErrors[0];
+  }
+
+  for (const value of Object.values(payload)) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+    if (Array.isArray(value) && typeof value[0] === "string") {
+      return value[0];
+    }
+  }
+
+  return fallback;
 }
 
 export async function loginUser(email: string, password: string): Promise<LoginResponse> {
@@ -50,13 +80,18 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     }),
   });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.detail || "Login failed");
+  let data: unknown = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
   }
 
-  return data;
+  if (!response.ok) {
+    throw new Error(extractApiErrorMessage(data, "Login failed"));
+  }
+
+  return data as LoginResponse;
 }
 
 export async function fetchCurrentUser(token: string): Promise<CurrentUser> {

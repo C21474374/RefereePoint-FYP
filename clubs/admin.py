@@ -11,8 +11,8 @@ class ClubAdmin(admin.ModelAdmin):
 
 @admin.register(Division)
 class DivisionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'gender')
-    list_filter = ('gender',)
+    list_display = ('id', 'name', 'gender', 'requires_appointed_referees')
+    list_filter = ('gender', 'requires_appointed_referees')
     search_fields = ('name',)
     ordering = ('name', 'gender')
 
