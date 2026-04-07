@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.conf import settings
 from .models import User, RefereeProfile, RefereeAvailability
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -76,6 +77,7 @@ def _referee_profile_to_dict(profile: RefereeProfile) -> dict:
         "user_name": profile.user.get_full_name(),
         "bipin_number": profile.user.bipin_number,
         "grade": profile.grade,
+        "grade_display": profile.get_grade_display(),
     }
 
 
@@ -143,7 +145,7 @@ class PendingAccountApprovalsView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        users = User.objects.filter(doa_approved=False).order_by("date_joined")
+        users = User.objects.filter(doa_approved=False, is_active=True).order_by("date_joined")
         serializer = CurrentUserSerializer(users, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -191,6 +193,28 @@ class ApproveAccountView(APIView):
 
         serializer = CurrentUserSerializer(target_user, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, user_id: int):
+        if not _can_approve_accounts(request.user):
+            return Response(
+                {"detail": "You do not have permission to disapprove accounts."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            target_user = User.objects.get(pk=user_id, doa_approved=False)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "Pending user not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if target_user.verification_id_photo:
+            # Django does not auto-delete stored files on model delete.
+            target_user.verification_id_photo.delete(save=False)
+
+        target_user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UpdateHomeLocationView(APIView):
@@ -254,3 +278,68 @@ class UpdateHomeLocationView(APIView):
         if geocode_warning:
             payload["geocode_warning"] = geocode_warning
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class TestingRoleSwitchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        if not settings.DEBUG:
+            return Response(
+                {"detail": "Testing role switch is only available in DEBUG mode."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        target_role = str(request.data.get("account_type") or "").strip().upper()
+        valid_roles = {choice[0] for choice in User.AccountType.choices}
+        if target_role not in valid_roles:
+            return Response(
+                {"detail": "Invalid account type."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        update_fields = set()
+
+        if user.account_type != target_role:
+            user.account_type = target_role
+            update_fields.add("account_type")
+
+        # Temporary cheat bypass for easier role testing.
+        if not user.doa_approved:
+            user.doa_approved = True
+            update_fields.add("doa_approved")
+
+        bipin_roles = {
+            User.AccountType.REFEREE,
+            User.AccountType.CLUB,
+            User.AccountType.DOA,
+            User.AccountType.NL,
+        }
+        if user.account_type in bipin_roles and not user.bipin_verified:
+            user.bipin_verified = True
+            update_fields.add("bipin_verified")
+
+        if target_role != User.AccountType.REFEREE:
+            if user.is_team_manager:
+                user.is_team_manager = False
+                update_fields.add("is_team_manager")
+            if user.manager_scope != User.ManagerScope.NONE:
+                user.manager_scope = User.ManagerScope.NONE
+                update_fields.add("manager_scope")
+            if user.managed_team_id is not None:
+                user.managed_team = None
+                update_fields.add("managed_team")
+            RefereeProfile.objects.filter(user=user).delete()
+        else:
+            RefereeProfile.objects.get_or_create(
+                user=user,
+                defaults={"grade": "INTRO"},
+            )
+
+        if update_fields:
+            user.save(update_fields=sorted(update_fields))
+
+        refreshed_user = User.objects.get(pk=user.pk)
+        serializer = CurrentUserSerializer(refreshed_user, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)

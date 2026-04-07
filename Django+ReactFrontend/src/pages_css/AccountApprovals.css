@@ -38,10 +38,16 @@
 
 .account-approvals-card {
   margin-top: 16px;
+  position: relative;
+  min-height: 136px;
+  padding: 16px 16px 62px;
   border: 1px solid var(--color-border);
   border-radius: 18px;
   background: var(--color-card);
-  padding: 16px;
+}
+
+.account-approvals-card.expanded {
+  border-color: var(--color-border-hover);
 }
 
 .account-approvals-top {
@@ -72,8 +78,22 @@
   color: var(--color-text-muted);
 }
 
+.account-approvals-section-copy {
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.92rem;
+  max-width: 860px;
+  line-height: 1.5;
+}
+
+.account-approvals-section-content {
+  margin-top: 14px;
+  max-height: min(54vh, 430px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .account-approvals-list {
-  margin-top: 12px;
   display: grid;
   gap: 12px;
 }
@@ -110,6 +130,36 @@
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.account-approvals-section-toggle {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.account-approvals-section-toggle:hover {
+  border-color: var(--color-accent);
+}
+
+.account-approvals-section-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .account-approvals-grid {
@@ -154,6 +204,7 @@
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .account-approvals-actions button {
@@ -170,6 +221,12 @@
   opacity: 0.7;
 }
 
+.account-approvals-disapprove {
+  border-color: var(--color-border) !important;
+  background: var(--color-bg-panel) !important;
+  color: var(--color-text) !important;
+}
+
 @media (max-width: 940px) {
   .account-approvals-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -182,8 +239,13 @@
   }
 
   .account-approvals-card {
+    min-height: 124px;
+    padding: 14px 14px 56px;
     border-radius: 14px;
-    padding: 12px;
+  }
+
+  .account-approvals-section-content {
+    max-height: min(50vh, 360px);
   }
 
   .account-approvals-item-header {
@@ -194,6 +256,11 @@
     grid-template-columns: 1fr;
   }
 
+  .account-approvals-section-toggle {
+    right: 10px;
+    bottom: 10px;
+  }
+
   .account-approvals-actions {
     justify-content: stretch;
   }
@@ -202,4 +269,3 @@
     width: 100%;
   }
 }
-

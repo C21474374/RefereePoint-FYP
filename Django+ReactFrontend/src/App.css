@@ -235,10 +235,6 @@
   z-index: 1200;
 }
 
-.upload-menu:hover .upload-menu-panel {
-  display: flex;
-}
-
 .upload-menu.open .upload-menu-panel {
   display: flex;
 }
@@ -607,10 +603,12 @@
   }
 
   .mobile-upload-item {
+    display: block;
     width: 100%;
     border: 1px solid var(--color-border);
     background: var(--color-card);
     color: var(--color-text);
+    text-decoration: none;
     border-radius: 10px;
     padding: 9px 12px;
     text-align: left;

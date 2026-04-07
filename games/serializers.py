@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Game, NonAppointedSlot, RefereeAssignment
 from django.db import transaction
-from users.models import User
+from users.models import User, RefereeProfile
+from clubs.models import Division
 
 class GameSerializer(serializers.ModelSerializer):
     venue_name = serializers.CharField(source="venue.name", read_only=True)
@@ -196,8 +197,24 @@ class NonAppointedSlotCreateSerializer(serializers.Serializer):
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
 
 
+class AppointedAssignmentCreateSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(
+        choices=[
+            (RefereeAssignment.Role.CREW_CHIEF, RefereeAssignment.Role.CREW_CHIEF),
+            (RefereeAssignment.Role.UMPIRE_1, RefereeAssignment.Role.UMPIRE_1),
+        ]
+    )
+    referee = serializers.PrimaryKeyRelatedField(queryset=RefereeProfile.objects.all())
+
+
 class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
     slots = NonAppointedSlotCreateSerializer(
+        many=True,
+        write_only=True,
+        required=False,
+        default=list,
+    )
+    appointed_assignments = AppointedAssignmentCreateSerializer(
         many=True,
         write_only=True,
         required=False,
@@ -219,6 +236,7 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
             "notes",
             "original_post_text",
             "slots",
+            "appointed_assignments",
         ]
 
     NON_APPOINTED_GAME_TYPES = {
@@ -236,6 +254,7 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get("request")
         slots = attrs.get("slots", [])
+        appointed_assignments = attrs.get("appointed_assignments", [])
         game_type = attrs.get("game_type")
 
         if not request or not request.user.is_authenticated:
@@ -268,9 +287,16 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
             game_type = attrs["game_type"]
 
         division = attrs.get("division")
+        appointed_divisions_configured = Division.objects.filter(
+            requires_appointed_referees=True
+        ).exists()
         if division:
             requires_appointed = bool(getattr(division, "requires_appointed_referees", False))
-            if game_type in self.NON_APPOINTED_GAME_TYPES and requires_appointed:
+            if (
+                game_type in self.NON_APPOINTED_GAME_TYPES
+                and appointed_divisions_configured
+                and requires_appointed
+            ):
                 raise serializers.ValidationError(
                     {
                         "division": (
@@ -279,7 +305,11 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                         )
                     }
                 )
-            if game_type in self.APPOINTED_GAME_TYPES and not requires_appointed:
+            if (
+                game_type in self.APPOINTED_GAME_TYPES
+                and appointed_divisions_configured
+                and not requires_appointed
+            ):
                 raise serializers.ValidationError(
                     {
                         "division": (
@@ -300,7 +330,62 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                     {"payment_type": "DOA and NL uploads must use Claim payment type."}
                 )
 
+            if len(appointed_assignments) > 2:
+                raise serializers.ValidationError(
+                    {"appointed_assignments": "A maximum of two appointed assignments is allowed."}
+                )
+
+            assignment_roles = [item["role"] for item in appointed_assignments]
+            if len(set(assignment_roles)) != len(assignment_roles):
+                raise serializers.ValidationError(
+                    {"appointed_assignments": "Duplicate appointed roles are not allowed."}
+                )
+
+            if set(assignment_roles) - {
+                RefereeAssignment.Role.CREW_CHIEF,
+                RefereeAssignment.Role.UMPIRE_1,
+            }:
+                raise serializers.ValidationError(
+                    {
+                        "appointed_assignments": (
+                            "Only Crew Chief and Umpire 1 assignments are supported here."
+                        )
+                    }
+                )
+
+            referee_ids = [item["referee"].id for item in appointed_assignments]
+            if len(set(referee_ids)) != len(referee_ids):
+                raise serializers.ValidationError(
+                    {
+                        "appointed_assignments": (
+                            "The same referee cannot be assigned to multiple roles in one game."
+                        )
+                    }
+                )
+
+            for item in appointed_assignments:
+                if (
+                    item["role"] == RefereeAssignment.Role.CREW_CHIEF
+                    and item["referee"].grade == "INTRO"
+                ):
+                    raise serializers.ValidationError(
+                        {
+                            "appointed_assignments": (
+                                "Intro referees cannot be assigned as Crew Chief."
+                            )
+                        }
+                    )
+
             return attrs
+
+        if appointed_assignments:
+            raise serializers.ValidationError(
+                {
+                    "appointed_assignments": (
+                        "Appointed assignments can only be provided for DOA/NL uploads."
+                    )
+                }
+            )
 
         if not slots:
             raise serializers.ValidationError(
@@ -344,6 +429,7 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         slots_data = validated_data.pop("slots", [])
+        appointed_assignments = validated_data.pop("appointed_assignments", [])
         request = self.context["request"]
         game_type = validated_data.get("game_type")
 
@@ -362,11 +448,20 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                     "An appointed game with the same teams, venue, date, and time already exists."
                 )
 
-            return Game.objects.create(
+            game = Game.objects.create(
                 created_by=request.user,
                 status=Game.Status.OPEN,
                 **validated_data,
             )
+
+            for assignment in appointed_assignments:
+                RefereeAssignment.objects.create(
+                    game=game,
+                    role=assignment["role"],
+                    referee=assignment["referee"],
+                )
+
+            return game
 
         matching_game = Game.objects.filter(
             home_team=validated_data.get("home_team"),
@@ -475,14 +570,33 @@ class NonAppointedGameManageSerializer(NonAppointedGameUploadSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        slots_data = validated_data.pop("slots")
+        slots_data = validated_data.pop("slots", [])
+        appointed_assignments = validated_data.pop("appointed_assignments", [])
         request = self.context["request"]
+        next_game_type = validated_data.get("game_type", instance.game_type)
 
         for field_name, value in validated_data.items():
             setattr(instance, field_name, value)
 
         instance.save()
 
+        if next_game_type in self.APPOINTED_GAME_TYPES:
+            # If this game was previously non-appointed, remove requester's slot records.
+            instance.non_appointed_slots.filter(posted_by=request.user).delete()
+
+            # Only replace assignments when they are explicitly submitted in the payload.
+            if "appointed_assignments" in self.initial_data:
+                instance.referee_assignments.all().delete()
+                for assignment in appointed_assignments:
+                    RefereeAssignment.objects.create(
+                        game=instance,
+                        role=assignment["role"],
+                        referee=assignment["referee"],
+                    )
+            return instance
+
+        # Non-appointed update path keeps slot ownership under the uploader.
+        instance.referee_assignments.all().delete()
         instance.non_appointed_slots.filter(posted_by=request.user).delete()
 
         for slot_data in slots_data:

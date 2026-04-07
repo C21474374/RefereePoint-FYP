@@ -1,5 +1,16 @@
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { switchTestingRole, type AccountType } from "../services/auth";
 import "../pages_css/AccountSettings.css";
+
+const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
+  { value: "REFEREE", label: "Referee" },
+  { value: "CLUB", label: "Club" },
+  { value: "SCHOOL", label: "School" },
+  { value: "COLLEGE", label: "College" },
+  { value: "DOA", label: "DOA" },
+  { value: "NL", label: "National League" },
+];
 
 function getInitials(
   firstName: string | null | undefined,
@@ -21,14 +32,44 @@ function getInitials(
 }
 
 export default function AccountSettings() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
+  const [selectedRole, setSelectedRole] = useState<AccountType>("REFEREE");
+  const [switchingRole, setSwitchingRole] = useState(false);
+  const [roleError, setRoleError] = useState("");
+  const [roleSuccess, setRoleSuccess] = useState("");
+
+  useEffect(() => {
+    if (user?.account_type) {
+      setSelectedRole(user.account_type);
+    }
+  }, [user?.account_type]);
 
   const fullName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "User";
   const grade = user?.referee_profile?.grade?.replaceAll("_", " ") || "N/A";
   const roleLabel = user?.account_type_display || "Not set";
   const initials = getInitials(user?.first_name, user?.last_name, user?.email);
+
+  const handleRoleSwitch = async () => {
+    try {
+      setSwitchingRole(true);
+      setRoleError("");
+      setRoleSuccess("");
+      await switchTestingRole(selectedRole);
+      await refreshUser();
+      const selectedLabel =
+        ROLE_OPTIONS.find((option) => option.value === selectedRole)?.label || selectedRole;
+      setRoleSuccess(`Switched role to ${selectedLabel} (temporary testing bypass).`);
+      window.dispatchEvent(new Event("refereepoint:data-refresh"));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to switch role.";
+      setRoleError(message);
+    } finally {
+      setSwitchingRole(false);
+    }
+  };
 
   return (
     <div className="account-settings-page">
@@ -69,6 +110,40 @@ export default function AccountSettings() {
             <span>Home Address</span>
             <p>{user?.home_address || "Not set"}</p>
           </article>
+        </div>
+      </section>
+
+      <section className="account-settings-card">
+        <h2>Testing Bypass (Temporary)</h2>
+        <p className="account-settings-testing-copy">
+          Switch account role on the fly for faster testing. This is a temporary cheat flow.
+        </p>
+
+        {roleError && <p className="account-settings-testing-error">{roleError}</p>}
+        {roleSuccess && <p className="account-settings-testing-success">{roleSuccess}</p>}
+
+        <div className="account-settings-testing-controls">
+          <label>
+            <span>Account Role</span>
+            <select
+              value={selectedRole}
+              onChange={(event) => setSelectedRole(event.target.value as AccountType)}
+              disabled={switchingRole}
+            >
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={handleRoleSwitch}
+            disabled={switchingRole || !user || selectedRole === user.account_type}
+          >
+            {switchingRole ? "Switching..." : "Switch Role"}
+          </button>
         </div>
       </section>
     </div>

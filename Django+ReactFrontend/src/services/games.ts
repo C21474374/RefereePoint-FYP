@@ -9,6 +9,17 @@ export type SimpleOption = {
 export type TeamOption = {
   id: number;
   name: string;
+  club_name?: string;
+  division_id?: number;
+  division_name?: string;
+};
+
+export type RefereeOption = {
+  id: number;
+  name: string;
+  grade: string;
+  grade_display: string;
+  label: string;
 };
 
 export type UploadedGameSlot = {
@@ -57,8 +68,8 @@ export type UploadedGame = {
 };
 
 export type ManageUploadedGamePayload = {
-  game_type: "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY";
-  payment_type: "CASH" | "REVOLUT";
+  game_type: "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY" | "DOA" | "NL";
+  payment_type: "CASH" | "REVOLUT" | "CLAIM";
   division: number;
   date: string;
   time: string;
@@ -67,9 +78,30 @@ export type ManageUploadedGamePayload = {
   away_team: number;
   notes: string;
   original_post_text: string;
-  slots: Array<{
+  slots?: Array<{
     role: "CREW_CHIEF" | "UMPIRE_1";
     description?: string;
+  }>;
+  appointed_assignments?: Array<{
+    role: "CREW_CHIEF" | "UMPIRE_1";
+    referee: number;
+  }>;
+};
+
+export type AppointedGameUploadPayload = {
+  game_type: "DOA" | "NL";
+  payment_type: "CLAIM";
+  division: number;
+  date: string;
+  time: string;
+  venue: number;
+  home_team: number;
+  away_team: number;
+  notes?: string;
+  original_post_text?: string;
+  appointed_assignments?: Array<{
+    role: "CREW_CHIEF" | "UMPIRE_1";
+    referee: number;
   }>;
 };
 
@@ -89,7 +121,15 @@ type VenueApiOption = {
 type TeamApiOption = {
   id: number;
   club_name: string;
+  division_id: number;
   division_name: string;
+};
+
+type RefereeApiOption = {
+  id: number;
+  user_name: string;
+  grade: string;
+  grade_display?: string;
 };
 
 export const claimSlot = async (slotId: number) => {
@@ -133,7 +173,9 @@ export const getUploadGameFormOptions = async (): Promise<{
   return {
     divisions: divisionResponse.data.map((division) => ({
       id: division.id,
-      name: division.display || `${division.name} (${division.gender})`,
+      name:
+        division.display ||
+        `${division.name}-${division.gender === "MIXED" ? "X" : division.gender}`,
       requires_appointed_referees: Boolean(division.requires_appointed_referees),
     })),
     venues: venueResponse.data.map((venue) => ({
@@ -143,6 +185,31 @@ export const getUploadGameFormOptions = async (): Promise<{
     teams: teamResponse.data.map((team) => ({
       id: team.id,
       name: `${team.club_name} - ${team.division_name}`,
+      club_name: team.club_name,
+      division_id: team.division_id,
+      division_name: team.division_name,
     })),
   };
+};
+
+export const getRefereeOptions = async (): Promise<RefereeOption[]> => {
+  const response = await axiosInstance.get<RefereeApiOption[]>("/users/referees/");
+
+  return response.data
+    .map((referee) => {
+      const gradeDisplay = referee.grade_display || referee.grade;
+      return {
+        id: referee.id,
+        name: referee.user_name,
+        grade: referee.grade,
+        grade_display: gradeDisplay,
+        label: `${referee.user_name} (${gradeDisplay})`,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const uploadAppointedGame = async (payload: AppointedGameUploadPayload) => {
+  const response = await axiosInstance.post("/games/upload/", payload);
+  return response.data;
 };

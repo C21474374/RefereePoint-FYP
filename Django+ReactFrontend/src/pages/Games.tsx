@@ -52,19 +52,28 @@ export type Opportunity = {
   created_at: string;
 };
 
-type EditableGameType = "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY";
-type EditablePaymentType = "CASH" | "REVOLUT";
+type ManageGameType = UploadedGame["game_type"];
+type ManagePaymentType = "CASH" | "REVOLUT" | "CLAIM";
 
-const EDITABLE_GAME_TYPE_LABELS: Record<EditableGameType, string> = {
+const MANAGE_GAME_TYPE_LABELS: Record<ManageGameType, string> = {
   CLUB: "Club",
   SCHOOL: "School",
   COLLEGE: "College",
   FRIENDLY: "Friendly",
+  DOA: "DOA",
+  NL: "National League",
 };
 
+const NON_APPOINTED_MANAGE_GAME_TYPES = new Set<UploadedGame["game_type"]>([
+  "CLUB",
+  "SCHOOL",
+  "COLLEGE",
+  "FRIENDLY",
+]);
+
 type ManageForm = {
-  game_type: EditableGameType;
-  payment_type: EditablePaymentType;
+  game_type: ManageGameType;
+  payment_type: ManagePaymentType;
   division: string;
   date: string;
   time: string;
@@ -129,11 +138,13 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function formFromGame(game: UploadedGame): ManageForm {
   const roles = new Set(game.uploaded_slots.map((slot) => slot.role));
-  const gameType: EditableGameType =
-    game.game_type === "SCHOOL" || game.game_type === "COLLEGE" || game.game_type === "FRIENDLY"
-      ? game.game_type
-      : "CLUB";
-  const paymentType: EditablePaymentType = game.payment_type === "REVOLUT" ? "REVOLUT" : "CASH";
+  const gameType: ManageGameType = game.game_type;
+  const paymentType: ManagePaymentType =
+    game.payment_type === "REVOLUT"
+      ? "REVOLUT"
+      : game.payment_type === "CLAIM"
+        ? "CLAIM"
+        : "CASH";
   const description = game.uploaded_slots.find((slot) => slot.description)?.description || "";
 
   return {
@@ -351,17 +362,12 @@ export default function Games() {
       setManageError("Home team and away team must be different.");
       return;
     }
-    if (!editForm.crew_chief && !editForm.umpire_1) {
+
+    const isNonAppointedGameType = NON_APPOINTED_MANAGE_GAME_TYPES.has(editForm.game_type);
+
+    if (isNonAppointedGameType && !editForm.crew_chief && !editForm.umpire_1) {
       setManageError("Select at least one role to keep active.");
       return;
-    }
-
-    const slots: ManageUploadedGamePayload["slots"] = [];
-    if (editForm.crew_chief) {
-      slots.push({ role: "CREW_CHIEF", description: editForm.description.trim() });
-    }
-    if (editForm.umpire_1) {
-      slots.push({ role: "UMPIRE_1", description: editForm.description.trim() });
     }
 
     const payload: ManageUploadedGamePayload = {
@@ -375,8 +381,18 @@ export default function Games() {
       away_team: Number(editForm.away_team),
       notes: editForm.notes,
       original_post_text: editForm.original_post_text,
-      slots,
     };
+
+    if (isNonAppointedGameType) {
+      const slots: NonNullable<ManageUploadedGamePayload["slots"]> = [];
+      if (editForm.crew_chief) {
+        slots.push({ role: "CREW_CHIEF", description: editForm.description.trim() });
+      }
+      if (editForm.umpire_1) {
+        slots.push({ role: "UMPIRE_1", description: editForm.description.trim() });
+      }
+      payload.slots = slots;
+    }
 
     try {
       setEditSubmitting(true);
@@ -394,7 +410,7 @@ export default function Games() {
   };
 
   const handleDeleteUploaded = async (gameId: number) => {
-    if (!window.confirm("Delete this uploaded game and its slots?")) {
+    if (!window.confirm("Delete this uploaded game?")) {
       return;
     }
     try {
@@ -420,27 +436,90 @@ export default function Games() {
     return filtered;
   }, [opportunities, selectedVenueId, selectedType]);
 
-  const manageableUploadedGames = useMemo(
-    () => uploadedGames.filter((game) => game.can_edit && game.can_delete),
-    [uploadedGames]
+  const [manageMonthFilter, setManageMonthFilter] = useState("ALL");
+
+  const manageableUploadedGames = useMemo(() => uploadedGames, [uploadedGames]);
+
+  const manageMonthOptions = useMemo(() => {
+    const uniqueMonths = Array.from(
+      new Set(
+        uploadedGames
+          .map((game) => game.date?.slice(0, 7))
+          .filter((month): month is string => Boolean(month))
+      )
+    );
+    return uniqueMonths.sort((a, b) => b.localeCompare(a));
+  }, [uploadedGames]);
+
+  useEffect(() => {
+    if (manageMonthFilter === "ALL") {
+      return;
+    }
+    if (!manageMonthOptions.includes(manageMonthFilter)) {
+      setManageMonthFilter("ALL");
+    }
+  }, [manageMonthFilter, manageMonthOptions]);
+
+  const displayedManageGames = useMemo(
+    () =>
+      manageMonthFilter === "ALL"
+        ? manageableUploadedGames
+        : manageableUploadedGames.filter((game) =>
+            game.date?.startsWith(manageMonthFilter)
+          ),
+    [manageableUploadedGames, manageMonthFilter]
   );
 
-  const editableDivisionOptions = useMemo(
-    () => formOptions.divisions.filter((division) => !division.requires_appointed_referees),
-    [formOptions.divisions]
-  );
+  const editableDivisionOptions = useMemo(() => {
+    const appointedDivisions = formOptions.divisions.filter((division) =>
+      Boolean(division.requires_appointed_referees)
+    );
+    const nonAppointedDivisions = formOptions.divisions.filter(
+      (division) => !division.requires_appointed_referees
+    );
+
+    if (NON_APPOINTED_MANAGE_GAME_TYPES.has(editForm.game_type)) {
+      return appointedDivisions.length > 0 ? nonAppointedDivisions : formOptions.divisions;
+    }
+
+    return appointedDivisions.length > 0 ? appointedDivisions : formOptions.divisions;
+  }, [editForm.game_type, formOptions.divisions]);
 
   const editableGameTypeOptions = useMemo(() => {
-    const allowed = (user?.allowed_upload_game_types || []).filter((gameType) =>
-      ["CLUB", "SCHOOL", "COLLEGE", "FRIENDLY"].includes(gameType)
-    ) as EditableGameType[];
+    const allowed = (user?.allowed_upload_game_types || []) as ManageGameType[];
 
     if (allowed.length > 0) {
       return allowed;
     }
 
-    return ["CLUB", "SCHOOL", "COLLEGE", "FRIENDLY"] as EditableGameType[];
+    return ["CLUB", "SCHOOL", "COLLEGE", "FRIENDLY", "DOA", "NL"] as ManageGameType[];
   }, [user?.allowed_upload_game_types]);
+
+  const isEditingNonAppointed = NON_APPOINTED_MANAGE_GAME_TYPES.has(editForm.game_type);
+
+  const editableTeamsForDivision = useMemo(() => {
+    const selectedDivisionId = Number(editForm.division);
+    if (!selectedDivisionId) {
+      return [];
+    }
+    return formOptions.teams.filter((team) => team.division_id === selectedDivisionId);
+  }, [editForm.division, formOptions.teams]);
+
+  const editableHomeTeamOptions = useMemo(
+    () =>
+      editableTeamsForDivision.filter(
+        (team) => String(team.id) !== editForm.away_team
+      ),
+    [editableTeamsForDivision, editForm.away_team]
+  );
+
+  const editableAwayTeamOptions = useMemo(
+    () =>
+      editableTeamsForDivision.filter(
+        (team) => String(team.id) !== editForm.home_team
+      ),
+    [editableTeamsForDivision, editForm.home_team]
+  );
 
   return (
     <div className="games-page">
@@ -503,18 +582,34 @@ export default function Games() {
       <section className="games-manage-section">
         <div className="games-manage-header">
           <h2>Manage Uploaded Games</h2>
-          <p>Games you uploaded. Edit or delete your uploaded game opportunities.</p>
+          <p>Games your account uploaded. Edit, delete, and filter by month.</p>
+        </div>
+        <div className="games-manage-toolbar">
+          <label>
+            <span>Month</span>
+            <select
+              value={manageMonthFilter}
+              onChange={(event) => setManageMonthFilter(event.target.value)}
+            >
+              <option value="ALL">All Months</option>
+              {manageMonthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {manageError && <p className="games-manage-error">{manageError}</p>}
 
-        {manageableUploadedGames.length === 0 ? (
+        {displayedManageGames.length === 0 ? (
           <p className="games-manage-empty">
-            No editable uploaded games right now.
+            No uploaded games for this month.
           </p>
         ) : (
           <div className="games-manage-list">
-            {manageableUploadedGames.map((game) => (
+            {displayedManageGames.map((game) => (
               <article key={game.id} className="games-manage-item">
                 <div className="games-manage-item-top">
                   <div>
@@ -524,24 +619,30 @@ export default function Games() {
                       {game.time?.slice(0, 5)} | {game.venue_name || "Venue TBC"}
                     </p>
                   </div>
-                  <div className="games-manage-actions">
-                    <button
-                      type="button"
-                      className="games-manage-button"
-                      onClick={() => openEditModal(game)}
-                      disabled={manageActionId === game.id}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="games-manage-button games-manage-button-danger"
-                      onClick={() => handleDeleteUploaded(game.id)}
-                      disabled={manageActionId === game.id}
-                    >
-                      {manageActionId === game.id ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
+                  {game.can_edit && game.can_delete ? (
+                    <div className="games-manage-actions">
+                      <button
+                        type="button"
+                        className="games-manage-button"
+                        onClick={() => openEditModal(game)}
+                        disabled={manageActionId === game.id}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="games-manage-button games-manage-button-danger"
+                        onClick={() => handleDeleteUploaded(game.id)}
+                        disabled={manageActionId === game.id}
+                      >
+                        {manageActionId === game.id ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="games-manage-lock-reason">
+                      Claimed or shared slots cannot be edited or deleted.
+                    </p>
+                  )}
                 </div>
 
                 <div className="games-manage-tags">
@@ -574,25 +675,240 @@ export default function Games() {
               ) : (
                 <form className="games-manage-form" onSubmit={saveEditedGame}>
                   <div className="games-manage-form-grid">
-                    <label><span>Game Type</span><select value={editForm.game_type} onChange={(e) => setEditForm((prev) => ({ ...prev, game_type: e.target.value as EditableGameType }))}>{editableGameTypeOptions.map((gameType) => <option key={gameType} value={gameType}>{EDITABLE_GAME_TYPE_LABELS[gameType]}</option>)}</select></label>
-                    <label><span>Payment Type</span><select value={editForm.payment_type} onChange={(e) => setEditForm((prev) => ({ ...prev, payment_type: e.target.value as EditablePaymentType }))}><option value="CASH">Cash</option><option value="REVOLUT">Revolut</option></select></label>
-                    <label><span>Division</span><select value={editForm.division} onChange={(e) => setEditForm((prev) => ({ ...prev, division: e.target.value }))} required><option value="">Select division</option>{editableDivisionOptions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-                    <label><span>Venue</span><select value={editForm.venue} onChange={(e) => setEditForm((prev) => ({ ...prev, venue: e.target.value }))} required><option value="">Select venue</option>{formOptions.venues.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-                    <label><span>Home Team</span><select value={editForm.home_team} onChange={(e) => setEditForm((prev) => ({ ...prev, home_team: e.target.value }))} required><option value="">Select home team</option>{formOptions.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-                    <label><span>Away Team</span><select value={editForm.away_team} onChange={(e) => setEditForm((prev) => ({ ...prev, away_team: e.target.value }))} required><option value="">Select away team</option>{formOptions.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-                    <label><span>Date</span><input type="date" value={editForm.date} onChange={(e) => setEditForm((prev) => ({ ...prev, date: e.target.value }))} required /></label>
-                    <label><span>Time</span><input type="time" value={editForm.time} onChange={(e) => setEditForm((prev) => ({ ...prev, time: e.target.value }))} required /></label>
-                    <label className="games-manage-form-wide"><span>Slot Description</span><textarea rows={3} value={editForm.description} onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))} /></label>
-                    <label className="games-manage-form-wide"><span>Notes</span><textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm((prev) => ({ ...prev, notes: e.target.value }))} /></label>
-                    <label className="games-manage-form-wide"><span>Original Post Text</span><textarea rows={4} value={editForm.original_post_text} onChange={(e) => setEditForm((prev) => ({ ...prev, original_post_text: e.target.value }))} /></label>
+                    <label>
+                      <span>Game Type</span>
+                      <select
+                        value={editForm.game_type}
+                        onChange={(event) => {
+                          const nextGameType = event.target.value as ManageGameType;
+                          setEditForm((prev) => ({
+                            ...prev,
+                            game_type: nextGameType,
+                            payment_type: NON_APPOINTED_MANAGE_GAME_TYPES.has(nextGameType)
+                              ? prev.payment_type === "CLAIM"
+                                ? "CASH"
+                                : prev.payment_type
+                              : "CLAIM",
+                            ...(NON_APPOINTED_MANAGE_GAME_TYPES.has(nextGameType)
+                              ? {}
+                              : {
+                                  crew_chief: false,
+                                  umpire_1: false,
+                                  description: "",
+                                }),
+                          }));
+                        }}
+                      >
+                        {editableGameTypeOptions.map((gameType) => (
+                          <option key={gameType} value={gameType}>
+                            {MANAGE_GAME_TYPE_LABELS[gameType]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Payment Type</span>
+                      <select
+                        value={editForm.payment_type}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            payment_type: event.target.value as ManagePaymentType,
+                          }))
+                        }
+                        disabled={!isEditingNonAppointed}
+                      >
+                        {isEditingNonAppointed ? (
+                          <>
+                            <option value="CASH">Cash</option>
+                            <option value="REVOLUT">Revolut</option>
+                          </>
+                        ) : (
+                          <option value="CLAIM">Claim</option>
+                        )}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Division</span>
+                      <select
+                        value={editForm.division}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            division: event.target.value,
+                            home_team: "",
+                            away_team: "",
+                          }))
+                        }
+                        required
+                      >
+                        <option value="">Select division</option>
+                        {editableDivisionOptions.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Venue</span>
+                      <select
+                        value={editForm.venue}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, venue: event.target.value }))
+                        }
+                        required
+                      >
+                        <option value="">Select venue</option>
+                        {formOptions.venues.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Home Team</span>
+                      <select
+                        value={editForm.home_team}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            home_team: event.target.value,
+                            ...(event.target.value === prev.away_team ? { away_team: "" } : {}),
+                          }))
+                        }
+                        required
+                        disabled={!editForm.division}
+                      >
+                        <option value="">Select home team</option>
+                        {editableHomeTeamOptions.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Away Team</span>
+                      <select
+                        value={editForm.away_team}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            away_team: event.target.value,
+                            ...(event.target.value === prev.home_team ? { home_team: "" } : {}),
+                          }))
+                        }
+                        required
+                        disabled={!editForm.division}
+                      >
+                        <option value="">Select away team</option>
+                        {editableAwayTeamOptions.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Date</span>
+                      <input
+                        type="date"
+                        value={editForm.date}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, date: event.target.value }))
+                        }
+                        required
+                      />
+                    </label>
+                    <label>
+                      <span>Time</span>
+                      <input
+                        type="time"
+                        value={editForm.time}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, time: event.target.value }))
+                        }
+                        required
+                      />
+                    </label>
+                    {isEditingNonAppointed && (
+                      <label className="games-manage-form-wide">
+                        <span>Slot Description</span>
+                        <textarea
+                          rows={3}
+                          value={editForm.description}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              description: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                    )}
+                    <label className="games-manage-form-wide">
+                      <span>Notes</span>
+                      <textarea
+                        rows={3}
+                        value={editForm.notes}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, notes: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="games-manage-form-wide">
+                      <span>Original Post Text</span>
+                      <textarea
+                        rows={4}
+                        value={editForm.original_post_text}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            original_post_text: event.target.value,
+                          }))
+                        }
+                      />
+                    </label>
                   </div>
-                  <div className="games-manage-role-row">
-                    <label className="games-manage-role-option"><input type="checkbox" checked={editForm.crew_chief} onChange={(e) => setEditForm((prev) => ({ ...prev, crew_chief: e.target.checked }))} />Crew Chief Slot</label>
-                    <label className="games-manage-role-option"><input type="checkbox" checked={editForm.umpire_1} onChange={(e) => setEditForm((prev) => ({ ...prev, umpire_1: e.target.checked }))} />Umpire 1 Slot</label>
-                  </div>
+                  {isEditingNonAppointed && (
+                    <div className="games-manage-role-row">
+                      <label className="games-manage-role-option">
+                        <input
+                          type="checkbox"
+                          checked={editForm.crew_chief}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              crew_chief: event.target.checked,
+                            }))
+                          }
+                        />
+                        Crew Chief Slot
+                      </label>
+                      <label className="games-manage-role-option">
+                        <input
+                          type="checkbox"
+                          checked={editForm.umpire_1}
+                          onChange={(event) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              umpire_1: event.target.checked,
+                            }))
+                          }
+                        />
+                        Umpire 1 Slot
+                      </label>
+                    </div>
+                  )}
                   <div className="games-manage-form-actions">
-                    <button type="submit" disabled={editSubmitting}>{editSubmitting ? "Saving..." : "Save Changes"}</button>
-                    <button type="button" onClick={closeEditModal} disabled={editSubmitting}>Cancel</button>
+                    <button type="submit" disabled={editSubmitting}>
+                      {editSubmitting ? "Saving..." : "Save Changes"}
+                    </button>
+                    <button type="button" onClick={closeEditModal} disabled={editSubmitting}>
+                      Cancel
+                    </button>
                   </div>
                 </form>
               )}

@@ -30,7 +30,12 @@ class Division(models.Model):
         db_table = 'clubs_division'
     
     def __str__(self):
-        return f"{self.name} ({self.get_gender_display()})"
+        gender_code = {
+            "M": "M",
+            "F": "F",
+            "MIXED": "X",
+        }.get(self.gender, self.gender)
+        return f"{self.name}-{gender_code}"
 
 
 class Team(models.Model):

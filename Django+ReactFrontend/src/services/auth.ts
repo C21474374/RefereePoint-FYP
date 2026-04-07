@@ -10,6 +10,14 @@ export interface RefereeProfile {
   grade: string;
 }
 
+export type AccountType =
+  | "REFEREE"
+  | "CLUB"
+  | "SCHOOL"
+  | "COLLEGE"
+  | "DOA"
+  | "NL";
+
 export interface CurrentUser {
   id: number;
   email: string;
@@ -17,7 +25,7 @@ export interface CurrentUser {
   last_name: string;
   phone_number: string | null;
   bipin_number: string | null;
-  account_type: string;
+  account_type: AccountType;
   account_type_display: string;
   is_team_manager: boolean;
   manager_scope: string;
@@ -110,6 +118,37 @@ export async function fetchCurrentUser(token: string): Promise<CurrentUser> {
   }
 
   return data;
+}
+
+export async function switchTestingRole(accountType: AccountType): Promise<CurrentUser> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("You must be logged in to change role.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/users/me/testing-role/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      account_type: accountType,
+    }),
+  });
+
+  let data: unknown = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(extractApiErrorMessage(data, "Failed to change role."));
+  }
+
+  return data as CurrentUser;
 }
 
 export async function refreshAccessToken(refresh: string): Promise<string> {

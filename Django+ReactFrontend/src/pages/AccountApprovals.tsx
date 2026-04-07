@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
   approvePendingAccount,
+  disapprovePendingAccount,
   fetchPendingApprovalAccounts,
   type PendingApprovalAccount,
 } from "../services/approvals";
@@ -48,6 +49,7 @@ export default function AccountApprovals() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [actionUserId, setActionUserId] = useState<number | null>(null);
+  const [pendingSectionExpanded, setPendingSectionExpanded] = useState(false);
 
   const loadPendingAccounts = useCallback(async () => {
     if (!canApproveAccounts) {
@@ -86,6 +88,29 @@ export default function AccountApprovals() {
     }
   };
 
+  const handleDisapprove = async (account: PendingApprovalAccount) => {
+    if (
+      !window.confirm(
+        `Disapprove ${getAccountName(account)}? This will delete their registration details.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setActionUserId(account.id);
+      setError("");
+      setSuccess("");
+      await disapprovePendingAccount(account.id);
+      setPendingAccounts((prev) => prev.filter((item) => item.id !== account.id));
+      setSuccess(`Disapproved ${getAccountName(account)} and removed the request.`);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to disapprove account."));
+    } finally {
+      setActionUserId(null);
+    }
+  };
+
   if (!canApproveAccounts) {
     return (
       <div className="account-approvals-page">
@@ -113,27 +138,28 @@ export default function AccountApprovals() {
       {error && <p className="account-approvals-error">{error}</p>}
       {success && <p className="account-approvals-success">{success}</p>}
 
-      <section className="account-approvals-card">
+      <section
+        className={`account-approvals-card ${
+          pendingSectionExpanded ? "expanded" : "collapsed"
+        }`}
+      >
         <div className="account-approvals-top">
           <h2>Pending Accounts</h2>
           <span>{pendingAccounts.length}</span>
         </div>
+        <p className="account-approvals-section-copy">
+          Expand this section to review and process pending registrations.
+        </p>
 
-        {loading ? (
-          <p className="account-approvals-empty">Loading pending accounts...</p>
-        ) : pendingAccounts.length === 0 ? (
-          <p className="account-approvals-empty">No pending accounts right now.</p>
-        ) : (
-          <div className="account-approvals-list">
-            {pendingAccounts.map((account) => (
-              <article key={account.id} className="account-approvals-item">
-                {/*
-                  Verification requirements are role-based:
-                  - School/College: photo ID + institution head phone
-                  - Referee/Club/DOA/NL: BIPIN
-                  There is no generic verification ID field for non-ref roles.
-                */}
-                {(() => {
+        {pendingSectionExpanded && (
+          <div className="account-approvals-section-content">
+            {loading ? (
+              <p className="account-approvals-empty">Loading pending accounts...</p>
+            ) : pendingAccounts.length === 0 ? (
+              <p className="account-approvals-empty">No pending accounts right now.</p>
+            ) : (
+              <div className="account-approvals-list">
+                {pendingAccounts.map((account) => {
                   const requiresPhotoId =
                     account.account_type === "SCHOOL" || account.account_type === "COLLEGE";
                   const usesBipin = ["REFEREE", "CLUB", "DOA", "NL"].includes(
@@ -142,7 +168,7 @@ export default function AccountApprovals() {
                   const showOrganisation = Boolean(account.organization_name);
 
                   return (
-                    <>
+                    <article key={account.id} className="account-approvals-item">
                       <div className="account-approvals-item-header">
                         <div>
                           <h3>{getAccountName(account)}</h3>
@@ -196,23 +222,43 @@ export default function AccountApprovals() {
                           </div>
                         )}
                       </div>
-                    </>
-                  );
-                })()}
 
-                <div className="account-approvals-actions">
-                  <button
-                    type="button"
-                    onClick={() => handleApprove(account)}
-                    disabled={actionUserId === account.id}
-                  >
-                    {actionUserId === account.id ? "Approving..." : "Approve Account"}
-                  </button>
-                </div>
-              </article>
-            ))}
+                      <div className="account-approvals-actions">
+                        <button
+                          type="button"
+                          className="account-approvals-disapprove"
+                          onClick={() => handleDisapprove(account)}
+                          disabled={actionUserId === account.id}
+                        >
+                          {actionUserId === account.id ? "Processing..." : "Disapprove Request"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(account)}
+                          disabled={actionUserId === account.id}
+                        >
+                          {actionUserId === account.id ? "Approving..." : "Approve Account"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
+
+        <button
+          type="button"
+          className="account-approvals-section-toggle"
+          onClick={() => setPendingSectionExpanded((prev) => !prev)}
+          aria-expanded={pendingSectionExpanded}
+        >
+          <span>{pendingSectionExpanded ? "Collapse" : "Expand"}</span>
+          <span className="account-approvals-section-toggle-icon" aria-hidden="true">
+            {pendingSectionExpanded ? "^" : "v"}
+          </span>
+        </button>
       </section>
     </div>
   );

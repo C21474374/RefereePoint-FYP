@@ -28,6 +28,11 @@ MANAGEABLE_UPLOAD_GAME_TYPES = [
     Game.GameType.FRIENDLY,
 ]
 
+APPOINTED_UPLOAD_GAME_TYPES = [
+    Game.GameType.DOA,
+    Game.GameType.NL,
+]
+
 
 def _uploaded_games_queryset():
     return Game.objects.select_related(
@@ -45,8 +50,15 @@ def _uploaded_games_queryset():
 def _get_uploaded_game_for_user(user, pk):
     return _uploaded_games_queryset().filter(
         pk=pk,
-        game_type__in=MANAGEABLE_UPLOAD_GAME_TYPES,
-        non_appointed_slots__posted_by=user,
+    ).filter(
+        Q(
+            game_type__in=MANAGEABLE_UPLOAD_GAME_TYPES,
+            non_appointed_slots__posted_by=user,
+        )
+        | Q(
+            game_type__in=APPOINTED_UPLOAD_GAME_TYPES,
+            created_by=user,
+        )
     ).first()
 
 
@@ -294,8 +306,14 @@ class MyUploadedGamesAPIView(generics.ListAPIView):
         return (
             _uploaded_games_queryset()
             .filter(
-                game_type__in=MANAGEABLE_UPLOAD_GAME_TYPES,
-                non_appointed_slots__posted_by=self.request.user,
+                Q(
+                    game_type__in=MANAGEABLE_UPLOAD_GAME_TYPES,
+                    non_appointed_slots__posted_by=self.request.user,
+                )
+                | Q(
+                    game_type__in=APPOINTED_UPLOAD_GAME_TYPES,
+                    created_by=self.request.user,
+                )
             )
             .distinct()
             .order_by("date", "time")

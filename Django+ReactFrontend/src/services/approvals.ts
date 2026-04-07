@@ -20,3 +20,6 @@ export async function approvePendingAccount(userId: number) {
   return response.data;
 }
 
+export async function disapprovePendingAccount(userId: number) {
+  await axiosInstance.delete(`/users/approvals/${userId}/`);
+}

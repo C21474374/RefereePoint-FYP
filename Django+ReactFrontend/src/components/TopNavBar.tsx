@@ -6,6 +6,9 @@ import UploadGamePanel from "./UploadGamePanel";
 import UploadEventPanel from "./UploadEventPanel";
 
 type UploadModalType = "game" | "event" | null;
+type UploadMenuItem =
+  | { label: string; kind: "modal"; type: Exclude<UploadModalType, null> }
+  | { label: string; kind: "route"; path: string };
 
 const refereeNavLinks = [
   { name: "Dashboard", path: "/dashboard" },
@@ -88,9 +91,7 @@ const TopNavBar: React.FC = () => {
   };
 
   const handleUploadMenuToggle = () => {
-    if (!isMobileNav) {
-      return;
-    }
+    setProfileMenuOpen(false);
     setUploadMenuOpen((prev) => !prev);
   };
 
@@ -216,10 +217,24 @@ const TopNavBar: React.FC = () => {
   const canUploadEvent =
     Boolean(user?.uploads_approved) &&
     Boolean(user?.allowed_upload_event_types?.length);
-  const uploadItems: Array<{ label: string; type: Exclude<UploadModalType, null> }> = [
-    ...(canUploadGame ? [{ label: "Upload Game", type: "game" as const }] : []),
-    ...(canUploadEvent ? [{ label: "Upload Event", type: "event" as const }] : []),
+  const useBulkGameUploadPage =
+    !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL");
+  const uploadItems: UploadMenuItem[] = [
+    ...(canUploadGame
+      ? [
+          useBulkGameUploadPage
+            ? ({ label: "Upload Game", kind: "route", path: "/upload-games" } as const)
+            : ({ label: "Upload Game", kind: "modal", type: "game" } as const),
+        ]
+      : []),
+    ...(canUploadEvent
+      ? ([{ label: "Upload Event", kind: "modal", type: "event" }] as const)
+      : []),
   ];
+  const singleUploadRouteItem =
+    uploadItems.length === 1 && uploadItems[0].kind === "route"
+      ? uploadItems[0]
+      : null;
 
   return (
     <>
@@ -253,32 +268,53 @@ const TopNavBar: React.FC = () => {
             </Link>
           ))}
 
-          {uploadItems.length > 0 && (
-            <div className="upload-menu">
-              <button
-                className={`nav-link upload-menu-trigger ${activeUploadModal ? "active" : ""}`}
-                onClick={handleUploadMenuToggle}
-                aria-expanded={isMobileNav ? uploadMenuOpen : undefined}
-                aria-haspopup="menu"
-                type="button"
+          {uploadItems.length > 0 &&
+            (singleUploadRouteItem ? (
+              <Link
+                to={singleUploadRouteItem.path}
+                onClick={handleLinkClick}
+                className={`nav-link ${location.pathname === singleUploadRouteItem.path ? "active" : ""}`}
               >
-                +Upload
-              </button>
-              <div className="upload-menu-panel" role="menu">
-                {uploadItems.map((item) => (
-                  <button
-                    key={item.type}
-                    type="button"
-                    onClick={() => openUploadModal(item.type)}
-                    className="upload-menu-link upload-menu-action"
-                    role="menuitem"
-                  >
-                    {item.label}
-                  </button>
-                ))}
+                Upload
+              </Link>
+            ) : (
+              <div className={`upload-menu ${uploadMenuOpen ? "open" : ""}`}>
+                <button
+                  className={`nav-link upload-menu-trigger ${activeUploadModal || uploadMenuOpen ? "active" : ""}`}
+                  onClick={handleUploadMenuToggle}
+                  aria-expanded={uploadMenuOpen}
+                  aria-haspopup="menu"
+                  type="button"
+                >
+                  Upload
+                </button>
+                <div className="upload-menu-panel" role="menu">
+                  {uploadItems.map((item) => (
+                    item.kind === "modal" ? (
+                      <button
+                        key={item.type}
+                        type="button"
+                        onClick={() => openUploadModal(item.type)}
+                        className="upload-menu-link upload-menu-action"
+                        role="menuitem"
+                      >
+                        {item.label}
+                      </button>
+                    ) : (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        onClick={handleLinkClick}
+                        className="upload-menu-link upload-menu-action"
+                        role="menuitem"
+                      >
+                        {item.label}
+                      </Link>
+                    )
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            ))}
         </div>
 
         <div className="nav-right">
@@ -361,30 +397,50 @@ const TopNavBar: React.FC = () => {
                 </Link>
               ))}
 
-              {uploadItems.length > 0 && (
-                <div className={`mobile-upload ${uploadMenuOpen ? "open" : ""}`}>
-                  <button
-                    type="button"
-                    className="mobile-menu-action mobile-upload-trigger"
-                    onClick={handleUploadMenuToggle}
-                    aria-expanded={uploadMenuOpen}
+              {uploadItems.length > 0 &&
+                (singleUploadRouteItem ? (
+                  <Link
+                    to={singleUploadRouteItem.path}
+                    onClick={handleLinkClick}
+                    className={`mobile-menu-link ${location.pathname === singleUploadRouteItem.path ? "active" : ""}`}
                   >
-                    +Upload
-                  </button>
-                  <div className="mobile-upload-panel">
-                    {uploadItems.map((item) => (
-                      <button
-                        key={item.type}
-                        type="button"
-                        onClick={() => openUploadModal(item.type)}
-                        className="mobile-upload-item"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                    Upload
+                  </Link>
+                ) : (
+                  <div className={`mobile-upload ${uploadMenuOpen ? "open" : ""}`}>
+                    <button
+                      type="button"
+                      className="mobile-menu-action mobile-upload-trigger"
+                      onClick={handleUploadMenuToggle}
+                      aria-expanded={uploadMenuOpen}
+                    >
+                      Upload
+                    </button>
+                    <div className="mobile-upload-panel">
+                      {uploadItems.map((item) => (
+                        item.kind === "modal" ? (
+                          <button
+                            key={item.type}
+                            type="button"
+                            onClick={() => openUploadModal(item.type)}
+                            className="mobile-upload-item"
+                          >
+                            {item.label}
+                          </button>
+                        ) : (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            onClick={handleLinkClick}
+                            className="mobile-upload-item"
+                          >
+                            {item.label}
+                          </Link>
+                        )
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                ))}
             </div>
 
             <div className="mobile-drawer-bottom">

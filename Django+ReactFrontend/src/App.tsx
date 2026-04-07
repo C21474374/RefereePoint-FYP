@@ -11,6 +11,7 @@ import Reports from './pages/Reports'
 import Earnings from './pages/Earnings'
 import AccountSettings from './pages/AccountSettings'
 import AccountApprovals from './pages/AccountApprovals'
+import BulkGameUpload from './pages/BulkGameUpload'
 import { ThemeProvider } from './context/ThemeContext'
 import './App.css'
 
@@ -37,6 +38,7 @@ function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/earnings" element={<Earnings />} />
           <Route path="/account-approvals" element={<AccountApprovals />} />
+          <Route path="/upload-games" element={<BulkGameUpload />} />
           <Route path="/account-settings" element={<AccountSettings />} />
         </Route>
 
