@@ -7,6 +7,14 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 from .serializers import CurrentUserSerializer, RegisterUserSerializer
 from .geocoding import geocode_address
+from .appointed_availability import (
+    apply_pending_appointed_availability_if_due,
+    current_appointed_availability,
+    next_month_start_iso,
+    pending_appointed_availability,
+    queue_next_month_appointed_availability,
+    validate_appointed_availability_payload,
+)
 
 
 def _json_error(message: str, status: int) -> JsonResponse:
@@ -120,6 +128,9 @@ class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        profile = RefereeProfile.objects.filter(user=request.user).first()
+        if profile:
+            apply_pending_appointed_availability_if_due(profile)
         serializer = CurrentUserSerializer(request.user, context={"request": request})
         return Response(serializer.data)
 
@@ -280,6 +291,65 @@ class UpdateHomeLocationView(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+class AppointedAvailabilityView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_referee_profile(self, user: User) -> RefereeProfile | None:
+        return RefereeProfile.objects.filter(user=user).first()
+
+    def _response_payload(self, profile: RefereeProfile) -> dict:
+        pending = pending_appointed_availability(profile)
+        return {
+            "current": current_appointed_availability(profile),
+            "pending": pending,
+            "pending_effective_from": (
+                profile.appointed_availability_effective_from.isoformat()
+                if profile.appointed_availability_effective_from
+                else None
+            ),
+            "next_effective_month_start": next_month_start_iso(),
+        }
+
+    def get(self, request):
+        profile = self._get_referee_profile(request.user)
+        if not profile:
+            return Response(
+                {"detail": "Only referee accounts can manage appointed availability."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        apply_pending_appointed_availability_if_due(profile)
+        profile.refresh_from_db()
+        return Response(self._response_payload(profile), status=status.HTTP_200_OK)
+
+    def put(self, request):
+        profile = self._get_referee_profile(request.user)
+        if not profile:
+            return Response(
+                {"detail": "Only referee accounts can manage appointed availability."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        incoming_payload = request.data
+        if isinstance(request.data, dict) and "availabilities" in request.data:
+            incoming_payload = request.data.get("availabilities")
+
+        try:
+            normalized = validate_appointed_availability_payload(incoming_payload)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        effective_from = queue_next_month_appointed_availability(profile, normalized)
+        profile.refresh_from_db()
+
+        payload = self._response_payload(profile)
+        payload["detail"] = (
+            "Appointed availability update saved. "
+            f"It will take effect on {effective_from.isoformat()}."
+        )
+        return Response(payload, status=status.HTTP_200_OK)
+
+
 class TestingRoleSwitchView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -319,6 +389,18 @@ class TestingRoleSwitchView(APIView):
         if user.account_type in bipin_roles and not user.bipin_verified:
             user.bipin_verified = True
             update_fields.add("bipin_verified")
+
+        if user.account_type in {User.AccountType.SCHOOL, User.AccountType.COLLEGE}:
+            # Temporary testing bypass for school/college photo-ID requirement.
+            if not user.verification_id_photo:
+                user.verification_id_photo = "verification_ids/testing-bypass.png"
+                update_fields.add("verification_id_photo")
+            if not user.organization_name:
+                user.organization_name = "Testing Organisation"
+                update_fields.add("organization_name")
+            if not user.institution_head_phone:
+                user.institution_head_phone = "0000000000"
+                update_fields.add("institution_head_phone")
 
         if target_role != User.AccountType.REFEREE:
             if user.is_team_manager:

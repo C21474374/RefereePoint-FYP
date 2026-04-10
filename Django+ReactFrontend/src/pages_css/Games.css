@@ -282,6 +282,10 @@
   cursor: pointer;
 }
 
+.games-upload-section {
+  margin-top: 18px;
+}
+
 .games-manage-section {
   margin-top: 18px;
   border-radius: 18px;

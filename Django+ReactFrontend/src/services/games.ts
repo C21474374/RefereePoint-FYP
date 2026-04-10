@@ -33,6 +33,15 @@ export type UploadedGameSlot = {
   claimed_by_name: string | null;
 };
 
+export type UploadedGameAssignment = {
+  id: number;
+  role: "CREW_CHIEF" | "UMPIRE_1" | "UMPIRE_2";
+  role_display: string;
+  referee: number;
+  referee_name: string;
+  referee_grade: string;
+};
+
 export type UploadedGame = {
   id: number;
   game_type: "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY" | "DOA" | "NL";
@@ -63,6 +72,7 @@ export type UploadedGame = {
   created_at: string;
   updated_at: string;
   uploaded_slots: UploadedGameSlot[];
+  appointed_assignments: UploadedGameAssignment[];
   can_edit: boolean;
   can_delete: boolean;
 };

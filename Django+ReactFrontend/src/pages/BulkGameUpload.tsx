@@ -1,19 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
+  deleteUploadedGame,
+  getMyUploadedGames,
   getRefereeOptions,
   getUploadGameFormOptions,
+  updateUploadedGame,
   uploadAppointedGame,
+  type ManageUploadedGamePayload,
   type RefereeOption,
   type SimpleOption,
   type TeamOption,
+  type UploadedGame,
 } from "../services/games";
 import "../pages_css/BulkGameUpload.css";
 
-type RowStatus = "READY" | "UPLOADED" | "ERROR";
+type BulkGameUploadProps = {
+  embedded?: boolean;
+  onUploaded?: () => void;
+};
 
-type UploadRow = {
-  id: number;
+type RowStatus = "READY" | "UPLOADING" | "UPLOADED" | "ERROR";
+type RoleValue = "CREW_CHIEF" | "UMPIRE_1";
+
+type SpreadsheetRowFields = {
   date: string;
   time: string;
   venue: string;
@@ -22,9 +32,43 @@ type UploadRow = {
   away_team: string;
   crew_chief: string;
   umpire_1: string;
+};
+
+type UploadRow = SpreadsheetRowFields & {
+  id: number;
   status: RowStatus;
   message: string;
+  uploading: boolean;
 };
+
+type ExistingRow = SpreadsheetRowFields & {
+  game_id: number;
+  notes: string;
+  original_post_text: string;
+  status: RowStatus;
+  message: string;
+  saving: boolean;
+  deleting: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+  lock_reason: string;
+};
+
+type SpreadsheetValidationError = {
+  error: string;
+};
+
+type SpreadsheetValidationSuccess = {
+  selectedDivisionId: number;
+  venueId: number;
+  homeTeamId: number;
+  awayTeamId: number;
+  appointedAssignments: Array<{ role: RoleValue; referee: number }>;
+};
+
+type SpreadsheetValidationResult =
+  | SpreadsheetValidationError
+  | SpreadsheetValidationSuccess;
 
 function createEmptyRow(id: number): UploadRow {
   return {
@@ -39,7 +83,47 @@ function createEmptyRow(id: number): UploadRow {
     umpire_1: "",
     status: "READY",
     message: "",
+    uploading: false,
   };
+}
+
+function isRowComplete(row: SpreadsheetRowFields) {
+  return Boolean(
+    row.date &&
+      row.time &&
+      row.venue &&
+      row.division &&
+      row.home_team &&
+      row.away_team
+  );
+}
+
+function patchSpreadsheetRow<
+  T extends SpreadsheetRowFields,
+  K extends keyof SpreadsheetRowFields,
+>(row: T, key: K, value: SpreadsheetRowFields[K]) {
+  return {
+    ...row,
+    [key]: value,
+    ...(key === "division"
+      ? {
+          home_team: "",
+          away_team: "",
+        }
+      : {}),
+    ...(key === "home_team" &&
+    typeof value === "string" &&
+    value !== "" &&
+    value === row.away_team
+      ? { away_team: "" }
+      : {}),
+    ...(key === "away_team" &&
+    typeof value === "string" &&
+    value !== "" &&
+    value === row.home_team
+      ? { home_team: "" }
+      : {}),
+  } as T;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -70,7 +154,43 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-export default function BulkGameUpload() {
+function buildExistingRowFromGame(game: UploadedGame): ExistingRow {
+  const crewChiefAssignment = game.appointed_assignments?.find(
+    (assignment) => assignment.role === "CREW_CHIEF"
+  );
+  const umpireOneAssignment = game.appointed_assignments?.find(
+    (assignment) => assignment.role === "UMPIRE_1"
+  );
+
+  return {
+    game_id: game.id,
+    date: game.date || "",
+    time: game.time ? game.time.slice(0, 5) : "",
+    venue: game.venue ? String(game.venue) : "",
+    division: game.division ? String(game.division) : "",
+    home_team: game.home_team ? String(game.home_team) : "",
+    away_team: game.away_team ? String(game.away_team) : "",
+    crew_chief: crewChiefAssignment?.referee ? String(crewChiefAssignment.referee) : "",
+    umpire_1: umpireOneAssignment?.referee ? String(umpireOneAssignment.referee) : "",
+    notes: game.notes || "",
+    original_post_text: game.original_post_text || "",
+    status: "READY",
+    message: "",
+    saving: false,
+    deleting: false,
+    can_edit: game.can_edit,
+    can_delete: game.can_delete,
+    lock_reason:
+      !game.can_edit || !game.can_delete
+        ? "This game is locked and cannot be edited or deleted."
+        : "",
+  };
+}
+
+export default function BulkGameUpload({
+  embedded = false,
+  onUploaded,
+}: BulkGameUploadProps) {
   const { user } = useAuth();
   const isDoaOrNl = user?.account_type === "DOA" || user?.account_type === "NL";
   const gameType = user?.account_type === "NL" ? "NL" : "DOA";
@@ -81,41 +201,11 @@ export default function BulkGameUpload() {
   const [referees, setReferees] = useState<RefereeOption[]>([]);
   const [rows, setRows] = useState<UploadRow[]>([createEmptyRow(1)]);
   const [nextRowId, setNextRowId] = useState(2);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [existingRows, setExistingRows] = useState<ExistingRow[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [loadingExisting, setLoadingExisting] = useState(true);
   const [pageError, setPageError] = useState("");
   const [pageSuccess, setPageSuccess] = useState("");
-
-  useEffect(() => {
-    async function loadFormOptions() {
-      if (!isDoaOrNl) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setPageError("");
-
-        const [options, refereeOptions] = await Promise.all([
-          getUploadGameFormOptions(),
-          getRefereeOptions(),
-        ]);
-        setDivisions(options.divisions);
-        setVenues(options.venues);
-        setTeams(options.teams);
-        setReferees(refereeOptions);
-      } catch (error) {
-        setPageError(
-          getErrorMessage(error, "Failed to load upload options. Please try again.")
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadFormOptions();
-  }, [isDoaOrNl]);
 
   const appointedDivisionIds = useMemo(
     () =>
@@ -149,35 +239,195 @@ export default function BulkGameUpload() {
     return map;
   }, [referees]);
 
-  const handleRowChange = <K extends keyof UploadRow>(
+  const sortedUploadedGames = useCallback(
+    (uploads: UploadedGame[]) =>
+      [...uploads]
+        .filter((game) => game.game_type === gameType)
+        .sort((a, b) =>
+          `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)
+        ),
+    [gameType]
+  );
+
+  const reloadUploadedSpreadsheet = useCallback(async () => {
+    if (!isDoaOrNl) {
+      setExistingRows([]);
+      setLoadingExisting(false);
+      return;
+    }
+
+    setLoadingExisting(true);
+    try {
+      const uploads = await getMyUploadedGames();
+      const nextRows = sortedUploadedGames(uploads).map(buildExistingRowFromGame);
+      setExistingRows(nextRows);
+    } catch (error) {
+      setPageError(
+        getErrorMessage(error, "Failed to load uploaded games. Please try again.")
+      );
+    } finally {
+      setLoadingExisting(false);
+    }
+  }, [isDoaOrNl, sortedUploadedGames]);
+
+  useEffect(() => {
+    async function loadInitialData() {
+      if (!isDoaOrNl) {
+        setLoadingOptions(false);
+        setLoadingExisting(false);
+        return;
+      }
+
+      try {
+        setLoadingOptions(true);
+        setLoadingExisting(true);
+        setPageError("");
+
+        const [options, refereeOptions, uploads] = await Promise.all([
+          getUploadGameFormOptions(),
+          getRefereeOptions(),
+          getMyUploadedGames(),
+        ]);
+
+        setDivisions(options.divisions);
+        setVenues(options.venues);
+        setTeams(options.teams);
+        setReferees(refereeOptions);
+        setExistingRows(sortedUploadedGames(uploads).map(buildExistingRowFromGame));
+      } catch (error) {
+        setPageError(
+          getErrorMessage(error, "Failed to load upload options. Please try again.")
+        );
+      } finally {
+        setLoadingOptions(false);
+        setLoadingExisting(false);
+      }
+    }
+
+    loadInitialData();
+  }, [isDoaOrNl, sortedUploadedGames]);
+
+  const validateSpreadsheetRow = useCallback(
+    (row: SpreadsheetRowFields): SpreadsheetValidationResult => {
+      if (
+        !row.date ||
+        !row.time ||
+        !row.venue ||
+        !row.division ||
+        !row.home_team ||
+        !row.away_team
+      ) {
+        return {
+          error:
+            "Please complete Date, Time, Venue, Division, Home Team, and Away Team.",
+        };
+      }
+
+      if (row.home_team === row.away_team) {
+        return { error: "Home Team and Away Team must be different." };
+      }
+
+      const selectedDivisionId = Number(row.division);
+      if (!selectedDivisionId) {
+        return { error: "Please select a valid division." };
+      }
+
+      if (appointedDivisionIds.size > 0 && !appointedDivisionIds.has(selectedDivisionId)) {
+        return { error: "Selected division is not configured for appointed games." };
+      }
+
+      const venueId = Number(row.venue);
+      if (!venueId || !venues.some((venue) => venue.id === venueId)) {
+        return { error: "Please choose a valid venue." };
+      }
+
+      const homeTeam = teamById.get(Number(row.home_team));
+      const awayTeam = teamById.get(Number(row.away_team));
+      if (!homeTeam || !awayTeam || !homeTeam.division_id || !awayTeam.division_id) {
+        return { error: "Invalid team selection. Please choose teams again." };
+      }
+
+      if (homeTeam.division_id !== awayTeam.division_id) {
+        return { error: "Home and Away teams must be from the same division." };
+      }
+
+      if (
+        homeTeam.division_id !== selectedDivisionId ||
+        awayTeam.division_id !== selectedDivisionId
+      ) {
+        return { error: "Selected teams must match the chosen division." };
+      }
+
+      if (row.crew_chief && row.umpire_1 && row.crew_chief === row.umpire_1) {
+        return { error: "Crew Chief and Umpire 1 must be different referees." };
+      }
+
+      const appointedAssignments: Array<{ role: RoleValue; referee: number }> = [];
+
+      if (row.crew_chief) {
+        const crewChiefId = Number(row.crew_chief);
+        if (!crewChiefId || !refereeById.has(crewChiefId)) {
+          return { error: "Please choose a valid Crew Chief referee." };
+        }
+        appointedAssignments.push({
+          role: "CREW_CHIEF",
+          referee: crewChiefId,
+        });
+      }
+
+      if (row.umpire_1) {
+        const umpireId = Number(row.umpire_1);
+        if (!umpireId || !refereeById.has(umpireId)) {
+          return { error: "Please choose a valid Umpire 1 referee." };
+        }
+        appointedAssignments.push({
+          role: "UMPIRE_1",
+          referee: umpireId,
+        });
+      }
+
+      return {
+        selectedDivisionId,
+        venueId,
+        homeTeamId: Number(row.home_team),
+        awayTeamId: Number(row.away_team),
+        appointedAssignments,
+      };
+    },
+    [appointedDivisionIds, refereeById, teamById, venues]
+  );
+
+  const handleRowChange = <K extends keyof SpreadsheetRowFields>(
     rowId: number,
     key: K,
-    value: UploadRow[K]
+    value: SpreadsheetRowFields[K]
   ) => {
     setRows((prev) =>
       prev.map((row) =>
         row.id === rowId
           ? {
-              ...row,
-              [key]: value,
-              ...(key === "division"
-                ? {
-                    home_team: "",
-                    away_team: "",
-                  }
-                : {}),
-              ...(key === "home_team" &&
-              typeof value === "string" &&
-              value !== "" &&
-              value === row.away_team
-                ? { away_team: "" }
-                : {}),
-              ...(key === "away_team" &&
-              typeof value === "string" &&
-              value !== "" &&
-              value === row.home_team
-                ? { home_team: "" }
-                : {}),
+              ...patchSpreadsheetRow(row, key, value),
+              status: "READY",
+              message: "",
+              uploading: false,
+            }
+          : row
+      )
+    );
+    setPageError("");
+    setPageSuccess("");
+  };
+
+  const handleExistingRowChange = <K extends keyof SpreadsheetRowFields>(
+    gameId: number,
+    key: K,
+    value: SpreadsheetRowFields[K]
+  ) => {
+    setExistingRows((prev) =>
+      prev.map((row) =>
+        row.game_id === gameId
+          ? {
+              ...patchSpreadsheetRow(row, key, value),
               status: "READY",
               message: "",
             }
@@ -204,22 +454,6 @@ export default function BulkGameUpload() {
     setPageSuccess("");
   };
 
-  const clearUploadedRows = () => {
-    const remaining = rows.filter((row) => row.status !== "UPLOADED");
-    if (remaining.length === 0) {
-      setRows([createEmptyRow(nextRowId)]);
-      setNextRowId((prev) => prev + 1);
-      return;
-    }
-    setRows(
-      remaining.map((row) => ({
-        ...row,
-        status: row.status === "ERROR" ? row.status : "READY",
-        message: row.status === "ERROR" ? row.message : "",
-      }))
-    );
-  };
-
   const getTeamsForDivision = (divisionId: string) => {
     const parsedDivisionId = Number(divisionId);
     if (!parsedDivisionId) {
@@ -229,7 +463,7 @@ export default function BulkGameUpload() {
   };
 
   const getTeamOptionsForRow = (
-    row: UploadRow,
+    row: Pick<SpreadsheetRowFields, "division" | "home_team" | "away_team">,
     field: "home_team" | "away_team"
   ) => {
     const divisionTeams = getTeamsForDivision(row.division);
@@ -244,189 +478,252 @@ export default function BulkGameUpload() {
     return divisionTeams.filter((team) => team.id !== oppositeTeamId);
   };
 
-  const submitRows = async () => {
-    if (!user?.uploads_approved) {
-      setPageError("Your account is not approved to upload games yet.");
-      return;
-    }
-
-    setSubmitting(true);
-    setPageError("");
-    setPageSuccess("");
-
-    let successCount = 0;
-
-    const nextRows: UploadRow[] = [];
-
-    for (const row of rows) {
-      if (
-        !row.date ||
-        !row.time ||
-        !row.venue ||
-        !row.division ||
-        !row.home_team ||
-        !row.away_team
-      ) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message:
-            "Please complete Date, Time, Venue, Division, Home Team, and Away Team.",
-        });
-        continue;
-      }
-
-      if (row.home_team === row.away_team) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: "Home Team and Away Team must be different.",
-        });
-        continue;
-      }
-
-      const selectedDivisionId = Number(row.division);
-      if (!selectedDivisionId) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: "Please select a valid division.",
-        });
-        continue;
-      }
-
-      if (appointedDivisionIds.size > 0 && !appointedDivisionIds.has(selectedDivisionId)) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: "Selected division is not configured for appointed games.",
-        });
-        continue;
-      }
-
-      const homeTeam = teamById.get(Number(row.home_team));
-      const awayTeam = teamById.get(Number(row.away_team));
-
-      if (!homeTeam || !awayTeam || !homeTeam.division_id || !awayTeam.division_id) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: "Invalid team selection. Please choose teams again.",
-        });
-        continue;
-      }
-
-      if (homeTeam.division_id !== awayTeam.division_id) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: "Home and Away teams must be from the same division.",
-        });
-        continue;
-      }
-
-      if (
-        homeTeam.division_id !== selectedDivisionId ||
-        awayTeam.division_id !== selectedDivisionId
-      ) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: "Selected teams must match the chosen division.",
-        });
-        continue;
-      }
-
-      if (row.crew_chief && row.umpire_1 && row.crew_chief === row.umpire_1) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: "Crew Chief and Umpire 1 must be different referees.",
-        });
-        continue;
-      }
-
-      const appointedAssignments: Array<{
-        role: "CREW_CHIEF" | "UMPIRE_1";
-        referee: number;
-      }> = [];
-
-      if (row.crew_chief) {
-        const crewChiefId = Number(row.crew_chief);
-        if (!crewChiefId || !refereeById.has(crewChiefId)) {
-          nextRows.push({
-            ...row,
-            status: "ERROR",
-            message: "Please choose a valid Crew Chief referee.",
-          });
-          continue;
-        }
-        appointedAssignments.push({
-          role: "CREW_CHIEF",
-          referee: crewChiefId,
-        });
-      }
-
-      if (row.umpire_1) {
-        const umpireId = Number(row.umpire_1);
-        if (!umpireId || !refereeById.has(umpireId)) {
-          nextRows.push({
-            ...row,
-            status: "ERROR",
-            message: "Please choose a valid Umpire 1 referee.",
-          });
-          continue;
-        }
-        appointedAssignments.push({
-          role: "UMPIRE_1",
-          referee: umpireId,
-        });
-      }
+  const uploadDraftRow = useCallback(
+    async (row: UploadRow, validation: SpreadsheetValidationSuccess) => {
+      setRows((prev) =>
+        prev.map((item) =>
+          item.id === row.id
+            ? {
+                ...item,
+                uploading: true,
+                status: "UPLOADING",
+                message: "Uploading...",
+              }
+            : item
+        )
+      );
 
       try {
         await uploadAppointedGame({
           game_type: gameType,
           payment_type: "CLAIM",
-          division: selectedDivisionId,
+          division: validation.selectedDivisionId,
           date: row.date,
           time: row.time,
-          venue: Number(row.venue),
-          home_team: Number(row.home_team),
-          away_team: Number(row.away_team),
+          venue: validation.venueId,
+          home_team: validation.homeTeamId,
+          away_team: validation.awayTeamId,
           notes: "",
           original_post_text: "",
-          appointed_assignments: appointedAssignments,
+          appointed_assignments: validation.appointedAssignments,
         });
 
-        successCount += 1;
-        nextRows.push({
-          ...row,
-          status: "UPLOADED",
-          message: "Uploaded successfully.",
-        });
+        setRows((prev) =>
+          prev.map((item) => (item.id === row.id ? createEmptyRow(item.id) : item))
+        );
+        setPageError("");
+        setPageSuccess("Game uploaded.");
+        await reloadUploadedSpreadsheet();
+        onUploaded?.();
       } catch (error) {
-        nextRows.push({
-          ...row,
-          status: "ERROR",
-          message: getErrorMessage(error, "Upload failed."),
-        });
+        setRows((prev) =>
+          prev.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  uploading: false,
+                  status: "ERROR",
+                  message: getErrorMessage(error, "Upload failed."),
+                }
+              : item
+          )
+        );
       }
+    },
+    [gameType, onUploaded, reloadUploadedSpreadsheet]
+  );
+
+  useEffect(() => {
+    if (!user?.uploads_approved || loadingOptions) {
+      return;
     }
 
-    setRows(nextRows);
-
-    if (successCount > 0) {
-      setPageSuccess(`${successCount} game${successCount === 1 ? "" : "s"} uploaded.`);
+    const candidate = rows.find(
+      (row) => row.status === "READY" && !row.uploading && isRowComplete(row)
+    );
+    if (!candidate) {
+      return;
     }
 
-    if (successCount < rows.length) {
-      setPageError("Some rows failed. Fix the highlighted rows and upload again.");
+    const validation = validateSpreadsheetRow(candidate);
+    if ("error" in validation) {
+      setRows((prev) =>
+        prev.map((item) =>
+          item.id === candidate.id
+            ? {
+                ...item,
+                status: "ERROR",
+                message: validation.error,
+                uploading: false,
+              }
+            : item
+        )
+      );
+      return;
     }
 
-    setSubmitting(false);
+    void uploadDraftRow(candidate, validation);
+  }, [loadingOptions, rows, uploadDraftRow, user?.uploads_approved, validateSpreadsheetRow]);
+
+  const handleSaveExistingRow = async (gameId: number) => {
+    const row = existingRows.find((item) => item.game_id === gameId);
+    if (!row) {
+      return;
+    }
+
+    if (!row.can_edit) {
+      setExistingRows((prev) =>
+        prev.map((item) =>
+          item.game_id === gameId
+            ? {
+                ...item,
+                status: "ERROR",
+                message: item.lock_reason || "This row cannot be edited.",
+              }
+            : item
+        )
+      );
+      return;
+    }
+
+    const validation = validateSpreadsheetRow(row);
+    if ("error" in validation) {
+      setExistingRows((prev) =>
+        prev.map((item) =>
+          item.game_id === gameId
+            ? {
+                ...item,
+                status: "ERROR",
+                message: validation.error,
+              }
+            : item
+        )
+      );
+      return;
+    }
+
+    setExistingRows((prev) =>
+      prev.map((item) =>
+        item.game_id === gameId
+          ? {
+              ...item,
+              saving: true,
+              status: "READY",
+              message: "",
+            }
+          : item
+      )
+    );
+
+    try {
+      const payload: ManageUploadedGamePayload = {
+        game_type: gameType,
+        payment_type: "CLAIM",
+        division: validation.selectedDivisionId,
+        date: row.date,
+        time: row.time,
+        venue: validation.venueId,
+        home_team: validation.homeTeamId,
+        away_team: validation.awayTeamId,
+        notes: row.notes,
+        original_post_text: row.original_post_text,
+        appointed_assignments: validation.appointedAssignments,
+      };
+
+      const updatedGame = await updateUploadedGame(gameId, payload);
+      const updatedRow = buildExistingRowFromGame(updatedGame);
+
+      setExistingRows((prev) =>
+        prev.map((item) =>
+          item.game_id === gameId
+            ? {
+                ...updatedRow,
+                status: "UPLOADED",
+                message: "Saved successfully.",
+                saving: false,
+              }
+            : item
+        )
+      );
+      onUploaded?.();
+    } catch (error) {
+      setExistingRows((prev) =>
+        prev.map((item) =>
+          item.game_id === gameId
+            ? {
+                ...item,
+                saving: false,
+                status: "ERROR",
+                message: getErrorMessage(error, "Failed to save row."),
+              }
+            : item
+        )
+      );
+    }
+  };
+
+  const handleDeleteExistingRow = async (gameId: number) => {
+    const row = existingRows.find((item) => item.game_id === gameId);
+    if (!row) {
+      return;
+    }
+
+    if (!row.can_delete) {
+      setExistingRows((prev) =>
+        prev.map((item) =>
+          item.game_id === gameId
+            ? {
+                ...item,
+                status: "ERROR",
+                message: item.lock_reason || "This row cannot be deleted.",
+              }
+            : item
+        )
+      );
+      return;
+    }
+
+    if (!window.confirm("Delete this uploaded game?")) {
+      return;
+    }
+
+    setExistingRows((prev) =>
+      prev.map((item) =>
+        item.game_id === gameId
+          ? {
+              ...item,
+              deleting: true,
+              message: "",
+            }
+          : item
+      )
+    );
+
+    try {
+      await deleteUploadedGame(gameId);
+      setExistingRows((prev) => prev.filter((item) => item.game_id !== gameId));
+      setPageSuccess("Uploaded game deleted.");
+      onUploaded?.();
+    } catch (error) {
+      setExistingRows((prev) =>
+        prev.map((item) =>
+          item.game_id === gameId
+            ? {
+                ...item,
+                deleting: false,
+                status: "ERROR",
+                message: getErrorMessage(error, "Failed to delete row."),
+              }
+            : item
+        )
+      );
+    }
   };
 
   if (!isDoaOrNl) {
+    if (embedded) {
+      return null;
+    }
     return (
       <div className="bulk-upload-page">
         <div className="bulk-upload-header">
@@ -438,9 +735,9 @@ export default function BulkGameUpload() {
   }
 
   return (
-    <div className="bulk-upload-page">
+    <div className={`bulk-upload-page ${embedded ? "bulk-upload-page-embedded" : ""}`.trim()}>
       <div className="bulk-upload-header">
-        <h1>Upload Games</h1>
+        {embedded ? <h2>Upload Games</h2> : <h1>Upload Games</h1>}
         <p>
           Add multiple {gameType === "NL" ? "NL" : "DOA"} games in one go. Each row is one game.
         </p>
@@ -459,12 +756,9 @@ export default function BulkGameUpload() {
           <button type="button" onClick={addRow}>
             Add Row
           </button>
-          <button type="button" onClick={clearUploadedRows}>
-            Clear Uploaded
-          </button>
         </div>
 
-        {loading ? (
+        {loadingOptions ? (
           <p className="bulk-upload-empty">Loading upload options...</p>
         ) : (
           <div className="bulk-upload-table-wrap">
@@ -480,16 +774,172 @@ export default function BulkGameUpload() {
                   <th>Crew Chief</th>
                   <th>Umpire 1</th>
                   <th>Status</th>
-                  <th></th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
+                {!loadingExisting &&
+                  existingRows.map((row) => (
+                    <tr key={row.game_id} className={`row-${row.status.toLowerCase()}`}>
+                      <td>
+                        <input
+                          type="date"
+                          value={row.date}
+                          disabled={!row.can_edit || row.saving || row.deleting}
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "date", event.target.value)
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="time"
+                          value={row.time}
+                          disabled={!row.can_edit || row.saving || row.deleting}
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "time", event.target.value)
+                          }
+                        />
+                      </td>
+                      <td>
+                        <select
+                          value={row.venue}
+                          disabled={!row.can_edit || row.saving || row.deleting}
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "venue", event.target.value)
+                          }
+                        >
+                          <option value="">Select</option>
+                          {venues.map((venue) => (
+                            <option key={venue.id} value={venue.id}>
+                              {venue.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={row.division}
+                          disabled={!row.can_edit || row.saving || row.deleting}
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "division", event.target.value)
+                          }
+                        >
+                          <option value="">Select</option>
+                          {selectableDivisions.map((division) => (
+                            <option key={division.id} value={division.id}>
+                              {division.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={row.home_team}
+                          disabled={
+                            !row.can_edit || row.saving || row.deleting || !row.division
+                          }
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "home_team", event.target.value)
+                          }
+                        >
+                          <option value="">Select</option>
+                          {getTeamOptionsForRow(row, "home_team").map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.club_name || team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={row.away_team}
+                          disabled={
+                            !row.can_edit || row.saving || row.deleting || !row.division
+                          }
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "away_team", event.target.value)
+                          }
+                        >
+                          <option value="">Select</option>
+                          {getTeamOptionsForRow(row, "away_team").map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.club_name || team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={row.crew_chief}
+                          disabled={!row.can_edit || row.saving || row.deleting}
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "crew_chief", event.target.value)
+                          }
+                        >
+                          <option value="">Unassigned</option>
+                          {referees.map((referee) => (
+                            <option key={referee.id} value={referee.id}>
+                              {referee.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={row.umpire_1}
+                          disabled={!row.can_edit || row.saving || row.deleting}
+                          onChange={(event) =>
+                            handleExistingRowChange(row.game_id, "umpire_1", event.target.value)
+                          }
+                        >
+                          <option value="">Unassigned</option>
+                          {referees.map((referee) => (
+                            <option key={referee.id} value={referee.id}>
+                              {referee.label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <div className="bulk-upload-row-status">
+                          <span className={`status-pill ${row.status.toLowerCase()}`}>
+                            {row.status}
+                          </span>
+                          {row.message && <p>{row.message}</p>}
+                          {!row.message && row.lock_reason && <p>{row.lock_reason}</p>}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="bulk-upload-row-actions">
+                          <button
+                            type="button"
+                            className="row-remove-btn"
+                            disabled={!row.can_edit || row.saving || row.deleting}
+                            onClick={() => handleSaveExistingRow(row.game_id)}
+                          >
+                            {row.saving ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            className="row-remove-btn"
+                            disabled={!row.can_delete || row.saving || row.deleting}
+                            onClick={() => handleDeleteExistingRow(row.game_id)}
+                          >
+                            {row.deleting ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                }
                 {rows.map((row) => (
                   <tr key={row.id} className={`row-${row.status.toLowerCase()}`}>
                     <td>
                       <input
                         type="date"
                         value={row.date}
+                        disabled={row.uploading}
                         onChange={(event) =>
                           handleRowChange(row.id, "date", event.target.value)
                         }
@@ -499,6 +949,7 @@ export default function BulkGameUpload() {
                       <input
                         type="time"
                         value={row.time}
+                        disabled={row.uploading}
                         onChange={(event) =>
                           handleRowChange(row.id, "time", event.target.value)
                         }
@@ -507,6 +958,7 @@ export default function BulkGameUpload() {
                     <td>
                       <select
                         value={row.venue}
+                        disabled={row.uploading}
                         onChange={(event) =>
                           handleRowChange(row.id, "venue", event.target.value)
                         }
@@ -522,6 +974,7 @@ export default function BulkGameUpload() {
                     <td>
                       <select
                         value={row.division}
+                        disabled={row.uploading}
                         onChange={(event) =>
                           handleRowChange(row.id, "division", event.target.value)
                         }
@@ -537,7 +990,7 @@ export default function BulkGameUpload() {
                     <td>
                       <select
                         value={row.home_team}
-                        disabled={!row.division}
+                        disabled={row.uploading || !row.division}
                         onChange={(event) =>
                           handleRowChange(row.id, "home_team", event.target.value)
                         }
@@ -553,7 +1006,7 @@ export default function BulkGameUpload() {
                     <td>
                       <select
                         value={row.away_team}
-                        disabled={!row.division}
+                        disabled={row.uploading || !row.division}
                         onChange={(event) =>
                           handleRowChange(row.id, "away_team", event.target.value)
                         }
@@ -569,6 +1022,7 @@ export default function BulkGameUpload() {
                     <td>
                       <select
                         value={row.crew_chief}
+                        disabled={row.uploading}
                         onChange={(event) =>
                           handleRowChange(row.id, "crew_chief", event.target.value)
                         }
@@ -584,6 +1038,7 @@ export default function BulkGameUpload() {
                     <td>
                       <select
                         value={row.umpire_1}
+                        disabled={row.uploading}
                         onChange={(event) =>
                           handleRowChange(row.id, "umpire_1", event.target.value)
                         }
@@ -608,6 +1063,7 @@ export default function BulkGameUpload() {
                       <button
                         type="button"
                         className="row-remove-btn"
+                        disabled={row.uploading}
                         onClick={() => removeRow(row.id)}
                       >
                         Remove
@@ -620,16 +1076,6 @@ export default function BulkGameUpload() {
           </div>
         )}
 
-        <div className="bulk-upload-actions-bottom">
-          <button
-            type="button"
-            className="upload-all-btn"
-            disabled={submitting || loading || !user?.uploads_approved}
-            onClick={submitRows}
-          >
-            {submitting ? "Uploading..." : "Upload All Rows"}
-          </button>
-        </div>
       </section>
     </div>
   );

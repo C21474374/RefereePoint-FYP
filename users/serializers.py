@@ -1,6 +1,12 @@
 from rest_framework import serializers
 from .models import User, RefereeProfile
 from django.db import transaction
+import json
+
+from .appointed_availability import (
+    set_current_appointed_availability,
+    validate_appointed_availability_payload,
+)
 
 
 class RefereeProfileSerializer(serializers.ModelSerializer):
@@ -108,6 +114,7 @@ class RegisterUserSerializer(serializers.Serializer):
         default=User.ManagerScope.NONE,
     )
     managed_team = serializers.IntegerField(required=False, allow_null=True)
+    appointed_availability = serializers.CharField(required=False, allow_blank=True)
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
@@ -178,6 +185,29 @@ class RegisterUserSerializer(serializers.Serializer):
             attrs["manager_scope"] = User.ManagerScope.NONE
             attrs["managed_team"] = None
 
+        if account_type == User.AccountType.REFEREE:
+            raw_appointed_availability = attrs.get("appointed_availability")
+            parsed_appointed_availability = []
+
+            if raw_appointed_availability:
+                try:
+                    parsed_appointed_availability = json.loads(raw_appointed_availability)
+                except (TypeError, ValueError):
+                    raise serializers.ValidationError(
+                        {"appointed_availability": "Invalid appointed availability payload."}
+                    )
+
+            try:
+                attrs["_appointed_availability_normalized"] = (
+                    validate_appointed_availability_payload(parsed_appointed_availability)
+                )
+            except ValueError as exc:
+                raise serializers.ValidationError(
+                    {"appointed_availability": str(exc)}
+                )
+        else:
+            attrs["_appointed_availability_normalized"] = []
+
         return attrs
 
     @transaction.atomic
@@ -186,6 +216,11 @@ class RegisterUserSerializer(serializers.Serializer):
 
         managed_team_id = validated_data.pop("managed_team", None)
         grade = validated_data.pop("grade", "INTRO")
+        validated_data.pop("appointed_availability", None)
+        appointed_availability_normalized = validated_data.pop(
+            "_appointed_availability_normalized",
+            [],
+        )
         account_type = validated_data.get("account_type", User.AccountType.REFEREE)
 
         managed_team = None
@@ -216,9 +251,10 @@ class RegisterUserSerializer(serializers.Serializer):
         )
 
         if account_type == User.AccountType.REFEREE:
-            RefereeProfile.objects.update_or_create(
+            profile, _ = RefereeProfile.objects.update_or_create(
                 user=user,
                 defaults={"grade": grade},
             )
+            set_current_appointed_availability(profile, appointed_availability_normalized)
 
         return user

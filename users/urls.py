@@ -7,6 +7,7 @@ urlpatterns = [
     path('register/', views.RegisterUserView.as_view(), name='register-user'),
     path('me/', views.CurrentUserView.as_view(), name='current_user'),
     path('me/home/', views.UpdateHomeLocationView.as_view(), name='update_home_location'),
+    path('me/appointed-availability/', views.AppointedAvailabilityView.as_view(), name='appointed-availability'),
     path('me/testing-role/', views.TestingRoleSwitchView.as_view(), name='testing-role-switch'),
     path('approvals/pending/', views.PendingAccountApprovalsView.as_view(), name='pending-account-approvals'),
     path('approvals/<int:user_id>/', views.ApproveAccountView.as_view(), name='approve-account'),

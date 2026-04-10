@@ -121,14 +121,33 @@ class UploadedGameSlotSerializer(serializers.ModelSerializer):
         ]
 
 
+class UploadedGameAssignmentSerializer(serializers.ModelSerializer):
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+    referee_name = serializers.CharField(source="referee.user.get_full_name", read_only=True)
+    referee_grade = serializers.CharField(source="referee.grade", read_only=True)
+
+    class Meta:
+        model = RefereeAssignment
+        fields = [
+            "id",
+            "role",
+            "role_display",
+            "referee",
+            "referee_name",
+            "referee_grade",
+        ]
+
+
 class UploadedGameSerializer(GameSerializer):
     uploaded_slots = serializers.SerializerMethodField()
+    appointed_assignments = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     can_delete = serializers.SerializerMethodField()
 
     class Meta(GameSerializer.Meta):
         fields = GameSerializer.Meta.fields + [
             "uploaded_slots",
+            "appointed_assignments",
             "can_edit",
             "can_delete",
         ]
@@ -143,6 +162,15 @@ class UploadedGameSerializer(GameSerializer):
     def get_uploaded_slots(self, obj: Game):
         slots = self._uploaded_slots_queryset(obj).order_by("role")
         return UploadedGameSlotSerializer(slots, many=True).data
+
+    def get_appointed_assignments(self, obj: Game):
+        assignments = obj.referee_assignments.select_related("referee__user").filter(
+            role__in=[
+                RefereeAssignment.Role.CREW_CHIEF,
+                RefereeAssignment.Role.UMPIRE_1,
+            ]
+        ).order_by("role")
+        return UploadedGameAssignmentSerializer(assignments, many=True).data
 
     def _has_claimed_slots(self, obj: Game) -> bool:
         return self._uploaded_slots_queryset(obj).filter(
@@ -282,8 +310,14 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                 )
             )
 
-        if user.account_type == User.AccountType.CLUB and game_type != Game.GameType.FRIENDLY:
-            attrs["game_type"] = Game.GameType.CLUB
+        locked_non_appointed_type_by_account = {
+            User.AccountType.CLUB: Game.GameType.CLUB,
+            User.AccountType.SCHOOL: Game.GameType.SCHOOL,
+            User.AccountType.COLLEGE: Game.GameType.COLLEGE,
+        }
+        locked_type = locked_non_appointed_type_by_account.get(user.account_type)
+        if locked_type and game_type != Game.GameType.FRIENDLY:
+            attrs["game_type"] = locked_type
             game_type = attrs["game_type"]
 
         division = attrs.get("division")

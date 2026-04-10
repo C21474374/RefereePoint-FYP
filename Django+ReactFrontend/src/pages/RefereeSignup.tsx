@@ -15,6 +15,17 @@ type ClubOption = {
 
 type AccountType = "REFEREE" | "CLUB" | "SCHOOL" | "COLLEGE" | "DOA" | "NL";
 type ManagerScope = "NONE" | "CLUB" | "SCHOOL" | "COLLEGE";
+type AvailabilityDayCode = "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+
+type AvailabilityDayForm = {
+  day_of_week: AvailabilityDayCode;
+  day_label: string;
+  available: boolean;
+  start_time: string;
+  end_time: string;
+  window_start: string;
+  window_end: string;
+};
 
 type FormState = {
   account_type: AccountType;
@@ -52,6 +63,91 @@ const initialForm: FormState = {
 
 const API_BASE = "http://localhost:8000/api";
 
+const APPOINTED_AVAILABILITY_TEMPLATE: AvailabilityDayForm[] = [
+  {
+    day_of_week: "MON",
+    day_label: "Monday",
+    available: false,
+    start_time: "19:00",
+    end_time: "20:00",
+    window_start: "19:00",
+    window_end: "22:00",
+  },
+  {
+    day_of_week: "TUE",
+    day_label: "Tuesday",
+    available: false,
+    start_time: "19:00",
+    end_time: "20:00",
+    window_start: "19:00",
+    window_end: "22:00",
+  },
+  {
+    day_of_week: "WED",
+    day_label: "Wednesday",
+    available: false,
+    start_time: "19:00",
+    end_time: "20:00",
+    window_start: "19:00",
+    window_end: "22:00",
+  },
+  {
+    day_of_week: "THU",
+    day_label: "Thursday",
+    available: false,
+    start_time: "19:00",
+    end_time: "20:00",
+    window_start: "19:00",
+    window_end: "22:00",
+  },
+  {
+    day_of_week: "FRI",
+    day_label: "Friday",
+    available: false,
+    start_time: "19:00",
+    end_time: "20:00",
+    window_start: "19:00",
+    window_end: "22:00",
+  },
+  {
+    day_of_week: "SAT",
+    day_label: "Saturday",
+    available: false,
+    start_time: "10:00",
+    end_time: "11:00",
+    window_start: "10:00",
+    window_end: "22:00",
+  },
+  {
+    day_of_week: "SUN",
+    day_label: "Sunday",
+    available: false,
+    start_time: "10:00",
+    end_time: "11:00",
+    window_start: "10:00",
+    window_end: "22:00",
+  },
+];
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function buildTimeOptions(windowStart: string, windowEnd: string) {
+  const start = timeToMinutes(windowStart);
+  const end = timeToMinutes(windowEnd);
+  const options: string[] = [];
+  for (let minute = start; minute <= end; minute += 30) {
+    const hours = Math.floor(minute / 60)
+      .toString()
+      .padStart(2, "0");
+    const mins = (minute % 60).toString().padStart(2, "0");
+    options.push(`${hours}:${mins}`);
+  }
+  return options;
+}
+
 export default function RefereeSignup() {
   const navigate = useNavigate();
 
@@ -63,6 +159,9 @@ export default function RefereeSignup() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [appointedAvailability, setAppointedAvailability] = useState<AvailabilityDayForm[]>(
+    APPOINTED_AVAILABILITY_TEMPLATE.map((item) => ({ ...item }))
+  );
 
   const isReferee = form.account_type === "REFEREE";
   const isClub = form.account_type === "CLUB";
@@ -186,6 +285,34 @@ export default function RefereeSignup() {
     setSuccess("");
   }
 
+  function handleAvailabilityChange(
+    dayCode: AvailabilityDayCode,
+    patch: Partial<Pick<AvailabilityDayForm, "available" | "start_time" | "end_time">>
+  ) {
+    setAppointedAvailability((prev) =>
+      prev.map((item) => {
+        if (item.day_of_week !== dayCode) {
+          return item;
+        }
+
+        const next = { ...item, ...patch };
+        const endAfterStart = timeToMinutes(next.end_time) > timeToMinutes(next.start_time);
+        if (!endAfterStart) {
+          const options = buildTimeOptions(next.window_start, next.window_end).filter(
+            (value) => timeToMinutes(value) > timeToMinutes(next.start_time)
+          );
+          if (options.length > 0) {
+            next.end_time = options[0];
+          }
+        }
+
+        return next;
+      })
+    );
+    setError("");
+    setSuccess("");
+  }
+
   function extractErrorMessage(data: unknown): string {
     if (!data || typeof data !== "object") {
       return "Failed to register account.";
@@ -223,6 +350,19 @@ export default function RefereeSignup() {
       return;
     }
 
+    if (isReferee) {
+      const invalidDay = appointedAvailability.find(
+        (item) =>
+          item.available &&
+          timeToMinutes(item.end_time) <= timeToMinutes(item.start_time)
+      );
+      if (invalidDay) {
+        setError(`End time must be after start time for ${invalidDay.day_label}.`);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const payload = new FormData();
       payload.append("account_type", form.account_type);
@@ -253,6 +393,17 @@ export default function RefereeSignup() {
       if (isReferee) {
         payload.append("grade", form.grade);
         payload.append("is_team_manager", String(form.is_team_manager));
+        payload.append(
+          "appointed_availability",
+          JSON.stringify(
+            appointedAvailability.map((item) => ({
+              day_of_week: item.day_of_week,
+              available: item.available,
+              start_time: item.start_time,
+              end_time: item.end_time,
+            }))
+          )
+        );
 
         if (form.is_team_manager) {
           payload.append("manager_scope", form.manager_scope);
@@ -274,6 +425,7 @@ export default function RefereeSignup() {
         "Account created successfully. Verification and approval are required before upload permissions are activated."
       );
       setForm(initialForm);
+      setAppointedAvailability(APPOINTED_AVAILABILITY_TEMPLATE.map((item) => ({ ...item })));
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
@@ -461,6 +613,72 @@ export default function RefereeSignup() {
                       <option value="FIBA">FIBA</option>
                     </select>
                   </label>
+
+                  <div className="auth-field auth-field-full auth-availability">
+                    <span>Appointed Games Availability</span>
+                    <p className="auth-availability-note">
+                      Monday-Friday available window: 19:00-22:00. Saturday-Sunday available
+                      window: 10:00-22:00.
+                    </p>
+                    <div className="auth-availability-list">
+                      {appointedAvailability.map((item) => {
+                        const timeOptions = buildTimeOptions(item.window_start, item.window_end);
+                        const endOptions = timeOptions.filter(
+                          (value) => timeToMinutes(value) > timeToMinutes(item.start_time)
+                        );
+
+                        return (
+                          <div key={item.day_of_week} className="auth-availability-row">
+                            <label className="auth-availability-toggle">
+                              <input
+                                type="checkbox"
+                                checked={item.available}
+                                onChange={(event) =>
+                                  handleAvailabilityChange(item.day_of_week, {
+                                    available: event.target.checked,
+                                  })
+                                }
+                              />
+                              <span>{item.day_label}</span>
+                            </label>
+                            <div className="auth-availability-times">
+                              <select
+                                value={item.start_time}
+                                onChange={(event) =>
+                                  handleAvailabilityChange(item.day_of_week, {
+                                    start_time: event.target.value,
+                                  })
+                                }
+                                disabled={!item.available}
+                              >
+                                {timeOptions.slice(0, -1).map((timeValue) => (
+                                  <option key={`${item.day_of_week}-start-${timeValue}`} value={timeValue}>
+                                    {timeValue}
+                                  </option>
+                                ))}
+                              </select>
+                              <span>to</span>
+                              <select
+                                value={item.end_time}
+                                onChange={(event) =>
+                                  handleAvailabilityChange(item.day_of_week, {
+                                    end_time: event.target.value,
+                                  })
+                                }
+                                disabled={!item.available}
+                              >
+                                {(endOptions.length > 0 ? endOptions : timeOptions.slice(1)).map((timeValue) => (
+                                  <option key={`${item.day_of_week}-end-${timeValue}`} value={timeValue}>
+                                    {timeValue}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
                   <label className="auth-checkbox auth-field-full">
                     <input

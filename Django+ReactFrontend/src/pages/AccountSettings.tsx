@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { switchTestingRole, type AccountType } from "../services/auth";
+import {
+  getAppointedAvailability,
+  updateAppointedAvailability,
+  type AppointedAvailabilityDay,
+} from "../services/appointedAvailability";
 import "../pages_css/AccountSettings.css";
 
 const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
@@ -31,6 +36,25 @@ function getInitials(
   return "R";
 }
 
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function buildTimeOptions(windowStart: string, windowEnd: string) {
+  const start = timeToMinutes(windowStart);
+  const end = timeToMinutes(windowEnd);
+  const options: string[] = [];
+  for (let minute = start; minute <= end; minute += 30) {
+    const hours = Math.floor(minute / 60)
+      .toString()
+      .padStart(2, "0");
+    const mins = (minute % 60).toString().padStart(2, "0");
+    options.push(`${hours}:${mins}`);
+  }
+  return options;
+}
+
 export default function AccountSettings() {
   const { user, refreshUser } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
@@ -38,12 +62,44 @@ export default function AccountSettings() {
   const [switchingRole, setSwitchingRole] = useState(false);
   const [roleError, setRoleError] = useState("");
   const [roleSuccess, setRoleSuccess] = useState("");
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [availabilitySuccess, setAvailabilitySuccess] = useState("");
+  const [availabilityDraft, setAvailabilityDraft] = useState<AppointedAvailabilityDay[]>([]);
+  const [availabilityPendingFrom, setAvailabilityPendingFrom] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.account_type) {
       setSelectedRole(user.account_type);
     }
   }, [user?.account_type]);
+
+  useEffect(() => {
+    if (!isRefereeUser) {
+      setAvailabilityDraft([]);
+      setAvailabilityPendingFrom(null);
+      return;
+    }
+
+    async function loadAvailability() {
+      try {
+        setAvailabilityLoading(true);
+        setAvailabilityError("");
+        const response = await getAppointedAvailability();
+        setAvailabilityDraft(response.pending || response.current);
+        setAvailabilityPendingFrom(response.pending_effective_from);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to load appointed availability.";
+        setAvailabilityError(message);
+      } finally {
+        setAvailabilityLoading(false);
+      }
+    }
+
+    void loadAvailability();
+  }, [isRefereeUser]);
 
   const fullName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "User";
@@ -68,6 +124,71 @@ export default function AccountSettings() {
       setRoleError(message);
     } finally {
       setSwitchingRole(false);
+    }
+  };
+
+  const handleAvailabilityDayChange = (
+    dayCode: AppointedAvailabilityDay["day_of_week"],
+    patch: Partial<Pick<AppointedAvailabilityDay, "available" | "start_time" | "end_time">>
+  ) => {
+    setAvailabilityDraft((prev) =>
+      prev.map((item) => {
+        if (item.day_of_week !== dayCode) {
+          return item;
+        }
+
+        const next = { ...item, ...patch };
+        if (!next.available) {
+          return {
+            ...next,
+            start_time: "",
+            end_time: "",
+          };
+        }
+
+        const defaultStart = item.window_start;
+        const defaultEndOptions = buildTimeOptions(item.window_start, item.window_end).filter(
+          (value) => timeToMinutes(value) > timeToMinutes(defaultStart)
+        );
+        const defaultEnd = defaultEndOptions.length > 0 ? defaultEndOptions[0] : item.window_end;
+
+        const startTime = next.start_time || defaultStart;
+        let endTime = next.end_time || defaultEnd;
+        if (timeToMinutes(endTime) <= timeToMinutes(startTime)) {
+          const nextEndOptions = buildTimeOptions(item.window_start, item.window_end).filter(
+            (value) => timeToMinutes(value) > timeToMinutes(startTime)
+          );
+          endTime = nextEndOptions.length > 0 ? nextEndOptions[0] : endTime;
+        }
+
+        return {
+          ...next,
+          start_time: startTime,
+          end_time: endTime,
+        };
+      })
+    );
+    setAvailabilityError("");
+    setAvailabilitySuccess("");
+  };
+
+  const handleSaveAvailability = async () => {
+    try {
+      setAvailabilitySaving(true);
+      setAvailabilityError("");
+      setAvailabilitySuccess("");
+      const response = await updateAppointedAvailability(availabilityDraft);
+      setAvailabilityDraft(response.pending || response.current);
+      setAvailabilityPendingFrom(response.pending_effective_from);
+      setAvailabilitySuccess(
+        response.detail || "Availability update saved for the next month."
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to save appointed availability.";
+      setAvailabilityError(message);
+    } finally {
+      setAvailabilitySaving(false);
     }
   };
 
@@ -112,6 +233,101 @@ export default function AccountSettings() {
           </article>
         </div>
       </section>
+
+      {isRefereeUser && (
+        <section className="account-settings-card">
+          <h2>Appointed Games Availability</h2>
+          <p className="account-settings-availability-copy">
+            Monday-Friday availability window is 19:00-22:00. Saturday-Sunday is 10:00-22:00.
+            Changes saved here become active on the first day of next month.
+          </p>
+          {availabilityPendingFrom && (
+            <p className="account-settings-availability-pending">
+              Pending update effective from {availabilityPendingFrom}.
+            </p>
+          )}
+
+          {availabilityError && (
+            <p className="account-settings-testing-error">{availabilityError}</p>
+          )}
+          {availabilitySuccess && (
+            <p className="account-settings-testing-success">{availabilitySuccess}</p>
+          )}
+
+          {availabilityLoading ? (
+            <p className="account-settings-availability-copy">Loading availability...</p>
+          ) : (
+            <div className="account-settings-availability-list">
+              {availabilityDraft.map((item) => {
+                const options = buildTimeOptions(item.window_start, item.window_end);
+                const endOptions = options.filter(
+                  (value) => timeToMinutes(value) > timeToMinutes(item.start_time || item.window_start)
+                );
+
+                return (
+                  <div key={item.day_of_week} className="account-settings-availability-row">
+                    <label className="account-settings-availability-toggle">
+                      <input
+                        type="checkbox"
+                        checked={item.available}
+                        onChange={(event) =>
+                          handleAvailabilityDayChange(item.day_of_week, {
+                            available: event.target.checked,
+                          })
+                        }
+                      />
+                      <span>{item.day_label}</span>
+                    </label>
+                    <div className="account-settings-availability-times">
+                      <select
+                        value={item.start_time || item.window_start}
+                        disabled={!item.available}
+                        onChange={(event) =>
+                          handleAvailabilityDayChange(item.day_of_week, {
+                            start_time: event.target.value,
+                          })
+                        }
+                      >
+                        {options.slice(0, -1).map((timeValue) => (
+                          <option key={`${item.day_of_week}-start-${timeValue}`} value={timeValue}>
+                            {timeValue}
+                          </option>
+                        ))}
+                      </select>
+                      <span>to</span>
+                      <select
+                        value={item.end_time || item.window_end}
+                        disabled={!item.available}
+                        onChange={(event) =>
+                          handleAvailabilityDayChange(item.day_of_week, {
+                            end_time: event.target.value,
+                          })
+                        }
+                      >
+                        {(endOptions.length > 0 ? endOptions : options.slice(1)).map((timeValue) => (
+                          <option key={`${item.day_of_week}-end-${timeValue}`} value={timeValue}>
+                            {timeValue}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="account-settings-availability-actions">
+            <button
+              type="button"
+              onClick={handleSaveAvailability}
+              disabled={availabilitySaving || availabilityLoading}
+            >
+              {availabilitySaving ? "Saving..." : "Save Availability Changes"}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="account-settings-card">
         <h2>Testing Bypass (Temporary)</h2>

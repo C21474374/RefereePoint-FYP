@@ -13,10 +13,27 @@ from .models import CoverRequest
 from .serializers import CoverRequestSerializer, CoverRequestCreateSerializer
 
 
+def _expire_stale_cover_requests():
+    """
+    Auto-close active cover requests once the game date has passed.
+    This keeps opportunity feeds clean without requiring a background worker.
+    """
+    today = timezone.localdate()
+    CoverRequest.objects.filter(
+        status__in=[CoverRequest.Status.PENDING, CoverRequest.Status.CLAIMED],
+        game__date__lt=today,
+    ).update(
+        status=CoverRequest.Status.REJECTED,
+        replaced_by=None,
+        updated_at=timezone.now(),
+    )
+
+
 class CoverRequestListAPIView(generics.ListAPIView):
     serializer_class = CoverRequestSerializer
 
     def get_queryset(self):
+        _expire_stale_cover_requests()
         queryset = (
             CoverRequest.objects.select_related(
                 "game",
@@ -73,6 +90,7 @@ class MyCoverRequestListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        _expire_stale_cover_requests()
         return (
             CoverRequest.objects.select_related(
                 "game",
@@ -103,6 +121,8 @@ class PendingCoverRequestListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        _expire_stale_cover_requests()
+        today = timezone.localdate()
         return (
             CoverRequest.objects.select_related(
                 "game",
@@ -120,7 +140,10 @@ class PendingCoverRequestListAPIView(generics.ListAPIView):
                 "referee_slot__referee",
                 "referee_slot__referee__user",
             )
-            .filter(status=CoverRequest.Status.PENDING)
+            .filter(
+                status=CoverRequest.Status.PENDING,
+                game__date__gte=today,
+            )
             .exclude(requested_by=self.request.user)
             .order_by("-created_at")
         )
@@ -191,6 +214,15 @@ class OfferCoverAPIView(APIView):
         if cover_request.status != CoverRequest.Status.PENDING:
             return Response(
                 {"detail": "This cover request is no longer open for claims."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if cover_request.game.date < timezone.localdate():
+            cover_request.status = CoverRequest.Status.REJECTED
+            cover_request.replaced_by = None
+            cover_request.save(update_fields=["status", "replaced_by", "updated_at"])
+            return Response(
+                {"detail": "This game date has passed, so the cover request is closed."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

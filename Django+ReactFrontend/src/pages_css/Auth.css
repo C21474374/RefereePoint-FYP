@@ -140,6 +140,74 @@
   text-transform: none;
 }
 
+.auth-availability {
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  background: var(--color-bg-panel);
+  padding: 12px;
+}
+
+.auth-availability-note {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.auth-availability-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-availability-row {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auth-availability-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-availability-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+}
+
+.auth-availability-toggle span {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.auth-availability-times {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-availability-times select {
+  min-width: 96px;
+}
+
+.auth-availability-times span {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+}
+
 .auth-message {
   border-radius: 10px;
   border: 1px solid var(--color-border);
@@ -216,5 +284,18 @@
 
   .auth-field-full {
     grid-column: auto;
+  }
+
+  .auth-availability-row {
+    align-items: stretch;
+  }
+
+  .auth-availability-times {
+    width: 100%;
+  }
+
+  .auth-availability-times select {
+    flex: 1;
+    min-width: 0;
   }
 }

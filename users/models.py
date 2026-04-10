@@ -222,6 +222,8 @@ class RefereeProfile(models.Model):
     )
     
     grade = models.CharField(max_length=20, choices=GRADE_CHOICES, default='INTRO')
+    appointed_availability_pending = models.JSONField(default=list, blank=True)
+    appointed_availability_effective_from = models.DateField(null=True, blank=True)
     
     
     class Meta:

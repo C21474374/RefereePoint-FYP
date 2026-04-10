@@ -217,14 +217,14 @@ const TopNavBar: React.FC = () => {
   const canUploadEvent =
     Boolean(user?.uploads_approved) &&
     Boolean(user?.allowed_upload_event_types?.length);
-  const useBulkGameUploadPage =
+  const showBulkGameUploadInGamesPage =
     !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL");
   const uploadItems: UploadMenuItem[] = [
     ...(canUploadGame
       ? [
-          useBulkGameUploadPage
-            ? ({ label: "Upload Game", kind: "route", path: "/upload-games" } as const)
-            : ({ label: "Upload Game", kind: "modal", type: "game" } as const),
+          ...(showBulkGameUploadInGamesPage
+            ? []
+            : ([{ label: "Upload Game", kind: "modal", type: "game" }] as const)),
         ]
       : []),
     ...(canUploadEvent

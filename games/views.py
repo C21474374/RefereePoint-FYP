@@ -44,6 +44,8 @@ def _uploaded_games_queryset():
     ).prefetch_related(
         "non_appointed_slots",
         "non_appointed_slots__claimed_by__user",
+        "referee_assignments",
+        "referee_assignments__referee__user",
     )
 
 
@@ -415,6 +417,16 @@ class OpportunityFeedAPIView(APIView):
             .order_by("game__date", "game__time", "created_at")
         )
         today = timezone.localdate()
+
+        CoverRequest.objects.filter(
+            status__in=[CoverRequest.Status.PENDING, CoverRequest.Status.CLAIMED],
+            game__date__lt=today,
+        ).update(
+            status=CoverRequest.Status.REJECTED,
+            replaced_by=None,
+            updated_at=timezone.now(),
+        )
+
         events = (
             Event.objects.select_related("venue")
             .filter(end_date__gte=today)
@@ -439,6 +451,7 @@ class OpportunityFeedAPIView(APIView):
                 "referee_slot__referee__user",
             )
             .filter(status=CoverRequest.Status.PENDING)
+            .filter(game__date__gte=today)
             .order_by("game__date", "game__time", "created_at")
         )
 
