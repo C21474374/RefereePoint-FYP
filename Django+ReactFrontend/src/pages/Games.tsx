@@ -51,6 +51,14 @@ export type Opportunity = {
   description?: string;
   reason?: string;
   created_at: string;
+  recommendation_score?: number;
+  recommendation_reasons?: string[];
+  is_recommended?: boolean;
+};
+
+type RecommendedOpportunitiesResponse = {
+  recommended_count?: number;
+  items?: Opportunity[];
 };
 
 type ManageGameType = UploadedGame["game_type"];
@@ -201,26 +209,44 @@ export default function Games() {
 
       const token = getAccessToken();
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
-      const opportunitiesPromise = isRefereeUser
-        ? fetch(`${API_BASE_URL}/games/opportunities/`, {
-            headers: authHeaders,
-          })
-        : Promise.resolve(null);
-      const uploadsPromise = token ? getMyUploadedGames() : Promise.resolve([]);
+      const uploadsPromise =
+        token && !isRefereeUser ? getMyUploadedGames() : Promise.resolve([]);
 
-      const [opportunitiesResponse, uploads] = await Promise.all([
-        opportunitiesPromise,
-        uploadsPromise,
-      ]);
+      const uploads = await uploadsPromise;
 
-      if (opportunitiesResponse) {
-        if (!opportunitiesResponse.ok) {
-          throw new Error("Failed to fetch opportunities.");
+      if (isRefereeUser) {
+        let opportunitiesLoaded = false;
+        try {
+          const recommendedResponse = await fetch(
+            `${API_BASE_URL}/recommendations/opportunities/`,
+            {
+              headers: authHeaders,
+            }
+          );
+
+          if (recommendedResponse.ok) {
+            const recommendedPayload =
+              (await recommendedResponse.json()) as RecommendedOpportunitiesResponse;
+            setOpportunities(recommendedPayload.items || []);
+            opportunitiesLoaded = true;
+          }
+        } catch {
+          opportunitiesLoaded = false;
         }
-        setOpportunities((await opportunitiesResponse.json()) as Opportunity[]);
+
+        if (!opportunitiesLoaded) {
+          const opportunitiesResponse = await fetch(`${API_BASE_URL}/games/opportunities/`, {
+            headers: authHeaders,
+          });
+          if (!opportunitiesResponse.ok) {
+            throw new Error("Failed to fetch opportunities.");
+          }
+          setOpportunities((await opportunitiesResponse.json()) as Opportunity[]);
+        }
       } else {
         setOpportunities([]);
       }
+
       setUploadedGames(uploads);
     } catch (err) {
       setError(getErrorMessage(err, "Something went wrong."));
@@ -579,6 +605,7 @@ export default function Games() {
               onOfferCover={handleOfferCover}
               onJoinEvent={handleJoinEvent}
               claimingKey={claimingKey}
+              showRecommendations
             />
           </div>
         </div>
@@ -590,7 +617,7 @@ export default function Games() {
         </section>
       )}
 
-      {!isDoaOrNlUploader && (
+      {!isRefereeUser && !isDoaOrNlUploader && (
         <section className="games-manage-section">
           <div className="games-manage-header">
             <h2>Manage Uploaded Games</h2>
@@ -673,7 +700,7 @@ export default function Games() {
         </section>
       )}
 
-      {!isDoaOrNlUploader && editingGame && (
+      {!isRefereeUser && !isDoaOrNlUploader && editingGame && (
         <div className="upload-modal-overlay" onClick={closeEditModal}>
           <div className="upload-modal manage-game-modal" onClick={(event) => event.stopPropagation()}>
             <div className="upload-modal-header">

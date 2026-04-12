@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'reports',
     'events',
     'expenses',
+    'recommendations',
 ]
 
 MIDDLEWARE = [

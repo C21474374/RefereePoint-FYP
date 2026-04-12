@@ -1,6 +1,8 @@
+from datetime import date, datetime, time
+
 from django.http import JsonResponse
 from django.conf import settings
-from .models import User, RefereeProfile, RefereeAvailability
+from .models import User, RefereeProfile
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -10,6 +12,7 @@ from .geocoding import geocode_address
 from .appointed_availability import (
     apply_pending_appointed_availability_if_due,
     current_appointed_availability,
+    is_referee_available_for_game,
     next_month_start_iso,
     pending_appointed_availability,
     queue_next_month_appointed_availability,
@@ -78,6 +81,32 @@ def _parse_bool(value, default=None):
     raise ValueError("Invalid boolean value.")
 
 
+def _parse_iso_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
+def _parse_hhmm_time(value: str | None) -> time | None:
+    if not value:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    for fmt in ("%H:%M", "%H:%M:%S"):
+        try:
+            return datetime.strptime(raw, fmt).time().replace(second=0, microsecond=0)
+        except ValueError:
+            continue
+    return None
+
+
 def _referee_profile_to_dict(profile: RefereeProfile) -> dict:
     return {
         "id": profile.id,
@@ -93,8 +122,28 @@ def _referee_profile_to_dict(profile: RefereeProfile) -> dict:
 def list_referees(request):
     if request.method != "GET":
         return _json_error("Method not allowed", 405)
-    
-    profiles = RefereeProfile.objects.select_related('user').all()
+
+    game_date_raw = request.GET.get("game_date") or request.GET.get("date")
+    game_time_raw = request.GET.get("game_time") or request.GET.get("time")
+    game_date = _parse_iso_date(game_date_raw)
+    game_time = _parse_hhmm_time(game_time_raw)
+
+    if game_date_raw and not game_date:
+        return _json_error("Invalid game_date. Use YYYY-MM-DD.", 400)
+    if game_time_raw and not game_time:
+        return _json_error("Invalid game_time. Use HH:MM.", 400)
+    if (game_date and not game_time) or (game_time and not game_date):
+        return _json_error("game_date and game_time must be provided together.", 400)
+
+    profiles = RefereeProfile.objects.select_related("user").all()
+
+    if game_date and game_time:
+        profiles = [
+            profile
+            for profile in profiles
+            if is_referee_available_for_game(profile, game_date, game_time)
+        ]
+
     data = [_referee_profile_to_dict(p) for p in profiles]
     return JsonResponse(data, safe=False)
 

@@ -7,6 +7,7 @@ type GameslistProps = {
   onOfferCover: (coverRequestId: number) => void;
   onJoinEvent: (eventId: number) => void;
   claimingKey: string | null;
+  showRecommendations?: boolean;
 };
 
 const Gameslist = ({
@@ -15,6 +16,7 @@ const Gameslist = ({
   onOfferCover,
   onJoinEvent,
   claimingKey,
+  showRecommendations = false,
 }: GameslistProps) => {
   if (opportunities.length === 0) {
     return (
@@ -24,9 +26,38 @@ const Gameslist = ({
     );
   }
 
+  const recommended = showRecommendations ? opportunities.slice(0, 5) : [];
+  const otherOpportunities = showRecommendations ? opportunities.slice(5) : opportunities;
+
   return (
     <div className="games-list">
-      {opportunities.map((opportunity) => (
+      {showRecommendations && recommended.length > 0 && (
+        <>
+          <div className="games-list-section-header">
+            <h3>Recommended For You</h3>
+            <p>Top opportunities ranked by fit, distance, and urgency.</p>
+          </div>
+          {recommended.map((opportunity) => (
+            <GameCard
+              key={`${opportunity.type}-${opportunity.id}`}
+              opportunity={opportunity}
+              onClaimSlot={onClaimSlot}
+              onOfferCover={onOfferCover}
+              onJoinEvent={onJoinEvent}
+              claimingKey={claimingKey}
+            />
+          ))}
+        </>
+      )}
+
+      {showRecommendations && otherOpportunities.length > 0 && (
+        <div className="games-list-section-header">
+          <h3>More Opportunities</h3>
+          <p>Additional matches and requests available to you.</p>
+        </div>
+      )}
+
+      {otherOpportunities.map((opportunity) => (
         <GameCard
           key={`${opportunity.type}-${opportunity.id}`}
           opportunity={opportunity}

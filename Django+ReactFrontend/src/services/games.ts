@@ -142,6 +142,11 @@ type RefereeApiOption = {
   grade_display?: string;
 };
 
+type RefereeAvailabilityQuery = {
+  game_date?: string;
+  game_time?: string;
+};
+
 export const claimSlot = async (slotId: number) => {
   const response = await axiosInstance.post(
     `/games/non-appointed-slots/${slotId}/claim/`
@@ -202,8 +207,12 @@ export const getUploadGameFormOptions = async (): Promise<{
   };
 };
 
-export const getRefereeOptions = async (): Promise<RefereeOption[]> => {
-  const response = await axiosInstance.get<RefereeApiOption[]>("/users/referees/");
+export const getRefereeOptions = async (
+  params?: RefereeAvailabilityQuery
+): Promise<RefereeOption[]> => {
+  const response = await axiosInstance.get<RefereeApiOption[]>("/users/referees/", {
+    params,
+  });
 
   return response.data
     .map((referee) => {

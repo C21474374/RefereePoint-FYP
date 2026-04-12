@@ -41,6 +41,7 @@ urlpatterns = [
     path("api/cover-requests/", include("cover_requests.urls")),
     path("api/expenses/", include("expenses.urls")),
     path("api/reports/", include("reports.urls")),
+    path("api/recommendations/", include("recommendations.urls")),
 ]
 
 if settings.DEBUG:

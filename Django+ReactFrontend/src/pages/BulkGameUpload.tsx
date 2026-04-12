@@ -70,6 +70,58 @@ type SpreadsheetValidationResult =
   | SpreadsheetValidationError
   | SpreadsheetValidationSuccess;
 
+function normalizeTimeValue(value: string) {
+  if (!value) {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed;
+}
+
+function dateTimeKey(dateValue: string, timeValue: string) {
+  const normalizedTime = normalizeTimeValue(timeValue);
+  if (!dateValue || !normalizedTime) {
+    return "";
+  }
+  return `${dateValue}|${normalizedTime}`;
+}
+
+function buildAllowedTimeOptions(dateValue: string) {
+  if (!dateValue) {
+    return [];
+  }
+  const parsed = new Date(`${dateValue}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return [];
+  }
+
+  const dayOfWeek = parsed.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const startMinutes = isWeekend ? 10 * 60 : 19 * 60;
+  const endMinutes = 22 * 60;
+
+  const options: string[] = [];
+  for (let minute = startMinutes; minute <= endMinutes; minute += 30) {
+    const hours = Math.floor(minute / 60)
+      .toString()
+      .padStart(2, "0");
+    const mins = (minute % 60).toString().padStart(2, "0");
+    options.push(`${hours}:${mins}`);
+  }
+  return options;
+}
+
+function isAllowedGameTime(dateValue: string, timeValue: string) {
+  const normalizedTime = normalizeTimeValue(timeValue);
+  if (!dateValue || !normalizedTime) {
+    return false;
+  }
+  return buildAllowedTimeOptions(dateValue).includes(normalizedTime);
+}
+
 function createEmptyRow(id: number): UploadRow {
   return {
     id,
@@ -102,7 +154,7 @@ function patchSpreadsheetRow<
   T extends SpreadsheetRowFields,
   K extends keyof SpreadsheetRowFields,
 >(row: T, key: K, value: SpreadsheetRowFields[K]) {
-  return {
+  const nextRow = {
     ...row,
     [key]: value,
     ...(key === "division"
@@ -123,7 +175,23 @@ function patchSpreadsheetRow<
     value === row.home_team
       ? { home_team: "" }
       : {}),
+    ...(key === "date" || key === "time"
+      ? {
+          crew_chief: "",
+          umpire_1: "",
+        }
+      : {}),
   } as T;
+
+  if (key === "date") {
+    const nextDate = typeof value === "string" ? value : "";
+    const currentTime = normalizeTimeValue(nextRow.time);
+    if (currentTime && !isAllowedGameTime(nextDate, currentTime)) {
+      nextRow.time = "" as T["time"];
+    }
+  }
+
+  return nextRow;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -199,6 +267,12 @@ export default function BulkGameUpload({
   const [venues, setVenues] = useState<SimpleOption[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [referees, setReferees] = useState<RefereeOption[]>([]);
+  const [refereesByDateTimeKey, setRefereesByDateTimeKey] = useState<
+    Record<string, RefereeOption[]>
+  >({});
+  const [loadingRefereesByDateTimeKey, setLoadingRefereesByDateTimeKey] = useState<
+    Record<string, boolean>
+  >({});
   const [rows, setRows] = useState<UploadRow[]>([createEmptyRow(1)]);
   const [nextRowId, setNextRowId] = useState(2);
   const [existingRows, setExistingRows] = useState<ExistingRow[]>([]);
@@ -238,6 +312,59 @@ export default function BulkGameUpload({
     referees.forEach((referee) => map.set(referee.id, referee));
     return map;
   }, [referees]);
+
+  const getAvailableRefereesForRow = useCallback(
+    (row: Pick<SpreadsheetRowFields, "date" | "time">) => {
+      const key = dateTimeKey(row.date, row.time);
+      if (!key) {
+        return [];
+      }
+      return refereesByDateTimeKey[key] || [];
+    },
+    [refereesByDateTimeKey]
+  );
+
+  const isLoadingRefereesForRow = useCallback(
+    (row: Pick<SpreadsheetRowFields, "date" | "time">) => {
+      const key = dateTimeKey(row.date, row.time);
+      if (!key) {
+        return false;
+      }
+      return Boolean(loadingRefereesByDateTimeKey[key]);
+    },
+    [loadingRefereesByDateTimeKey]
+  );
+
+  const getRefereeSelectOptions = useCallback(
+    (
+      row: Pick<SpreadsheetRowFields, "date" | "time">,
+      selectedRefereeId: string
+    ) => {
+      const options = [...getAvailableRefereesForRow(row)];
+      const selectedId = Number(selectedRefereeId);
+      if (!selectedId) {
+        return options;
+      }
+
+      if (options.some((option) => option.id === selectedId)) {
+        return options;
+      }
+
+      const selectedReferee = refereeById.get(selectedId);
+      if (!selectedReferee) {
+        return options;
+      }
+
+      return [
+        ...options,
+        {
+          ...selectedReferee,
+          label: `${selectedReferee.label} (Unavailable)`,
+        },
+      ];
+    },
+    [getAvailableRefereesForRow, refereeById]
+  );
 
   const sortedUploadedGames = useCallback(
     (uploads: UploadedGame[]) =>
@@ -282,6 +409,8 @@ export default function BulkGameUpload({
         setLoadingOptions(true);
         setLoadingExisting(true);
         setPageError("");
+        setRefereesByDateTimeKey({});
+        setLoadingRefereesByDateTimeKey({});
 
         const [options, refereeOptions, uploads] = await Promise.all([
           getUploadGameFormOptions(),
@@ -307,6 +436,61 @@ export default function BulkGameUpload({
     loadInitialData();
   }, [isDoaOrNl, sortedUploadedGames]);
 
+  useEffect(() => {
+    if (!isDoaOrNl || loadingOptions) {
+      return;
+    }
+
+    const requestedDateTimes = new Map<string, { date: string; time: string }>();
+    const collect = (row: Pick<SpreadsheetRowFields, "date" | "time">) => {
+      const normalizedTime = normalizeTimeValue(row.time);
+      const key = dateTimeKey(row.date, normalizedTime);
+      if (!key || requestedDateTimes.has(key)) {
+        return;
+      }
+      requestedDateTimes.set(key, { date: row.date, time: normalizedTime });
+    };
+
+    rows.forEach(collect);
+    existingRows.forEach(collect);
+
+    requestedDateTimes.forEach(({ date, time }, key) => {
+      if (refereesByDateTimeKey[key] || loadingRefereesByDateTimeKey[key]) {
+        return;
+      }
+
+      setLoadingRefereesByDateTimeKey((prev) => ({ ...prev, [key]: true }));
+
+      void getRefereeOptions({
+        game_date: date,
+        game_time: time,
+      })
+        .then((availableReferees) => {
+          setRefereesByDateTimeKey((prev) => ({ ...prev, [key]: availableReferees }));
+        })
+        .catch((error) => {
+          setPageError((prev) =>
+            prev || getErrorMessage(error, "Failed to load referee availability.")
+          );
+          setRefereesByDateTimeKey((prev) => ({ ...prev, [key]: [] }));
+        })
+        .finally(() => {
+          setLoadingRefereesByDateTimeKey((prev) => {
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          });
+        });
+    });
+  }, [
+    existingRows,
+    isDoaOrNl,
+    loadingOptions,
+    loadingRefereesByDateTimeKey,
+    refereesByDateTimeKey,
+    rows,
+  ]);
+
   const validateSpreadsheetRow = useCallback(
     (row: SpreadsheetRowFields): SpreadsheetValidationResult => {
       if (
@@ -325,6 +509,14 @@ export default function BulkGameUpload({
 
       if (row.home_team === row.away_team) {
         return { error: "Home Team and Away Team must be different." };
+      }
+
+      const normalizedTime = normalizeTimeValue(row.time);
+      if (!isAllowedGameTime(row.date, normalizedTime)) {
+        return {
+          error:
+            "Appointed game time is outside allowed hours. Weekdays: 19:00-22:00, weekends: 10:00-22:00.",
+        };
       }
 
       const selectedDivisionId = Number(row.division);
@@ -362,12 +554,29 @@ export default function BulkGameUpload({
         return { error: "Crew Chief and Umpire 1 must be different referees." };
       }
 
+      const availabilityKey = dateTimeKey(row.date, normalizedTime);
+      const selectedReferees = Boolean(row.crew_chief || row.umpire_1);
+      const availableReferees = availabilityKey
+        ? refereesByDateTimeKey[availabilityKey]
+        : undefined;
+      const availableRefereeById = new Map<number, RefereeOption>();
+      (availableReferees || []).forEach((referee) => {
+        availableRefereeById.set(referee.id, referee);
+      });
+
+      if (selectedReferees && availabilityKey && !availableReferees) {
+        return {
+          error:
+            "Loading referee availability for this date/time. Please wait a moment and try again.",
+        };
+      }
+
       const appointedAssignments: Array<{ role: RoleValue; referee: number }> = [];
 
       if (row.crew_chief) {
         const crewChiefId = Number(row.crew_chief);
-        if (!crewChiefId || !refereeById.has(crewChiefId)) {
-          return { error: "Please choose a valid Crew Chief referee." };
+        if (!crewChiefId || !availableRefereeById.has(crewChiefId)) {
+          return { error: "Selected Crew Chief is not available at the chosen date/time." };
         }
         appointedAssignments.push({
           role: "CREW_CHIEF",
@@ -377,8 +586,8 @@ export default function BulkGameUpload({
 
       if (row.umpire_1) {
         const umpireId = Number(row.umpire_1);
-        if (!umpireId || !refereeById.has(umpireId)) {
-          return { error: "Please choose a valid Umpire 1 referee." };
+        if (!umpireId || !availableRefereeById.has(umpireId)) {
+          return { error: "Selected Umpire 1 is not available at the chosen date/time." };
         }
         appointedAssignments.push({
           role: "UMPIRE_1",
@@ -394,7 +603,7 @@ export default function BulkGameUpload({
         appointedAssignments,
       };
     },
-    [appointedDivisionIds, refereeById, teamById, venues]
+    [appointedDivisionIds, refereesByDateTimeKey, teamById, venues]
   );
 
   const handleRowChange = <K extends keyof SpreadsheetRowFields>(
@@ -792,14 +1001,22 @@ export default function BulkGameUpload({
                         />
                       </td>
                       <td>
-                        <input
-                          type="time"
-                          value={row.time}
-                          disabled={!row.can_edit || row.saving || row.deleting}
+                        <select
+                          value={normalizeTimeValue(row.time)}
+                          disabled={
+                            !row.can_edit || row.saving || row.deleting || !row.date
+                          }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "time", event.target.value)
                           }
-                        />
+                        >
+                          <option value="">{row.date ? "Select" : "Select date"}</option>
+                          {buildAllowedTimeOptions(row.date).map((timeOption) => (
+                            <option key={`${row.game_id}-time-${timeOption}`} value={timeOption}>
+                              {timeOption}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td>
                         <select
@@ -872,13 +1089,22 @@ export default function BulkGameUpload({
                       <td>
                         <select
                           value={row.crew_chief}
-                          disabled={!row.can_edit || row.saving || row.deleting}
+                          disabled={
+                            !row.can_edit ||
+                            row.saving ||
+                            row.deleting ||
+                            !row.date ||
+                            !row.time ||
+                            isLoadingRefereesForRow(row)
+                          }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "crew_chief", event.target.value)
                           }
                         >
-                          <option value="">Unassigned</option>
-                          {referees.map((referee) => (
+                          <option value="">
+                            {isLoadingRefereesForRow(row) ? "Loading..." : "Unassigned"}
+                          </option>
+                          {getRefereeSelectOptions(row, row.crew_chief).map((referee) => (
                             <option key={referee.id} value={referee.id}>
                               {referee.label}
                             </option>
@@ -888,13 +1114,22 @@ export default function BulkGameUpload({
                       <td>
                         <select
                           value={row.umpire_1}
-                          disabled={!row.can_edit || row.saving || row.deleting}
+                          disabled={
+                            !row.can_edit ||
+                            row.saving ||
+                            row.deleting ||
+                            !row.date ||
+                            !row.time ||
+                            isLoadingRefereesForRow(row)
+                          }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "umpire_1", event.target.value)
                           }
                         >
-                          <option value="">Unassigned</option>
-                          {referees.map((referee) => (
+                          <option value="">
+                            {isLoadingRefereesForRow(row) ? "Loading..." : "Unassigned"}
+                          </option>
+                          {getRefereeSelectOptions(row, row.umpire_1).map((referee) => (
                             <option key={referee.id} value={referee.id}>
                               {referee.label}
                             </option>
@@ -946,14 +1181,20 @@ export default function BulkGameUpload({
                       />
                     </td>
                     <td>
-                      <input
-                        type="time"
-                        value={row.time}
-                        disabled={row.uploading}
+                      <select
+                        value={normalizeTimeValue(row.time)}
+                        disabled={row.uploading || !row.date}
                         onChange={(event) =>
                           handleRowChange(row.id, "time", event.target.value)
                         }
-                      />
+                      >
+                        <option value="">{row.date ? "Select" : "Select date"}</option>
+                        {buildAllowedTimeOptions(row.date).map((timeOption) => (
+                          <option key={`${row.id}-time-${timeOption}`} value={timeOption}>
+                            {timeOption}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td>
                       <select
@@ -1022,13 +1263,20 @@ export default function BulkGameUpload({
                     <td>
                       <select
                         value={row.crew_chief}
-                        disabled={row.uploading}
+                        disabled={
+                          row.uploading ||
+                          !row.date ||
+                          !row.time ||
+                          isLoadingRefereesForRow(row)
+                        }
                         onChange={(event) =>
                           handleRowChange(row.id, "crew_chief", event.target.value)
                         }
                       >
-                        <option value="">Unassigned</option>
-                        {referees.map((referee) => (
+                        <option value="">
+                          {isLoadingRefereesForRow(row) ? "Loading..." : "Unassigned"}
+                        </option>
+                        {getRefereeSelectOptions(row, row.crew_chief).map((referee) => (
                           <option key={referee.id} value={referee.id}>
                             {referee.label}
                           </option>
@@ -1038,13 +1286,20 @@ export default function BulkGameUpload({
                     <td>
                       <select
                         value={row.umpire_1}
-                        disabled={row.uploading}
+                        disabled={
+                          row.uploading ||
+                          !row.date ||
+                          !row.time ||
+                          isLoadingRefereesForRow(row)
+                        }
                         onChange={(event) =>
                           handleRowChange(row.id, "umpire_1", event.target.value)
                         }
                       >
-                        <option value="">Unassigned</option>
-                        {referees.map((referee) => (
+                        <option value="">
+                          {isLoadingRefereesForRow(row) ? "Loading..." : "Unassigned"}
+                        </option>
+                        {getRefereeSelectOptions(row, row.umpire_1).map((referee) => (
                           <option key={referee.id} value={referee.id}>
                             {referee.label}
                           </option>

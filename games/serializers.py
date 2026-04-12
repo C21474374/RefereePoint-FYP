@@ -2,6 +2,12 @@ from rest_framework import serializers
 from .models import Game, NonAppointedSlot, RefereeAssignment
 from django.db import transaction
 from users.models import User, RefereeProfile
+from users.appointed_availability import (
+    day_label_for_date,
+    game_start_window_for_date,
+    is_game_time_within_allowed_window,
+    is_referee_available_for_game,
+)
 from clubs.models import Division
 
 class GameSerializer(serializers.ModelSerializer):
@@ -284,6 +290,8 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
         slots = attrs.get("slots", [])
         appointed_assignments = attrs.get("appointed_assignments", [])
         game_type = attrs.get("game_type")
+        game_date = attrs.get("date")
+        game_time = attrs.get("time")
 
         if not request or not request.user.is_authenticated:
             raise serializers.ValidationError("Authentication is required.")
@@ -354,6 +362,18 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                 )
 
         if game_type in self.APPOINTED_GAME_TYPES:
+            if game_date and game_time and not is_game_time_within_allowed_window(game_date, game_time):
+                window_start, window_end = game_start_window_for_date(game_date)
+                day_label = day_label_for_date(game_date)
+                raise serializers.ValidationError(
+                    {
+                        "time": (
+                            f"{day_label} appointed game start times must be between "
+                            f"{window_start.strftime('%H:%M')} and {window_end.strftime('%H:%M')}."
+                        )
+                    }
+                )
+
             if slots:
                 raise serializers.ValidationError(
                     {"slots": "Appointed games do not accept non-appointed referee slots."}
@@ -398,9 +418,32 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                 )
 
             for item in appointed_assignments:
+                referee_profile = item["referee"]
+                role_value = item["role"]
+                role_label = (
+                    "Crew Chief"
+                    if role_value == RefereeAssignment.Role.CREW_CHIEF
+                    else "Umpire 1"
+                )
+
+                if game_date and game_time and not is_referee_available_for_game(
+                    referee_profile,
+                    game_date,
+                    game_time,
+                ):
+                    referee_name = referee_profile.user.get_full_name() or "Selected referee"
+                    raise serializers.ValidationError(
+                        {
+                            "appointed_assignments": (
+                                f"{referee_name} is not available for {role_label} at "
+                                f"{game_time.strftime('%H:%M')} on {game_date.isoformat()}."
+                            )
+                        }
+                    )
+
                 if (
-                    item["role"] == RefereeAssignment.Role.CREW_CHIEF
-                    and item["referee"].grade == "INTRO"
+                    role_value == RefereeAssignment.Role.CREW_CHIEF
+                    and referee_profile.grade == "INTRO"
                 ):
                     raise serializers.ValidationError(
                         {

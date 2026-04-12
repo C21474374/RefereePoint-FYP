@@ -105,6 +105,24 @@
   height: 100%;
 }
 
+.games-list-section-header {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-panel);
+  padding: 10px 12px;
+}
+
+.games-list-section-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.games-list-section-header p {
+  margin: 5px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
 .game-card {
   background: var(--color-bg-panel);
   border: 1px solid var(--color-border);
@@ -193,6 +211,40 @@
 .game-card-venue {
   color: var(--color-text-muted);
   margin-bottom: 6px;
+}
+
+.game-card-recommendation {
+  margin-top: 8px;
+}
+
+.game-card-recommendation-score {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 4px 9px;
+}
+
+.game-card-recommendation-reasons {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.game-card-reason-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  padding: 4px 8px;
 }
 
 .game-card-meta {

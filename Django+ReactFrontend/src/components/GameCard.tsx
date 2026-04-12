@@ -105,6 +105,12 @@ const GameCard = ({
         ? "Intro referees cannot take Crew Chief."
         : null;
 
+  const recommendationScore =
+    typeof opportunity.recommendation_score === "number"
+      ? Math.round(opportunity.recommendation_score)
+      : null;
+  const recommendationReasons = opportunity.recommendation_reasons || [];
+
   const modalDetails = useMemo<GameDetailsModalData>(() => {
     const divisionDisplay = opportunity.division_name
       ? `${opportunity.division_name}${opportunity.division_gender ? ` ${opportunity.division_gender}` : ""}`
@@ -173,6 +179,21 @@ const GameCard = ({
         </div>
 
         <div className="game-card-venue">{opportunity.venue_name ?? "Venue TBC"}</div>
+
+        {recommendationScore !== null && (
+          <div className="game-card-recommendation">
+            <span className="game-card-recommendation-score">Match {recommendationScore}/100</span>
+            {recommendationReasons.length > 0 && (
+              <div className="game-card-recommendation-reasons">
+                {recommendationReasons.map((reason) => (
+                  <span key={`${opportunity.type}-${opportunity.id}-${reason}`} className="game-card-reason-chip">
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="game-card-actions">
           <button

@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from clubs.models import Club, Division, Team
 from cover_requests.models import CoverRequest
 from events.models import Event, EventRefereeAssignment
-from users.models import User
+from users.models import RefereeAvailability, User
 from venues.models import Venue
 
 from .models import Game, NonAppointedSlot, RefereeAssignment
@@ -246,3 +246,89 @@ class RefereeEarningsAPITests(TestCase):
 
         self.assertEqual(Decimal(first_item["base_fee"]), Decimal("25.00"))
         self.assertEqual(Decimal(second_item["base_fee"]), Decimal("25.00"))
+
+
+class AppointedUploadAvailabilityValidationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        self.uploader = User.objects.create_user(
+            email="doa.admin@test.com",
+            password="password123",
+            first_name="Doa",
+            last_name="Admin",
+            bipin_number="7001",
+            account_type=User.AccountType.DOA,
+            doa_approved=True,
+            bipin_verified=True,
+        )
+
+        self.referee_user = User.objects.create_user(
+            email="assigned.ref@test.com",
+            password="password123",
+            first_name="Assigned",
+            last_name="Referee",
+            bipin_number="7002",
+        )
+        self.referee_profile = self.referee_user.referee_profile
+        self.referee_profile.grade = "GRADE_2"
+        self.referee_profile.save(update_fields=["grade"])
+
+        self.club_home = Club.objects.create(name="Northside Hawks")
+        self.club_away = Club.objects.create(name="Southside Stars")
+        self.division = Division.objects.create(
+            name="U18",
+            gender="M",
+            requires_appointed_referees=True,
+        )
+        self.home_team = Team.objects.create(club=self.club_home, division=self.division)
+        self.away_team = Team.objects.create(club=self.club_away, division=self.division)
+        self.venue = Venue.objects.create(name="Main Arena", club=self.club_home)
+
+        # Monday availability window for the assigned referee.
+        RefereeAvailability.objects.create(
+            referee=self.referee_profile,
+            day_of_week="MON",
+            start_time=time(19, 0),
+            end_time=time(20, 0),
+        )
+
+        self.client.force_authenticate(user=self.uploader)
+
+    def _payload(self, *, game_time: str):
+        return {
+            "game_type": Game.GameType.DOA,
+            "payment_type": Game.PaymentType.CLAIM,
+            "division": self.division.id,
+            "date": "2026-04-06",  # Monday
+            "time": game_time,
+            "venue": self.venue.id,
+            "home_team": self.home_team.id,
+            "away_team": self.away_team.id,
+            "appointed_assignments": [
+                {
+                    "role": RefereeAssignment.Role.CREW_CHIEF,
+                    "referee": self.referee_profile.id,
+                }
+            ],
+        }
+
+    def test_appointed_upload_rejects_out_of_window_start_time(self):
+        response = self.client.post(
+            reverse("non-appointed-game-upload"),
+            self._payload(game_time="18:00"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("time", response.data)
+
+    def test_appointed_upload_rejects_unavailable_referee_assignment(self):
+        response = self.client.post(
+            reverse("non-appointed-game-upload"),
+            self._payload(game_time="21:00"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("appointed_assignments", response.data)

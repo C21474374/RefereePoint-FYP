@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { switchTestingRole, type AccountType } from "../services/auth";
+import { updateHomeLocation } from "../services/earnings";
 import {
   getAppointedAvailability,
   updateAppointedAvailability,
@@ -68,12 +69,28 @@ export default function AccountSettings() {
   const [availabilitySuccess, setAvailabilitySuccess] = useState("");
   const [availabilityDraft, setAvailabilityDraft] = useState<AppointedAvailabilityDay[]>([]);
   const [availabilityPendingFrom, setAvailabilityPendingFrom] = useState<string | null>(null);
+  const [homeAddress, setHomeAddress] = useState("");
+  const [homeLat, setHomeLat] = useState<number | null>(null);
+  const [homeLon, setHomeLon] = useState<number | null>(null);
+  const [homeSaving, setHomeSaving] = useState(false);
+  const [homeLocating, setHomeLocating] = useState(false);
+  const [homeMessage, setHomeMessage] = useState("");
+  const [homeError, setHomeError] = useState("");
+  const [homeAddressError, setHomeAddressError] = useState("");
+  const [homeAddressDirty, setHomeAddressDirty] = useState(false);
 
   useEffect(() => {
     if (user?.account_type) {
       setSelectedRole(user.account_type);
     }
   }, [user?.account_type]);
+
+  useEffect(() => {
+    setHomeAddress(user?.home_address || "");
+    setHomeLat(user?.home_lat ?? null);
+    setHomeLon(user?.home_lon ?? null);
+    setHomeAddressDirty(false);
+  }, [user?.home_address, user?.home_lat, user?.home_lon]);
 
   useEffect(() => {
     if (!isRefereeUser) {
@@ -192,6 +209,86 @@ export default function AccountSettings() {
     }
   };
 
+  const handleSaveHomeLocation = async () => {
+    const trimmedAddress = homeAddress.trim();
+    const hasCoordinates = homeLat !== null && homeLon !== null;
+
+    if (!trimmedAddress && !hasCoordinates) {
+      setHomeAddressError("Enter a home address/postcode or use current location.");
+      setHomeError("Please provide home location details before saving.");
+      return;
+    }
+
+    if (trimmedAddress && trimmedAddress.length < 3) {
+      setHomeAddressError("Please enter a more specific address or postcode.");
+      setHomeError("Address looks too short.");
+      return;
+    }
+
+    try {
+      setHomeSaving(true);
+      setHomeError("");
+      setHomeMessage("");
+      setHomeAddressError("");
+
+      const response = await updateHomeLocation({
+        home_address: trimmedAddress,
+        home_lat: homeAddressDirty ? null : homeLat,
+        home_lon: homeAddressDirty ? null : homeLon,
+      });
+
+      await refreshUser();
+      setHomeAddressDirty(false);
+      if (response.geocode_warning) {
+        setHomeError(String(response.geocode_warning));
+        setHomeMessage("Home address saved.");
+      } else {
+        setHomeMessage("Home location saved.");
+      }
+    } catch (error: any) {
+      const detail =
+        error?.response?.data?.detail ||
+        error?.message ||
+        "Failed to update home location.";
+      setHomeError(detail);
+      if (String(detail).toLowerCase().includes("address")) {
+        setHomeAddressError("Could not find that address/postcode. Try a more specific one.");
+      }
+    } finally {
+      setHomeSaving(false);
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setHomeError("Geolocation is not supported in this browser.");
+      return;
+    }
+
+    setHomeLocating(true);
+    setHomeError("");
+    setHomeMessage("");
+    setHomeAddressError("");
+    setHomeAddressDirty(false);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setHomeLat(position.coords.latitude);
+        setHomeLon(position.coords.longitude);
+        setHomeMessage("Location captured. Save to apply it.");
+        setHomeLocating(false);
+      },
+      () => {
+        setHomeError("Could not access your location. Please allow location permission.");
+        setHomeLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+      }
+    );
+  };
+
   return (
     <div className="account-settings-page">
       <div className="account-settings-header">
@@ -233,6 +330,66 @@ export default function AccountSettings() {
           </article>
         </div>
       </section>
+
+      {isRefereeUser && (
+        <section className="account-settings-card">
+          <h2>Home Location</h2>
+          <p className="account-settings-availability-copy">
+            Mileage is calculated from this address/location. Save with address/postcode to geocode
+            automatically, or use current location.
+          </p>
+          {(homeLat === null || homeLon === null) && (
+            <p className="account-settings-testing-error">
+              Home coordinates are missing, so mileage cannot be calculated yet.
+            </p>
+          )}
+
+          {homeError && <p className="account-settings-testing-error">{homeError}</p>}
+          {homeMessage && <p className="account-settings-testing-success">{homeMessage}</p>}
+
+          <div className="account-settings-home-grid">
+            <label>
+              <span>Home Address or Postcode</span>
+              <input
+                type="text"
+                className={homeAddressError ? "input-error" : ""}
+                value={homeAddress}
+                onChange={(event) => {
+                  setHomeAddress(event.target.value);
+                  setHomeAddressDirty(true);
+                  setHomeAddressError("");
+                  setHomeError("");
+                }}
+                placeholder="Eircode/Postcode or address"
+              />
+              {homeAddressError && (
+                <small className="account-settings-inline-error">{homeAddressError}</small>
+              )}
+            </label>
+          </div>
+          <div className="account-settings-home-actions">
+            <button
+              type="button"
+              className="account-settings-home-location-btn"
+              onClick={handleUseCurrentLocation}
+              disabled={homeLocating}
+            >
+              {homeLocating ? "Getting Location..." : "Use Current Location"}
+            </button>
+            <button
+              type="button"
+              className="account-settings-home-save-btn"
+              onClick={handleSaveHomeLocation}
+              disabled={homeSaving}
+            >
+              {homeSaving ? "Saving..." : "Save Home Location"}
+            </button>
+          </div>
+          <p className="account-settings-availability-copy">
+            Tolls, taxis, and parking are excluded.
+          </p>
+        </section>
+      )}
 
       {isRefereeUser && (
         <section className="account-settings-card">

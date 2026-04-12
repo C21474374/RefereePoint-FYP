@@ -1,3 +1,4 @@
+from datetime import time
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -5,7 +6,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import User
+from .models import RefereeAvailability, User
 
 
 class UpdateHomeLocationViewTests(TestCase):
@@ -87,3 +88,62 @@ class UpdateHomeLocationViewTests(TestCase):
         self.assertEqual(self.user.home_address, "New Address")
         self.assertEqual(self.user.home_lat, 53.1)
         self.assertEqual(self.user.home_lon, -6.1)
+
+
+class ListRefereesAvailabilityFilterTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        self.available_user = User.objects.create_user(
+            email="available@test.com",
+            password="password123",
+            first_name="Available",
+            last_name="Referee",
+            bipin_number="8001",
+        )
+        self.unavailable_user = User.objects.create_user(
+            email="unavailable@test.com",
+            password="password123",
+            first_name="Unavailable",
+            last_name="Referee",
+            bipin_number="8002",
+        )
+
+        self.available_profile = self.available_user.referee_profile
+        self.unavailable_profile = self.unavailable_user.referee_profile
+
+        # Monday schedules:
+        # - available profile: 19:00-22:00
+        # - unavailable profile: 21:00-22:00
+        RefereeAvailability.objects.create(
+            referee=self.available_profile,
+            day_of_week="MON",
+            start_time=time(19, 0),
+            end_time=time(22, 0),
+        )
+        RefereeAvailability.objects.create(
+            referee=self.unavailable_profile,
+            day_of_week="MON",
+            start_time=time(21, 0),
+            end_time=time(22, 0),
+        )
+
+    def test_list_referees_filters_by_game_date_and_time(self):
+        response = self.client.get(
+            reverse("list_referees"),
+            {"game_date": "2026-04-06", "game_time": "20:00"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        returned_ids = {item["id"] for item in payload}
+        self.assertIn(self.available_profile.id, returned_ids)
+        self.assertNotIn(self.unavailable_profile.id, returned_ids)
+
+    def test_list_referees_requires_both_date_and_time_when_filtering(self):
+        response = self.client.get(
+            reverse("list_referees"),
+            {"game_date": "2026-04-06"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
