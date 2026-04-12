@@ -20,6 +20,7 @@ const refereeNavLinks = [
 ];
 
 const managerBaseNavLinks = [
+  { name: "Dashboard", path: "/dashboard" },
   { name: "Games", path: "/games" },
   { name: "Events", path: "/events" },
 ];

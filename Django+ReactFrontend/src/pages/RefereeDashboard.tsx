@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import DashboardHero from "../components/DashboardHero";
 import DashboardStats from "../components/DashboardStats";
@@ -7,6 +8,7 @@ import GameDetailsModal, {
   type GameDetailsModalData,
 } from "../components/GameDetailsModal";
 import { getAccessToken } from "../services/auth";
+import { fetchPendingApprovalAccounts } from "../services/approvals";
 import "../pages_css/RefereeDashboard.css";
 
 type GameDetails = {
@@ -48,6 +50,7 @@ type JoinedEvent = {
 
 type UploadedManagedGame = {
   id: number;
+  game_type?: "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY" | "DOA" | "NL" | string | null;
   date: string;
   time?: string | null;
   venue_name?: string | null;
@@ -60,6 +63,17 @@ type UploadedManagedGame = {
   game_type_display?: string | null;
   payment_type_display?: string | null;
   status_display?: string | null;
+  uploaded_slots?: Array<{
+    id: number;
+    role: "CREW_CHIEF" | "UMPIRE_1" | string;
+    status: "OPEN" | "CLAIMED" | "CLOSED" | "CANCELLED" | string;
+    is_active?: boolean;
+  }>;
+  appointed_assignments?: Array<{
+    id: number;
+    role: "CREW_CHIEF" | "UMPIRE_1" | "UMPIRE_2" | string;
+    referee: number;
+  }>;
 };
 
 type ManagedEvent = {
@@ -248,6 +262,9 @@ function getResponseErrorMessage(data: unknown, fallback: string) {
 export default function RefereeDashboard() {
   const { user } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
+  const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
+  const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const isAdminDashboard = !isRefereeUser && canApproveAccounts;
 
   const [myClaimedGames, setMyClaimedGames] = useState<MyClaimedGame[]>([]);
   const [myUpcomingAssignments, setMyUpcomingAssignments] = useState<UpcomingAssignment[]>([]);
@@ -255,6 +272,7 @@ export default function RefereeDashboard() {
   const [myUploadedGames, setMyUploadedGames] = useState<UploadedManagedGame[]>([]);
   const [myManagedEvents, setMyManagedEvents] = useState<ManagedEvent[]>([]);
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarningsSummary | null>(null);
+  const [pendingApprovalCount, setPendingApprovalCount] = useState<number | null>(null);
 
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
@@ -280,6 +298,7 @@ export default function RefereeDashboard() {
           setMyUploadedGames([]);
           setMyManagedEvents([]);
           setMonthlyEarnings(null);
+          setPendingApprovalCount(null);
           return;
         }
 
@@ -350,16 +369,27 @@ export default function RefereeDashboard() {
 
           setMyUploadedGames([]);
           setMyManagedEvents([]);
+          setPendingApprovalCount(null);
           return;
         }
 
-        const [uploadedGamesResponse, eventsResponse] = await Promise.all([
+        const pendingApprovalsPromise = canApproveAccounts
+          ? fetchPendingApprovalAccounts()
+              .then((accounts) => accounts.length)
+              .catch(() => null)
+          : Promise.resolve<number | null>(null);
+        const eventsPromise = hasEventManagerScope
+          ? fetch(`${API_BASE_URL}/events/?upcoming=true`, {
+              headers: authHeaders,
+            })
+          : Promise.resolve<Response | null>(null);
+
+        const [uploadedGamesResponse, eventsResponse, pendingApprovals] = await Promise.all([
           fetch(`${API_BASE_URL}/games/my-uploads/`, {
             headers: authHeaders,
           }),
-          fetch(`${API_BASE_URL}/events/?upcoming=true`, {
-            headers: authHeaders,
-          }),
+          eventsPromise,
+          pendingApprovalsPromise,
         ]);
 
         const uploadedGamesData = await uploadedGamesResponse.json();
@@ -370,16 +400,22 @@ export default function RefereeDashboard() {
         }
         setMyUploadedGames(uploadedGamesData as UploadedManagedGame[]);
 
-        const eventsData = await eventsResponse.json();
-        if (!eventsResponse.ok) {
-          throw new Error(
-            getResponseErrorMessage(eventsData, "Failed to load uploaded events.")
+        if (eventsResponse) {
+          const eventsData = await eventsResponse.json();
+          if (!eventsResponse.ok) {
+            throw new Error(
+              getResponseErrorMessage(eventsData, "Failed to load uploaded events.")
+            );
+          }
+          const manageableEvents = (eventsData as ManagedEvent[]).filter((event) =>
+            Boolean(event.can_manage)
           );
+          setMyManagedEvents(manageableEvents);
+        } else {
+          setMyManagedEvents([]);
         }
-        const manageableEvents = (eventsData as ManagedEvent[]).filter((event) =>
-          Boolean(event.can_manage)
-        );
-        setMyManagedEvents(manageableEvents);
+
+        setPendingApprovalCount(pendingApprovals);
 
         setMyClaimedGames([]);
         setMyUpcomingAssignments([]);
@@ -395,16 +431,19 @@ export default function RefereeDashboard() {
     }
 
     loadDashboardData();
-  }, [isRefereeUser]);
+  }, [canApproveAccounts, hasEventManagerScope, isRefereeUser]);
 
   const fullName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
     (isRefereeUser ? "Referee" : "Manager");
+  const accountType = user?.account_type || "";
   const displayGrade = user?.referee_profile?.grade?.replaceAll("_", " ") || "N/A";
   const heroBadgeLabel = isRefereeUser ? displayGrade : user?.account_type_display || "Manager";
   const heroSubtitle = isRefereeUser
     ? "Ready to referee? Check your next game and take action."
-    : "Manage uploaded games and events for your organisation.";
+    : isAdminDashboard
+      ? "Review approvals, monitor appointed uploads, and keep assignments on track."
+      : "Manage uploaded games and upcoming schedules for your organisation.";
 
   const upcomingTakenGames = useMemo(() => {
     const nowMs = Date.now();
@@ -682,6 +721,41 @@ export default function RefereeDashboard() {
 
   const nextManagedCalendarItem =
     !isRefereeUser && upcomingCalendarItems.length > 0 ? upcomingCalendarItems[0] : null;
+  const openUploadedSlotCount = useMemo(
+    () =>
+      myUploadedGames.reduce((sum, game) => {
+        const openSlots = (game.uploaded_slots || []).filter(
+          (slot) => slot.status === "OPEN" && slot.is_active !== false
+        ).length;
+        return sum + openSlots;
+      }, 0),
+    [myUploadedGames]
+  );
+  const appointedUploadCount = useMemo(
+    () =>
+      myUploadedGames.filter((game) => {
+        const gameType = String(game.game_type || "").toUpperCase();
+        return gameType === "DOA" || gameType === "NL";
+      }).length,
+    [myUploadedGames]
+  );
+  const gamesNeedingAssignmentsCount = useMemo(
+    () =>
+      myUploadedGames.reduce((sum, game) => {
+        const gameType = String(game.game_type || "").toUpperCase();
+        if (gameType !== "DOA" && gameType !== "NL") {
+          return sum;
+        }
+
+        const roles = new Set(
+          (game.appointed_assignments || []).map((assignment) => assignment.role)
+        );
+        const hasCrewChief = roles.has("CREW_CHIEF");
+        const hasUmpireOne = roles.has("UMPIRE_1");
+        return sum + (hasCrewChief && hasUmpireOne ? 0 : 1);
+      }, 0),
+    [myUploadedGames]
+  );
 
   const stats = useMemo(() => {
     if (isRefereeUser) {
@@ -704,14 +778,42 @@ export default function RefereeDashboard() {
       ];
     }
 
+    if (isAdminDashboard) {
+      return [
+        {
+          label: "Pending Approvals",
+          value: String(pendingApprovalCount ?? 0),
+          detail: canApproveAccounts
+            ? "Accounts waiting for manual review"
+            : "Approval access not enabled",
+        },
+        {
+          label: "Appointed Uploads",
+          value: String(appointedUploadCount),
+          detail: "DOA/NL games currently uploaded",
+        },
+        {
+          label: "Needs Assignment",
+          value: String(gamesNeedingAssignmentsCount),
+          detail: nextManagedCalendarItem
+            ? `Next game: ${toDisplayDate(nextManagedCalendarItem.date)} ${toDisplayTime(nextManagedCalendarItem.time)}`
+            : "No upcoming games uploaded",
+        },
+      ];
+    }
+
     return [
       {
         label: "Uploaded Games",
         value: String(myUploadedGames.length),
       },
       {
-        label: "Uploaded Events",
-        value: String(myManagedEvents.length),
+        label: "Open Referee Slots",
+        value: String(openUploadedSlotCount),
+        detail:
+          openUploadedSlotCount > 0
+            ? "Slots available for referees to claim"
+            : "No open slots right now",
       },
       {
         label: "Next Upload",
@@ -720,17 +822,22 @@ export default function RefereeDashboard() {
           : "No upcoming upload",
         detail: nextManagedCalendarItem
           ? `${nextManagedCalendarItem.title} - ${toDisplayTime(nextManagedCalendarItem.time)}`
-          : "No upcoming games or events in your uploads",
+          : "No upcoming games in your uploads",
       },
     ];
   }, [
+    appointedUploadCount,
+    canApproveAccounts,
+    gamesNeedingAssignmentsCount,
     isRefereeUser,
     monthlyEarnings?.mileage_km_total,
     monthlyEarnings?.total_claim_amount,
-    myManagedEvents.length,
     myUploadedGames.length,
     nextManagedCalendarItem,
     nextTakenGame,
+    openUploadedSlotCount,
+    pendingApprovalCount,
+    isAdminDashboard,
   ]);
 
   const calendarItemsByDate = useMemo(() => {
@@ -780,11 +887,40 @@ export default function RefereeDashboard() {
       return day;
     });
   }, [calendarMonth]);
+  const upcomingWeekUploadCount = useMemo(() => {
+    const now = Date.now();
+    const sevenDaysAhead = now + 7 * 24 * 60 * 60 * 1000;
+
+    return myUploadedGames.filter((game) => {
+      const parsedDate = parseDateTime(game.date, game.time || null);
+      if (!parsedDate) {
+        return false;
+      }
+
+      const timestamp = parsedDate.getTime();
+      return timestamp >= now && timestamp <= sevenDaysAhead;
+    }).length;
+  }, [myUploadedGames]);
 
   const currentDateKey = formatDateKey(new Date());
   const calendarSectionTitle = isRefereeUser
     ? "Upcoming Games Calendar"
-    : "Uploaded Schedule Calendar";
+    : isAdminDashboard
+      ? "Upcoming Uploads Calendar"
+      : "Uploaded Schedule Calendar";
+  const calendarLoadingCopy = isRefereeUser
+    ? "Loading upcoming games..."
+    : "Loading uploaded schedule...";
+  const calendarEmptyCopy = isRefereeUser
+    ? "No upcoming games found."
+    : "No upcoming uploaded games or events found.";
+  const dateEmptyCopy = isRefereeUser
+    ? "No games on this date."
+    : "No uploaded games or events on this date.";
+  const roleOverviewTitle = isAdminDashboard ? "Admin Overview" : "Organisation Overview";
+  const roleOverviewCopy = isAdminDashboard
+    ? "A quick view of approvals, coverage, and near-term schedule pressure."
+    : "Track your uploads, event activity, and what is coming up this week.";
 
   return (
     <div className="dashboard-page">
@@ -796,6 +932,74 @@ export default function RefereeDashboard() {
       />
 
       <DashboardStats stats={stats} />
+
+      {!isRefereeUser && (
+        <section className="dashboard-role-overview">
+          <div className="dashboard-role-overview-header">
+            <h2>{roleOverviewTitle}</h2>
+            <p>{roleOverviewCopy}</p>
+          </div>
+
+          <div className="dashboard-role-overview-grid">
+            {isAdminDashboard ? (
+              <>
+                <article className="dashboard-role-overview-card">
+                  <h3>Approval Queue</h3>
+                  <p className="dashboard-role-overview-value">{pendingApprovalCount ?? 0}</p>
+                  <p className="dashboard-role-overview-detail">
+                    Pending accounts waiting on admin approval.
+                  </p>
+                  <Link className="dashboard-role-overview-link" to="/account-approvals">
+                    Review Approvals
+                  </Link>
+                </article>
+                <article className="dashboard-role-overview-card">
+                  <h3>Coverage Risk</h3>
+                  <p className="dashboard-role-overview-value">
+                    {gamesNeedingAssignmentsCount}
+                  </p>
+                  <p className="dashboard-role-overview-detail">
+                    Appointed games still missing crew chief or umpire.
+                  </p>
+                </article>
+                <article className="dashboard-role-overview-card">
+                  <h3>Next 7 Days</h3>
+                  <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
+                  <p className="dashboard-role-overview-detail">
+                    Uploaded games scheduled in the coming week.
+                  </p>
+                </article>
+              </>
+            ) : (
+              <>
+                <article className="dashboard-role-overview-card">
+                  <h3>Account Role</h3>
+                  <p className="dashboard-role-overview-value">
+                    {user?.account_type_display || accountType || "Manager"}
+                  </p>
+                  <p className="dashboard-role-overview-detail">
+                    This dashboard is tailored to your uploader account.
+                  </p>
+                </article>
+                <article className="dashboard-role-overview-card">
+                  <h3>Managed Events</h3>
+                  <p className="dashboard-role-overview-value">{myManagedEvents.length}</p>
+                  <p className="dashboard-role-overview-detail">
+                    Active upcoming events your account can manage.
+                  </p>
+                </article>
+                <article className="dashboard-role-overview-card">
+                  <h3>Next 7 Days</h3>
+                  <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
+                  <p className="dashboard-role-overview-detail">
+                    Uploaded games scheduled in the coming week.
+                  </p>
+                </article>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="dashboard-calendar-section">
         <div className="dashboard-calendar-header">
@@ -827,11 +1031,11 @@ export default function RefereeDashboard() {
 
         {loadingDashboard ? (
           <div className="dashboard-no-games-message">
-            <p>{isRefereeUser ? "Loading upcoming games..." : "Loading uploaded schedule..."}</p>
+            <p>{calendarLoadingCopy}</p>
           </div>
         ) : upcomingCalendarItems.length === 0 ? (
           <div className="dashboard-no-games-message">
-            <p>{isRefereeUser ? "No upcoming games found." : "No upcoming uploads found."}</p>
+            <p>{calendarEmptyCopy}</p>
           </div>
         ) : (
           <>
@@ -915,9 +1119,7 @@ export default function RefereeDashboard() {
                 <div className="dashboard-no-games-message">
                   <p>
                     {selectedDateKey
-                      ? isRefereeUser
-                        ? "No games on this date."
-                        : "No uploads on this date."
+                      ? dateEmptyCopy
                       : "Select a date to view schedule items."}
                   </p>
                 </div>

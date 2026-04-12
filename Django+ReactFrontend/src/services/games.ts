@@ -31,6 +31,8 @@ export type UploadedGameSlot = {
   description: string;
   is_active: boolean;
   claimed_by_name: string | null;
+  claimed_by_phone: string | null;
+  claimed_at?: string | null;
 };
 
 export type UploadedGameAssignment = {

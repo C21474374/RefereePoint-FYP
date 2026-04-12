@@ -112,6 +112,7 @@ class UploadedGameSlotSerializer(serializers.ModelSerializer):
     role_display = serializers.CharField(source="get_role_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     claimed_by_name = serializers.CharField(source="claimed_by.user.get_full_name", read_only=True)
+    claimed_by_phone = serializers.CharField(source="claimed_by.user.phone_number", read_only=True)
 
     class Meta:
         model = NonAppointedSlot
@@ -124,6 +125,8 @@ class UploadedGameSlotSerializer(serializers.ModelSerializer):
             "description",
             "is_active",
             "claimed_by_name",
+            "claimed_by_phone",
+            "claimed_at",
         ]
 
 

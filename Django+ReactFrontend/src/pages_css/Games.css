@@ -340,14 +340,20 @@
 
 .games-manage-section {
   margin-top: 18px;
+  position: relative;
+  min-height: 136px;
+  padding: 18px 18px 62px;
   border-radius: 18px;
   border: 1px solid var(--color-border);
   background: var(--color-card);
-  padding: 16px;
+}
+
+.games-manage-section.expanded {
+  border-color: var(--color-border-hover);
 }
 
 .games-manage-header {
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .games-manage-header h2 {
@@ -361,8 +367,15 @@
   font-size: 0.92rem;
 }
 
+.games-manage-section-content {
+  margin-top: 14px;
+  max-height: min(54vh, 440px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .games-manage-toolbar {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .games-manage-toolbar label {
@@ -399,18 +412,45 @@
 }
 
 .games-manage-empty {
-  margin: 10px 0 0;
+  margin: 0;
   color: var(--color-text-muted);
   font-size: 0.92rem;
 }
 
 .games-manage-list {
-  margin-top: 10px;
-  max-height: min(48vh, 420px);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.games-manage-section-toggle {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.games-manage-section-toggle:hover {
+  border-color: var(--color-accent);
+}
+
+.games-manage-section-toggle-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 0.9rem;
+  line-height: 1;
 }
 
 .games-manage-item {
@@ -489,6 +529,36 @@
   color: var(--color-text-muted);
   font-size: 0.74rem;
   padding: 4px 8px;
+}
+
+.games-manage-claim-notifications {
+  margin-top: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-panel);
+  padding: 10px 12px;
+}
+
+.games-manage-claim-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.games-manage-claim-list {
+  margin-top: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.games-manage-claim-list p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
 }
 
 .manage-game-modal {
@@ -601,8 +671,13 @@
   }
 
   .games-manage-section {
-    padding: 12px;
+    min-height: 124px;
+    padding: 14px 14px 56px;
     border-radius: 14px;
+  }
+
+  .games-manage-section-content {
+    max-height: min(50vh, 360px);
   }
 
   .games-manage-item-top {
@@ -624,5 +699,10 @@
   .games-manage-form-actions {
     justify-content: stretch;
     flex-direction: column;
+  }
+
+  .games-manage-section-toggle {
+    right: 10px;
+    bottom: 10px;
   }
 }

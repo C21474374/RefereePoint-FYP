@@ -61,6 +61,8 @@ type RecommendedOpportunitiesResponse = {
   items?: Opportunity[];
 };
 
+type GamesSectionKey = "manageUploadedGames";
+
 type ManageGameType = UploadedGame["game_type"];
 type ManagePaymentType = "CASH" | "REVOLUT" | "CLAIM";
 
@@ -188,6 +190,9 @@ export default function Games() {
   const [claimingKey, setClaimingKey] = useState<string | null>(null);
   const [manageError, setManageError] = useState("");
   const [manageActionId, setManageActionId] = useState<number | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<GamesSectionKey, boolean>>({
+    manageUploadedGames: false,
+  });
 
   const [editingGame, setEditingGame] = useState<UploadedGame | null>(null);
   const [editForm, setEditForm] = useState<ManageForm>(emptyForm);
@@ -199,6 +204,13 @@ export default function Games() {
     venues: [],
     teams: [],
   });
+
+  const toggleSection = (key: GamesSectionKey) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   const getOpportunityKey = (type: Opportunity["type"], id: number) => `${type}-${id}`;
 
@@ -618,85 +630,125 @@ export default function Games() {
       )}
 
       {!isRefereeUser && !isDoaOrNlUploader && (
-        <section className="games-manage-section">
+        <section
+          className={`games-manage-section ${
+            expandedSections.manageUploadedGames ? "expanded" : "collapsed"
+          }`}
+        >
           <div className="games-manage-header">
             <h2>Manage Uploaded Games</h2>
             <p>Games your account uploaded. Edit, delete, and filter by month.</p>
           </div>
-          <div className="games-manage-toolbar">
-            <label>
-              <span>Month</span>
-              <select
-                value={manageMonthFilter}
-                onChange={(event) => setManageMonthFilter(event.target.value)}
-              >
-                <option value="ALL">All Months</option>
-                {manageMonthOptions.map((month) => (
-                  <option key={month} value={month}>
-                    {month}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          {manageError && <p className="games-manage-error">{manageError}</p>}
-
-          {displayedManageGames.length === 0 ? (
-            <p className="games-manage-empty">
-              No uploaded games for this month.
-            </p>
-          ) : (
-            <div className="games-manage-list">
-              {displayedManageGames.map((game) => (
-                <article key={game.id} className="games-manage-item">
-                  <div className="games-manage-item-top">
-                    <div>
-                      <h3>{game.home_team_name || "Home Team"} vs {game.away_team_name || "Away Team"}</h3>
-                      <p>
-                        {game.division_display || game.division_name || "Division"} | {game.date}{" "}
-                        {game.time?.slice(0, 5)} | {game.venue_name || "Venue TBC"}
-                      </p>
-                    </div>
-                    {game.can_edit && game.can_delete ? (
-                      <div className="games-manage-actions">
-                        <button
-                          type="button"
-                          className="games-manage-button"
-                          onClick={() => openEditModal(game)}
-                          disabled={manageActionId === game.id}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="games-manage-button games-manage-button-danger"
-                          onClick={() => handleDeleteUploaded(game.id)}
-                          disabled={manageActionId === game.id}
-                        >
-                          {manageActionId === game.id ? "Deleting..." : "Delete"}
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="games-manage-lock-reason">
-                        Claimed or shared slots cannot be edited or deleted.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="games-manage-tags">
-                    <span>{game.game_type_display}</span>
-                    <span>{game.payment_type_display || "Payment TBC"}</span>
-                    {game.uploaded_slots.map((slot) => (
-                      <span key={`${game.id}-${slot.id}`}>
-                        {slot.role_display}: {slot.status_display}
-                      </span>
+          {expandedSections.manageUploadedGames && (
+            <div className="games-manage-section-content">
+              <div className="games-manage-toolbar">
+                <label>
+                  <span>Month</span>
+                  <select
+                    value={manageMonthFilter}
+                    onChange={(event) => setManageMonthFilter(event.target.value)}
+                  >
+                    <option value="ALL">All Months</option>
+                    {manageMonthOptions.map((month) => (
+                      <option key={month} value={month}>
+                        {month}
+                      </option>
                     ))}
-                  </div>
-                </article>
-              ))}
+                  </select>
+                </label>
+              </div>
+
+              {manageError && <p className="games-manage-error">{manageError}</p>}
+
+              {displayedManageGames.length === 0 ? (
+                <p className="games-manage-empty">
+                  No uploaded games for this month.
+                </p>
+              ) : (
+                <div className="games-manage-list">
+                  {displayedManageGames.map((game) => (
+                    <article key={game.id} className="games-manage-item">
+                      <div className="games-manage-item-top">
+                        <div>
+                          <h3>{game.home_team_name || "Home Team"} vs {game.away_team_name || "Away Team"}</h3>
+                          <p>
+                            {game.division_display || game.division_name || "Division"} | {game.date}{" "}
+                            {game.time?.slice(0, 5)} | {game.venue_name || "Venue TBC"}
+                          </p>
+                        </div>
+                        {game.can_edit && game.can_delete ? (
+                          <div className="games-manage-actions">
+                            <button
+                              type="button"
+                              className="games-manage-button"
+                              onClick={() => openEditModal(game)}
+                              disabled={manageActionId === game.id}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="games-manage-button games-manage-button-danger"
+                              onClick={() => handleDeleteUploaded(game.id)}
+                              disabled={manageActionId === game.id}
+                            >
+                              {manageActionId === game.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="games-manage-lock-reason">
+                            Claimed or shared slots cannot be edited or deleted.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="games-manage-tags">
+                        <span>{game.game_type_display}</span>
+                        <span>{game.payment_type_display || "Payment TBC"}</span>
+                        {game.uploaded_slots.map((slot) => (
+                          <span key={`${game.id}-${slot.id}`}>
+                            {slot.role_display}: {slot.status_display}
+                          </span>
+                        ))}
+                      </div>
+
+                      {game.uploaded_slots.some(
+                        (slot) => slot.status === "CLAIMED" && Boolean(slot.claimed_by_name)
+                      ) && (
+                        <div className="games-manage-claim-notifications">
+                          <p className="games-manage-claim-title">Referee Claim Notifications</p>
+                          <div className="games-manage-claim-list">
+                            {game.uploaded_slots
+                              .filter(
+                                (slot) => slot.status === "CLAIMED" && Boolean(slot.claimed_by_name)
+                              )
+                              .map((slot) => (
+                                <p key={`${game.id}-claim-${slot.id}`}>
+                                  {slot.role_display} taken by {slot.claimed_by_name}
+                                  {slot.claimed_by_phone ? ` (${slot.claimed_by_phone})` : ""}
+                                </p>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
+          <button
+            type="button"
+            className="games-manage-section-toggle"
+            onClick={() => toggleSection("manageUploadedGames")}
+            aria-expanded={expandedSections.manageUploadedGames}
+          >
+            <span>{expandedSections.manageUploadedGames ? "Collapse" : "Expand"}</span>
+            <span className="games-manage-section-toggle-icon" aria-hidden="true">
+              {expandedSections.manageUploadedGames ? "^" : "v"}
+            </span>
+          </button>
         </section>
       )}
 
