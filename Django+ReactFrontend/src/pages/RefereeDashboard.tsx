@@ -66,13 +66,19 @@ type UploadedManagedGame = {
   uploaded_slots?: Array<{
     id: number;
     role: "CREW_CHIEF" | "UMPIRE_1" | string;
+    role_display?: string;
     status: "OPEN" | "CLAIMED" | "CLOSED" | "CANCELLED" | string;
     is_active?: boolean;
+    claimed_by_name?: string | null;
+    claimed_by_phone?: string | null;
   }>;
   appointed_assignments?: Array<{
     id: number;
     role: "CREW_CHIEF" | "UMPIRE_1" | "UMPIRE_2" | string;
+    role_display?: string;
     referee: number;
+    referee_name?: string;
+    referee_grade?: string;
   }>;
 };
 
@@ -89,6 +95,12 @@ type ManagedEvent = {
   joined_referees_count?: number | null;
   slots_left?: number | null;
   can_manage?: boolean;
+  joined_referees?: Array<{
+    id: number;
+    user_id: number;
+    name: string;
+    grade: string;
+  }>;
 };
 
 type MonthlyEarningsSummary = {
@@ -114,7 +126,24 @@ type CalendarItem = {
   badge: string;
   venueName: string | null;
   isTaken: boolean;
+  refereeStatusText?: string | null;
   details: GameDetailsModalData;
+};
+
+type RecentNotification = {
+  id: number;
+  notification_type: string;
+  notification_type_display: string;
+  title: string;
+  message: string;
+  link_path: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+type RecentNotificationsResponse = {
+  items?: RecentNotification[];
+  unread_count?: number;
 };
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
@@ -192,6 +221,20 @@ function getMonthLabel(date: Date) {
   });
 }
 
+function toDisplayDateTime(dateValue: string) {
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateValue;
+  }
+
+  return parsed.toLocaleDateString("en-IE", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function formatAgeGroupWithGender(
   ageGroup: string | null | undefined,
   gender: string | null | undefined
@@ -228,6 +271,23 @@ function buildDivisionDisplay(
   }
 
   return `${divisionName}${divisionGender ? ` ${divisionGender}` : ""}`;
+}
+
+function toRoleDisplay(roleValue: string | null | undefined) {
+  if (!roleValue) {
+    return null;
+  }
+
+  if (roleValue === "CREW_CHIEF") {
+    return "Crew Chief";
+  }
+  if (roleValue === "UMPIRE_1") {
+    return "Umpire 1";
+  }
+  if (roleValue === "UMPIRE_2") {
+    return "Umpire 2";
+  }
+  return roleValue.replaceAll("_", " ");
 }
 
 function enumerateDateRange(startDate: string, endDate: string) {
@@ -273,6 +333,8 @@ export default function RefereeDashboard() {
   const [myManagedEvents, setMyManagedEvents] = useState<ManagedEvent[]>([]);
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarningsSummary | null>(null);
   const [pendingApprovalCount, setPendingApprovalCount] = useState<number | null>(null);
+  const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([]);
+  const [recentNotificationUnreadCount, setRecentNotificationUnreadCount] = useState(0);
 
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
@@ -299,12 +361,17 @@ export default function RefereeDashboard() {
           setMyManagedEvents([]);
           setMonthlyEarnings(null);
           setPendingApprovalCount(null);
+          setRecentNotifications([]);
+          setRecentNotificationUnreadCount(0);
           return;
         }
 
         const authHeaders = {
           Authorization: `Bearer ${token}`,
         };
+        const notificationsPromise = fetch(`${API_BASE_URL}/notifications/recent/?limit=5`, {
+          headers: authHeaders,
+        });
 
         if (isRefereeUser) {
           const [
@@ -312,6 +379,7 @@ export default function RefereeDashboard() {
             upcomingAssignmentsResponse,
             joinedEventsResponse,
             earningsResponse,
+            notificationsResponse,
           ] = await Promise.all([
             fetch(`${API_BASE_URL}/games/my-games/`, {
               headers: authHeaders,
@@ -325,6 +393,7 @@ export default function RefereeDashboard() {
             fetch(`${API_BASE_URL}/expenses/earnings/?period=month`, {
               headers: authHeaders,
             }),
+            notificationsPromise,
           ]);
 
           if (claimedGamesResponse.status === 404) {
@@ -367,6 +436,16 @@ export default function RefereeDashboard() {
             mileage_km_total: totals?.mileage_km_total ?? "0.00",
           });
 
+          if (notificationsResponse.ok) {
+            const notificationsData =
+              (await notificationsResponse.json()) as RecentNotificationsResponse;
+            setRecentNotifications(notificationsData.items || []);
+            setRecentNotificationUnreadCount(notificationsData.unread_count || 0);
+          } else {
+            setRecentNotifications([]);
+            setRecentNotificationUnreadCount(0);
+          }
+
           setMyUploadedGames([]);
           setMyManagedEvents([]);
           setPendingApprovalCount(null);
@@ -384,12 +463,13 @@ export default function RefereeDashboard() {
             })
           : Promise.resolve<Response | null>(null);
 
-        const [uploadedGamesResponse, eventsResponse, pendingApprovals] = await Promise.all([
+        const [uploadedGamesResponse, eventsResponse, pendingApprovals, notificationsResponse] = await Promise.all([
           fetch(`${API_BASE_URL}/games/my-uploads/`, {
             headers: authHeaders,
           }),
           eventsPromise,
           pendingApprovalsPromise,
+          notificationsPromise,
         ]);
 
         const uploadedGamesData = await uploadedGamesResponse.json();
@@ -416,6 +496,15 @@ export default function RefereeDashboard() {
         }
 
         setPendingApprovalCount(pendingApprovals);
+        if (notificationsResponse.ok) {
+          const notificationsData =
+            (await notificationsResponse.json()) as RecentNotificationsResponse;
+          setRecentNotifications(notificationsData.items || []);
+          setRecentNotificationUnreadCount(notificationsData.unread_count || 0);
+        } else {
+          setRecentNotifications([]);
+          setRecentNotificationUnreadCount(0);
+        }
 
         setMyClaimedGames([]);
         setMyUpcomingAssignments([]);
@@ -425,6 +514,8 @@ export default function RefereeDashboard() {
         setDashboardError(
           error instanceof Error ? error.message : "Failed to load dashboard data."
         );
+        setRecentNotifications([]);
+        setRecentNotificationUnreadCount(0);
       } finally {
         setLoadingDashboard(false);
       }
@@ -637,6 +728,34 @@ export default function RefereeDashboard() {
 
         const homeTeam = game.home_team_name || "Home Team";
         const awayTeam = game.away_team_name || "Away Team";
+        const claimedSlotReferees = (game.uploaded_slots || [])
+          .filter(
+            (slot) =>
+              slot.status === "CLAIMED" &&
+              Boolean(slot.claimed_by_name)
+          )
+          .map((slot) => ({
+            name: slot.claimed_by_name || "Referee",
+            role: slot.role_display || toRoleDisplay(slot.role),
+            phone: slot.claimed_by_phone || null,
+          }));
+        const appointedAssignmentReferees = (game.appointed_assignments || [])
+          .filter((assignment) => Boolean(assignment.referee_name))
+          .map((assignment) => ({
+            name: assignment.referee_name || "Referee",
+            role: assignment.role_display || toRoleDisplay(assignment.role),
+            grade: assignment.referee_grade || null,
+          }));
+        const assignedReferees = [
+          ...appointedAssignmentReferees,
+          ...claimedSlotReferees,
+        ];
+        const refereeStatusText =
+          assignedReferees.length > 0
+            ? `${assignedReferees.length} referee${
+                assignedReferees.length === 1 ? "" : "s"
+              } assigned`
+            : "No referees assigned yet";
 
         items.push({
           id: `uploaded-game-${game.id}`,
@@ -648,6 +767,7 @@ export default function RefereeDashboard() {
           badge: "Uploaded Game",
           venueName: game.venue_name || null,
           isTaken: true,
+          refereeStatusText,
           details: {
             id: `uploaded-game-${game.id}`,
             title: `${homeTeam} vs ${awayTeam}`,
@@ -662,12 +782,23 @@ export default function RefereeDashboard() {
             divisionDisplay: buildDivisionDisplay(game.division_name, game.division_gender),
             paymentTypeDisplay: game.payment_type_display || null,
             statusDisplay: game.status_display || null,
+            assignedReferees,
           },
         });
       });
 
       myManagedEvents.forEach((event) => {
         const dates = enumerateDateRange(event.start_date, event.end_date);
+        const eventAssignedReferees = (event.joined_referees || []).map((referee) => ({
+          name: referee.name,
+          grade: referee.grade || null,
+        }));
+        const eventRefereeCount =
+          eventAssignedReferees.length || event.joined_referees_count || 0;
+        const eventRefereeStatusText =
+          eventRefereeCount > 0
+            ? `${eventRefereeCount} referee${eventRefereeCount === 1 ? "" : "s"} joined`
+            : "No referees assigned yet";
 
         dates.forEach((dateKey) => {
           const parsedDate = parseDateTime(dateKey, null, true);
@@ -685,6 +816,7 @@ export default function RefereeDashboard() {
             badge: "Uploaded Event",
             venueName: event.venue_name,
             isTaken: true,
+            refereeStatusText: eventRefereeStatusText,
             details: {
               id: `uploaded-event-${event.id}-${dateKey}`,
               title: event.venue_name ? `Uploaded Event at ${event.venue_name}` : "Uploaded Event",
@@ -701,6 +833,7 @@ export default function RefereeDashboard() {
               feePerGame: event.fee_per_game ?? null,
               joinedRefereesCount: event.joined_referees_count ?? null,
               slotsLeft: event.slots_left ?? null,
+              assignedReferees: eventAssignedReferees,
             },
           });
         });
@@ -933,6 +1066,56 @@ export default function RefereeDashboard() {
 
       <DashboardStats stats={stats} />
 
+      <section className="dashboard-notifications-section">
+        <div className="dashboard-notifications-header">
+          <h2>Recent Notifications</h2>
+          <p>
+            {recentNotificationUnreadCount} unread
+          </p>
+        </div>
+
+        {loadingDashboard ? (
+          <div className="dashboard-no-games-message">
+            <p>Loading notifications...</p>
+          </div>
+        ) : recentNotifications.length === 0 ? (
+          <div className="dashboard-no-games-message">
+            <p>No recent notifications.</p>
+          </div>
+        ) : (
+          <div className="dashboard-notifications-list">
+            {recentNotifications.map((notification) => {
+              const content = (
+                <article
+                  key={notification.id}
+                  className={`dashboard-notification-item ${notification.is_read ? "" : "is-unread"}`}
+                >
+                  <div className="dashboard-notification-item-top">
+                    <h3>{notification.title}</h3>
+                    <span>{toDisplayDateTime(notification.created_at)}</span>
+                  </div>
+                  <p>{notification.message}</p>
+                </article>
+              );
+
+              if (notification.link_path) {
+                return (
+                  <Link
+                    key={notification.id}
+                    to={notification.link_path}
+                    className="dashboard-notification-link"
+                  >
+                    {content}
+                  </Link>
+                );
+              }
+
+              return content;
+            })}
+          </div>
+        )}
+      </section>
+
       {!isRefereeUser && (
         <section className="dashboard-role-overview">
           <div className="dashboard-role-overview-header">
@@ -1103,6 +1286,11 @@ export default function RefereeDashboard() {
                         {item.badge}
                         {item.venueName ? ` - ${item.venueName}` : ""}
                       </p>
+                      {!isRefereeUser && item.refereeStatusText && (
+                        <p className="dashboard-day-item-referees">
+                          {item.refereeStatusText}
+                        </p>
+                      )}
                       <div className="dashboard-day-item-actions">
                         <button
                           type="button"

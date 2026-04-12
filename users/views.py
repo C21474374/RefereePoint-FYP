@@ -18,6 +18,7 @@ from .appointed_availability import (
     queue_next_month_appointed_availability,
     validate_appointed_availability_payload,
 )
+from notifications.services import notify_account_pending_for_admins
 
 
 def _json_error(message: str, status: int) -> JsonResponse:
@@ -191,6 +192,11 @@ class RegisterUserView(APIView):
         serializer = RegisterUserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        try:
+            notify_account_pending_for_admins(user, actor=None)
+        except Exception:
+            # Notifications should never block account registration.
+            pass
         response_serializer = CurrentUserSerializer(user, context={"request": request})
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 

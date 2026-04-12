@@ -8,6 +8,12 @@ from rest_framework.views import APIView
 from games.models import RefereeAssignment
 from games.serializers import GameSerializer
 from users.models import RefereeProfile
+from notifications.services import (
+    notify_cover_request_approved,
+    notify_cover_request_claimed,
+    notify_cover_request_created_for_admins,
+    notify_cover_request_withdrawn,
+)
 
 from .models import CoverRequest
 from .serializers import CoverRequestSerializer, CoverRequestCreateSerializer
@@ -158,6 +164,17 @@ class CreateCoverRequestAPIView(generics.CreateAPIView):
         context["request"] = self.request
         return context
 
+    def perform_create(self, serializer):
+        cover_request = serializer.save()
+        try:
+            notify_cover_request_created_for_admins(
+                cover_request,
+                actor_user=self.request.user,
+            )
+        except Exception:
+            # Notifications should not block successful cover-request creation.
+            pass
+
 
 class CancelCoverRequestAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -266,6 +283,10 @@ class OfferCoverAPIView(APIView):
         cover_request.replaced_by = referee
         cover_request.status = CoverRequest.Status.CLAIMED
         cover_request.save()
+        try:
+            notify_cover_request_claimed(cover_request, actor_user=request.user)
+        except Exception:
+            pass
 
         serializer = CoverRequestSerializer(cover_request)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -307,6 +328,10 @@ class WithdrawCoverClaimAPIView(APIView):
         cover_request.replaced_by = None
         cover_request.status = CoverRequest.Status.PENDING
         cover_request.save()
+        try:
+            notify_cover_request_withdrawn(cover_request, actor_user=request.user)
+        except Exception:
+            pass
 
         serializer = CoverRequestSerializer(cover_request)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -431,6 +456,10 @@ class ApproveCoverRequestAPIView(APIView):
         cover_request.approver = request.user
         cover_request.status = CoverRequest.Status.APPROVED
         cover_request.save()
+        try:
+            notify_cover_request_approved(cover_request, actor_user=request.user)
+        except Exception:
+            pass
 
         serializer = CoverRequestSerializer(cover_request)
         return Response(serializer.data, status=status.HTTP_200_OK)

@@ -9,7 +9,8 @@ from rest_framework.views import APIView
 
 from games.models import Game, NonAppointedSlot, RefereeAssignment
 from games.serializers import GameSerializer
-from users.models import RefereeProfile
+from users.models import RefereeProfile, User
+from notifications.services import notify_report_created_for_admins
 
 from .models import GameReport
 from .serializers import (
@@ -27,6 +28,14 @@ def _get_referee_profile_or_403(request):
             {"detail": "Only referees can access reports."},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+
+def _can_review_reports(user: User) -> bool:
+    if not user.is_authenticated:
+        return False
+    if user.is_staff:
+        return True
+    return user.account_type in {User.AccountType.DOA, User.AccountType.NL} and user.doa_approved
 
 
 class ReportableGamesAPIView(APIView):
@@ -162,12 +171,54 @@ class MyReportsAPIView(generics.ListAPIView):
                 "game__division",
                 "game__home_team__club",
                 "game__away_team__club",
+                "referee",
+                "referee__user",
                 "submitted_by",
                 "reviewed_by",
             )
             .filter(referee=self.referee_profile)
             .order_by("-created_at")
         )
+
+
+class AdminReportsAPIView(generics.ListAPIView):
+    serializer_class = GameReportSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        if not _can_review_reports(request.user):
+            return Response(
+                {"detail": "You do not have permission to view submitted reports."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().list(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = (
+            GameReport.objects.select_related(
+                "game",
+                "game__venue",
+                "game__division",
+                "game__home_team__club",
+                "game__away_team__club",
+                "referee",
+                "referee__user",
+                "submitted_by",
+                "reviewed_by",
+            )
+            .all()
+            .order_by("-created_at")
+        )
+
+        status_filter = str(self.request.query_params.get("status") or "").strip().upper()
+        if status_filter in {
+            GameReport.Status.PENDING,
+            GameReport.Status.REVIEWED,
+            GameReport.Status.RESOLVED,
+        }:
+            queryset = queryset.filter(status=status_filter)
+
+        return queryset
 
 
 class CreateGameReportAPIView(generics.CreateAPIView):
@@ -178,6 +229,11 @@ class CreateGameReportAPIView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         report = serializer.save()
+        try:
+            notify_report_created_for_admins(report, actor_user=request.user)
+        except Exception:
+            # Reporting should still succeed even if notifications fail.
+            pass
 
         output = GameReportSerializer(report, context={"request": request})
         return Response(output.data, status=status.HTTP_201_CREATED)

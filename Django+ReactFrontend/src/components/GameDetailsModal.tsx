@@ -29,6 +29,12 @@ export type GameDetailsModalData = {
   feePerGame?: string | null;
   joinedRefereesCount?: number | null;
   slotsLeft?: number | null;
+  assignedReferees?: Array<{
+    name: string;
+    role?: string | null;
+    grade?: string | null;
+    phone?: string | null;
+  }>;
 };
 
 type GameDetailsModalProps = {
@@ -180,6 +186,8 @@ const GameDetailsModal = ({
         : null,
     ],
   ];
+  const assignedReferees = details.assignedReferees;
+  const shouldShowAssignedReferees = Array.isArray(assignedReferees);
 
   return (
     <div className="game-details-modal-overlay" onClick={onClose}>
@@ -225,6 +233,35 @@ const GameDetailsModal = ({
             <div className="game-details-block">
               <h3>Reason</h3>
               <p>{details.reason}</p>
+            </div>
+          )}
+
+          {shouldShowAssignedReferees && (
+            <div className="game-details-block">
+              <h3>Assigned Referees</h3>
+              {assignedReferees.length === 0 ? (
+                <p>No referees assigned yet.</p>
+              ) : (
+                <div className="game-details-referees-list">
+                  {assignedReferees.map((referee, index) => (
+                    <div
+                      key={`${referee.name}-${referee.role || "role"}-${index}`}
+                      className="game-details-referee-item"
+                    >
+                      <p className="game-details-referee-name">{referee.name}</p>
+                      <p className="game-details-referee-meta">
+                        {[
+                          referee.role || null,
+                          referee.grade || null,
+                          referee.phone || null,
+                        ]
+                          .filter(Boolean)
+                          .join(" | ")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

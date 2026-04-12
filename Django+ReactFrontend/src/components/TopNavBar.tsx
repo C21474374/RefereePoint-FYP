@@ -1,7 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type NotificationItem,
+} from "../services/notifications";
 import UploadGamePanel from "./UploadGamePanel";
 import UploadEventPanel from "./UploadEventPanel";
 
@@ -52,6 +58,19 @@ function detectMobileNav() {
   return window.matchMedia("(max-width: 900px)").matches;
 }
 
+function toNotificationTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleDateString("en-IE", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 const TopNavBar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -61,9 +80,55 @@ const TopNavBar: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [notificationsMenuOpen, setNotificationsMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
   const [activeUploadModal, setActiveUploadModal] = useState<UploadModalType>(null);
   const navRef = useRef<HTMLElement | null>(null);
   const mobileDrawerRef = useRef<HTMLDivElement | null>(null);
+
+  const loadNotifications = useCallback(async () => {
+    if (!user) {
+      setNotifications([]);
+      setNotificationUnreadCount(0);
+      return null;
+    }
+
+    try {
+      setNotificationsLoading(true);
+      setNotificationsError("");
+      const response = await getNotifications(150);
+      setNotifications(response.items || []);
+      setNotificationUnreadCount(response.unread_count || 0);
+      return response;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load notifications.";
+      setNotificationsError(message);
+      return null;
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [user]);
+
+  const markAllAsReadIfNeeded = useCallback(async (unreadOverride?: number) => {
+    const unreadCount = unreadOverride ?? notificationUnreadCount;
+    if (!unreadCount) {
+      return;
+    }
+
+    try {
+      await markAllNotificationsRead();
+      setNotificationUnreadCount(0);
+      setNotifications((prev) =>
+        prev.map((item) => ({ ...item, is_read: true }))
+      );
+    } catch {
+      // Keep UI responsive even if marking read fails.
+    }
+  }, [notificationUnreadCount]);
 
   const closeUploadModal = () => {
     setActiveUploadModal(null);
@@ -82,6 +147,7 @@ const TopNavBar: React.FC = () => {
 
   const handleMenuToggle = () => {
     setProfileMenuOpen(false);
+    setNotificationsMenuOpen(false);
     setMenuOpen((prev) => {
       const next = !prev;
       if (!next) {
@@ -93,6 +159,7 @@ const TopNavBar: React.FC = () => {
 
   const handleUploadMenuToggle = () => {
     setProfileMenuOpen(false);
+    setNotificationsMenuOpen(false);
     setUploadMenuOpen((prev) => !prev);
   };
 
@@ -100,12 +167,14 @@ const TopNavBar: React.FC = () => {
     setMenuOpen(false);
     setUploadMenuOpen(false);
     setProfileMenuOpen(false);
+    setNotificationsMenuOpen(false);
   };
 
   const handleLogout = () => {
     setMenuOpen(false);
     setUploadMenuOpen(false);
     setProfileMenuOpen(false);
+    setNotificationsMenuOpen(false);
     logout();
   };
 
@@ -113,7 +182,41 @@ const TopNavBar: React.FC = () => {
     if (!isMobileNav) {
       return;
     }
+    setNotificationsMenuOpen(false);
     setProfileMenuOpen((prev) => !prev);
+  };
+
+  const handleNotificationsToggle = () => {
+    setProfileMenuOpen(false);
+    setUploadMenuOpen(false);
+    setNotificationsMenuOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        void (async () => {
+          const response = await loadNotifications();
+          await markAllAsReadIfNeeded(response?.unread_count || 0);
+        })();
+      }
+      return next;
+    });
+  };
+
+  const handleNotificationItemClick = async (notification: NotificationItem) => {
+    if (notification.is_read) {
+      return;
+    }
+
+    try {
+      await markNotificationRead(notification.id);
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notification.id ? { ...item, is_read: true } : item
+        )
+      );
+      setNotificationUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+    } catch {
+      // Ignore read-update failure to avoid blocking navigation.
+    }
   };
 
   useEffect(() => {
@@ -124,6 +227,7 @@ const TopNavBar: React.FC = () => {
         setMenuOpen(false);
         setUploadMenuOpen(false);
         setProfileMenuOpen(false);
+        setNotificationsMenuOpen(false);
       }
     };
 
@@ -146,7 +250,28 @@ const TopNavBar: React.FC = () => {
     setMenuOpen(false);
     setUploadMenuOpen(false);
     setProfileMenuOpen(false);
+    setNotificationsMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setNotificationUnreadCount(0);
+      setNotificationsError("");
+      return;
+    }
+
+    void loadNotifications();
+  }, [loadNotifications, user]);
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      void loadNotifications();
+    };
+
+    window.addEventListener("refereepoint:data-refresh", handleRefresh);
+    return () => window.removeEventListener("refereepoint:data-refresh", handleRefresh);
+  }, [loadNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -158,6 +283,7 @@ const TopNavBar: React.FC = () => {
         setMenuOpen(false);
         setUploadMenuOpen(false);
         setProfileMenuOpen(false);
+        setNotificationsMenuOpen(false);
       }
     };
 
@@ -167,6 +293,7 @@ const TopNavBar: React.FC = () => {
         setMenuOpen(false);
         setUploadMenuOpen(false);
         setProfileMenuOpen(false);
+        setNotificationsMenuOpen(false);
       }
     };
 
@@ -203,8 +330,14 @@ const TopNavBar: React.FC = () => {
   const isRefereeUser = Boolean(user?.referee_profile);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const canViewReports = Boolean(
+    user?.can_approve_accounts ||
+      user?.account_type === "DOA" ||
+      user?.account_type === "NL"
+  );
   const managerNavLinks = [
     ...managerBaseNavLinks.filter((link) => hasEventManagerScope || link.path !== "/events"),
+    ...(canViewReports ? [{ name: "Reports", path: "/reports" }] : []),
     ...(canApproveAccounts ? [{ name: "Account Approvals", path: "/account-approvals" }] : []),
   ];
   const navLinks = isRefereeUser
@@ -329,39 +462,133 @@ const TopNavBar: React.FC = () => {
           </button>
 
           {user ? (
-            <div className={`profile-menu ${profileMenuOpen ? "open" : ""}`}>
-              <button
-                className="profile-menu-trigger"
-                onClick={handleProfileToggle}
-                aria-expanded={isMobileNav ? profileMenuOpen : undefined}
-                aria-haspopup="menu"
-                type="button"
-                title={userDisplayName}
-              >
-                <span className="profile-avatar-wrap" aria-hidden="true">
-                  <span className="profile-avatar">{userInitials}</span>
-                  <span className="profile-avatar-caret">v</span>
-                </span>
-              </button>
-              <div className="profile-menu-panel" role="menu">
-                <Link
-                  to="/account-settings"
-                  onClick={handleLinkClick}
-                  className="profile-menu-link"
-                  role="menuitem"
-                >
-                  Account Settings
-                </Link>
+            <>
+              <div className={`notifications-menu ${notificationsMenuOpen ? "open" : ""}`}>
                 <button
+                  className="notifications-menu-trigger"
+                  onClick={handleNotificationsToggle}
+                  aria-expanded={notificationsMenuOpen}
+                  aria-haspopup="menu"
                   type="button"
-                  onClick={handleLogout}
-                  className="profile-menu-link profile-menu-action profile-menu-action-danger"
-                  role="menuitem"
+                  title="Notifications"
                 >
-                  Logout
+                  <svg
+                    className="notifications-menu-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M15 18H9M17 8a5 5 0 10-10 0c0 4-2 5-2 5h14s-2-1-2-5z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  {notificationUnreadCount > 0 && (
+                    <span className="notifications-menu-badge">
+                      {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
+                    </span>
+                  )}
                 </button>
+                <div className="notifications-menu-panel" role="menu">
+                  <div className="notifications-menu-header">
+                    <h3>Notifications</h3>
+                    <button
+                      type="button"
+                      className="notifications-menu-refresh"
+                      onClick={() => void loadNotifications()}
+                    >
+                      Refresh
+                    </button>
+                  </div>
+
+                  {notificationsLoading ? (
+                    <p className="notifications-menu-state">Loading notifications...</p>
+                  ) : notificationsError ? (
+                    <p className="notifications-menu-state error">{notificationsError}</p>
+                  ) : notifications.length === 0 ? (
+                    <p className="notifications-menu-state">No notifications yet.</p>
+                  ) : (
+                    <div className="notifications-menu-list">
+                      {notifications.map((notification) =>
+                        notification.link_path ? (
+                          <Link
+                            key={notification.id}
+                            to={notification.link_path}
+                            onClick={async () => {
+                              await handleNotificationItemClick(notification);
+                              handleLinkClick();
+                            }}
+                            className={`notifications-menu-item ${notification.is_read ? "" : "is-unread"}`}
+                            role="menuitem"
+                          >
+                            <div className="notifications-menu-item-top">
+                              <h4>{notification.title}</h4>
+                              <span>{toNotificationTime(notification.created_at)}</span>
+                            </div>
+                            <p>{notification.message}</p>
+                          </Link>
+                        ) : (
+                          <button
+                            key={notification.id}
+                            type="button"
+                            onClick={async () => {
+                              await handleNotificationItemClick(notification);
+                              setNotificationsMenuOpen(false);
+                            }}
+                            className={`notifications-menu-item notifications-menu-item-button ${notification.is_read ? "" : "is-unread"}`}
+                            role="menuitem"
+                          >
+                            <div className="notifications-menu-item-top">
+                              <h4>{notification.title}</h4>
+                              <span>{toNotificationTime(notification.created_at)}</span>
+                            </div>
+                            <p>{notification.message}</p>
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+
+              <div className={`profile-menu ${profileMenuOpen ? "open" : ""}`}>
+                <button
+                  className="profile-menu-trigger"
+                  onClick={handleProfileToggle}
+                  aria-expanded={isMobileNav ? profileMenuOpen : undefined}
+                  aria-haspopup="menu"
+                  type="button"
+                  title={userDisplayName}
+                >
+                  <span className="profile-avatar-wrap" aria-hidden="true">
+                    <span className="profile-avatar">{userInitials}</span>
+                    <span className="profile-avatar-caret">v</span>
+                  </span>
+                </button>
+                <div className="profile-menu-panel" role="menu">
+                  <Link
+                    to="/account-settings"
+                    onClick={handleLinkClick}
+                    className="profile-menu-link"
+                    role="menuitem"
+                  >
+                    Account Settings
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="profile-menu-link profile-menu-action profile-menu-action-danger"
+                    role="menuitem"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </>
           ) : (
             <Link to="/login">Login</Link>
           )}
@@ -374,6 +601,7 @@ const TopNavBar: React.FC = () => {
           onClick={() => {
             setMenuOpen(false);
             setUploadMenuOpen(false);
+            setNotificationsMenuOpen(false);
           }}
         >
           <div

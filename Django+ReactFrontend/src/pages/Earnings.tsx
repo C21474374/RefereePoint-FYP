@@ -1,23 +1,70 @@
 import { useEffect, useState } from "react";
 import {
   getEarnings,
-  type EarningsPeriod,
+  type EarningsGameType,
   type EarningsResponse,
 } from "../services/earnings";
 import "../pages_css/Earnings.css";
 
+function currentYearMonthValue() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${now.getFullYear()}-${month}`;
+}
+
+function parseYearMonth(value: string) {
+  const matched = /^(\d{4})-(\d{2})$/.exec(value || "");
+  if (!matched) {
+    return null;
+  }
+  const year = Number(matched[1]);
+  const month = Number(matched[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    return null;
+  }
+  return { year, month };
+}
+
 export default function Earnings() {
-  const [period, setPeriod] = useState<EarningsPeriod>("month");
+  const [gameType, setGameType] = useState<EarningsGameType>("DOA");
+  const [selectedMonthValue, setSelectedMonthValue] = useState(currentYearMonthValue());
+  const [monthOptions, setMonthOptions] = useState<
+    Array<{
+      value: string;
+      label: string;
+      is_finalized: boolean;
+    }>
+  >([]);
   const [report, setReport] = useState<EarningsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadReport = async (nextPeriod: EarningsPeriod) => {
+  const loadReport = async (nextGameType: EarningsGameType, nextMonthValue: string) => {
+    const parsed = parseYearMonth(nextMonthValue) || parseYearMonth(currentYearMonthValue());
+    if (!parsed) {
+      setError("Invalid month selected.");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
-      const data = await getEarnings(nextPeriod);
+      const data = await getEarnings({
+        gameType: nextGameType,
+        year: parsed.year,
+        month: parsed.month,
+      });
       setReport(data);
+      setMonthOptions(
+        (data.available_months || []).map((item) => ({
+          value: item.value,
+          label: item.label,
+          is_finalized: item.is_finalized,
+        }))
+      );
+      if (data.selected_month?.value && data.selected_month.value !== nextMonthValue) {
+        setSelectedMonthValue(data.selected_month.value);
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to load earnings.");
@@ -27,25 +74,51 @@ export default function Earnings() {
   };
 
   useEffect(() => {
-    loadReport(period);
-  }, [period]);
+    loadReport(gameType, selectedMonthValue);
+  }, [gameType, selectedMonthValue]);
 
   return (
     <div className="earnings-page">
       <div className="earnings-header">
         <h1>Earnings</h1>
-        <p>DOA appointed games only. NL claims will be added later.</p>
+        <p>View monthly appointed claims by type. DOA and NL are tracked separately.</p>
       </div>
 
       <div className="earnings-controls">
+        <div className="earnings-type-toggle" role="tablist" aria-label="Earnings game type">
+          <button
+            type="button"
+            className={`earnings-type-btn ${gameType === "DOA" ? "active" : ""}`}
+            onClick={() => setGameType("DOA")}
+            aria-pressed={gameType === "DOA"}
+          >
+            DOA
+          </button>
+          <button
+            type="button"
+            className={`earnings-type-btn ${gameType === "NL" ? "active" : ""}`}
+            onClick={() => setGameType("NL")}
+            aria-pressed={gameType === "NL"}
+          >
+            NL
+          </button>
+        </div>
+
         <select
-          className="earnings-period-select"
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as EarningsPeriod)}
+          className="earnings-month-select"
+          value={selectedMonthValue}
+          onChange={(e) => setSelectedMonthValue(e.target.value)}
         >
-          <option value="month">This Month</option>
-          <option value="year">This Year</option>
-          <option value="all">All Time</option>
+          {monthOptions.length === 0 ? (
+            <option value={selectedMonthValue}>{selectedMonthValue}</option>
+          ) : (
+            monthOptions.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+                {item.is_finalized ? " (Saved)" : ""}
+              </option>
+            ))
+          )}
         </select>
       </div>
 
@@ -65,7 +138,7 @@ export default function Earnings() {
             <h2>Summary</h2>
             <div className="earnings-summary-grid">
               <div className="earnings-summary-card">
-                <p>Appointed DOA Games</p>
+                <p>Appointed {report.rules.game_type_display} Games</p>
                 <h3>{report.totals.games_count}</h3>
               </div>
               <div className="earnings-summary-card">
@@ -82,14 +155,17 @@ export default function Earnings() {
               </div>
             </div>
             <p className="earnings-note">
-              Missing distance games: {report.totals.missing_distance_games}
+              Missing distance games: {report.totals.missing_distance_games}{" "}
+              {report.selected_month?.is_finalized ? "| Month finalized and saved." : ""}
             </p>
           </section>
 
           <section className="earnings-section">
             <h2>Per-Game Breakdown</h2>
             {report.items.length === 0 ? (
-              <p className="earnings-info">No appointed DOA games found for this period.</p>
+              <p className="earnings-info">
+                No appointed {report.rules.game_type_display} games found for this month.
+              </p>
             ) : (
               <div className="earnings-items">
                 {report.items.map((item) => (

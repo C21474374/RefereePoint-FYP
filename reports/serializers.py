@@ -47,6 +47,14 @@ class ReportableGameSerializer(serializers.Serializer):
 class GameReportSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     game_details = GameSerializer(source="game", read_only=True)
+    referee_name = serializers.CharField(
+        source="referee.user.get_full_name",
+        read_only=True,
+    )
+    referee_grade = serializers.CharField(
+        source="referee.get_grade_display",
+        read_only=True,
+    )
     submitted_by_name = serializers.CharField(
         source="submitted_by.get_full_name",
         read_only=True,
@@ -63,6 +71,8 @@ class GameReportSerializer(serializers.ModelSerializer):
             "game",
             "game_details",
             "referee",
+            "referee_name",
+            "referee_grade",
             "submitted_by",
             "submitted_by_name",
             "match_no",

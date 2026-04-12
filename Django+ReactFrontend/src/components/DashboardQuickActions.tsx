@@ -49,10 +49,24 @@ export default function DashboardQuickActions() {
   const isRefereeUser = Boolean(user?.referee_profile);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const canViewReports = Boolean(
+    user?.can_approve_accounts ||
+      user?.account_type === "DOA" ||
+      user?.account_type === "NL"
+  );
   const managerActions = [
     ...managerBaseActions.filter(
       (action) => hasEventManagerScope || action.path !== "/events"
     ),
+    ...(canViewReports
+      ? [
+          {
+            name: "Reports",
+            path: "/reports",
+            description: "Review reports submitted by referees.",
+          },
+        ]
+      : []),
     ...(canApproveAccounts
       ? [
           {

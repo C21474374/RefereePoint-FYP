@@ -24,11 +24,38 @@
 .earnings-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 16px;
 }
 
-.earnings-period-select {
+.earnings-type-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-bg-panel);
+}
+
+.earnings-type-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  padding: 10px 14px;
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.earnings-type-btn + .earnings-type-btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.earnings-type-btn.active {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.earnings-month-select {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-bg-panel);
@@ -232,6 +259,16 @@
 @media (max-width: 760px) {
   .earnings-page {
     padding: 22px 16px 30px;
+  }
+
+  .earnings-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .earnings-type-toggle,
+  .earnings-month-select {
+    width: 100%;
   }
 
   .earnings-summary-grid {

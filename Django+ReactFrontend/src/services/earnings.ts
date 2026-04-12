@@ -30,12 +30,28 @@ export type EarningsResponse = {
     home_lon: number | null;
   };
   rules: {
-    base_fee_doa: string;
+    game_type: "DOA" | "NL";
+    game_type_display: string;
+    base_fee: string;
     rate_per_km: string;
     included_games: string;
     excluded_expenses: string[];
   };
   period: string;
+  selected_month: {
+    year: number;
+    month: number;
+    value: string;
+    label: string;
+    is_finalized: boolean;
+  };
+  available_months: Array<{
+    year: number;
+    month: number;
+    value: string;
+    label: string;
+    is_finalized: boolean;
+  }>;
   totals: {
     games_count: number;
     base_fee_total: string;
@@ -47,10 +63,21 @@ export type EarningsResponse = {
   items: EarningsItem[];
 };
 
-export type EarningsPeriod = "month" | "year" | "all";
+export type EarningsGameType = "DOA" | "NL";
 
-export const getEarnings = async (period: EarningsPeriod) => {
-  const response = await axiosInstance.get<EarningsResponse>(`/expenses/earnings/?period=${period}`);
+export const getEarnings = async (params: {
+  gameType: EarningsGameType;
+  year: number;
+  month: number;
+}) => {
+  const response = await axiosInstance.get<EarningsResponse>("/expenses/earnings/", {
+    params: {
+      period: "month",
+      game_type: params.gameType,
+      year: params.year,
+      month: params.month,
+    },
+  });
   return response.data;
 };
 

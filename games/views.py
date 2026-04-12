@@ -17,6 +17,7 @@ from .serializers import (
 from users.models import RefereeProfile
 from cover_requests.models import CoverRequest
 from events.models import Event
+from notifications.services import notify_non_appointed_slot_claimed
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from datetime import datetime, time as dt_time
@@ -281,6 +282,10 @@ class ClaimNonAppointedSlotAPIView(APIView):
         slot.claimed_at = timezone.now()
 
         slot.save()
+        try:
+            notify_non_appointed_slot_claimed(slot, actor_user=request.user)
+        except Exception:
+            pass
 
         serializer = NonAppointedSlotSerializer(slot)
 

@@ -48,6 +48,8 @@ export type GameReport = {
   game: number;
   game_details: GameDetails;
   referee: number;
+  referee_name?: string;
+  referee_grade?: string;
   submitted_by: number;
   submitted_by_name: string;
   match_no: string;
@@ -97,5 +99,14 @@ export const createGameReport = async (payload: CreateGameReportPayload) => {
 
 export const getMyReports = async () => {
   const response = await axiosInstance.get<GameReport[]>("/reports/my/");
+  return response.data;
+};
+
+export const getAdminReports = async (params?: {
+  status?: "PENDING" | "REVIEWED" | "RESOLVED";
+}) => {
+  const response = await axiosInstance.get<GameReport[]>("/reports/admin/", {
+    params,
+  });
   return response.data;
 };

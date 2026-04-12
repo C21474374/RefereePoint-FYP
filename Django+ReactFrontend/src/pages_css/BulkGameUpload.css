@@ -61,6 +61,28 @@
   gap: 10px;
 }
 
+.bulk-upload-month-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-upload-month-filter span {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.bulk-upload-month-filter select {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 .bulk-upload-actions-top button,
 .row-remove-btn {
   border: 1px solid var(--color-border);
@@ -192,6 +214,13 @@
   min-width: 74px;
 }
 
+.bulk-upload-empty-inline {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 6px 0;
+}
+
 @media (max-width: 760px) {
   .bulk-upload-page {
     padding: 22px 16px 30px;
@@ -205,6 +234,15 @@
   .bulk-upload-actions-top {
     justify-content: stretch;
     flex-direction: column;
+  }
+
+  .bulk-upload-month-filter {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .bulk-upload-month-filter select {
+    width: 100%;
   }
 
   .bulk-upload-actions-top button,

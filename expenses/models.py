@@ -79,3 +79,70 @@ class ExpenseRecord(models.Model):
 
     def __str__(self):
         return f"Expense {self.assignment_id} - {self.total_amount}"
+
+
+class MonthlyEarningsSnapshot(models.Model):
+    referee = models.ForeignKey(
+        "users.RefereeProfile",
+        on_delete=models.CASCADE,
+        related_name="monthly_earnings_snapshots",
+    )
+    game_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("DOA", "DOA"),
+            ("NL", "National League"),
+        ],
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveSmallIntegerField()
+    games_count = models.PositiveIntegerField(default=0)
+    base_fee_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+    travel_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+    mileage_km_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+    total_claim_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+    missing_distance_games = models.PositiveIntegerField(default=0)
+    items_snapshot = models.JSONField(default=list, blank=True)
+    finalized_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "expenses_monthly_earnings_snapshot"
+        ordering = ["-year", "-month", "game_type"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["referee", "game_type", "year", "month"],
+                name="unique_monthly_earnings_snapshot_per_ref_type",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(month__gte=1) & models.Q(month__lte=12),
+                name="expenses_monthly_snapshot_month_range",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.referee} | {self.game_type} | "
+            f"{self.year}-{str(self.month).zfill(2)} | {self.total_claim_amount}"
+        )

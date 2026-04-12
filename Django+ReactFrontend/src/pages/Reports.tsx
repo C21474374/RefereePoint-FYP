@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   createGameReport,
+  getAdminReports,
   getMyReports,
   getReportableGames,
   type GameDetails,
@@ -8,6 +10,9 @@ import {
   type ReportableGame,
 } from "../services/reports";
 import "../pages_css/Reports.css";
+
+type AdminStatusFilter = "ALL" | "PENDING" | "REVIEWED" | "RESOLVED";
+type ReportsSectionKey = "adminSubmittedReports";
 
 type ReportFormState = {
   match_no: string;
@@ -134,8 +139,19 @@ function gameTitle(gameDetails: GameDetails | undefined) {
 }
 
 export default function Reports() {
+  const { user } = useAuth();
+  const isRefereeMode = user?.account_type === "REFEREE";
+  const isAdminReportsMode =
+    user?.account_type === "DOA" ||
+    user?.account_type === "NL" ||
+    Boolean(user?.can_approve_accounts);
+
   const [reportableGames, setReportableGames] = useState<ReportableGame[]>([]);
   const [reports, setReports] = useState<GameReport[]>([]);
+  const [adminStatusFilter, setAdminStatusFilter] = useState<AdminStatusFilter>("ALL");
+  const [expandedSections, setExpandedSections] = useState<Record<ReportsSectionKey, boolean>>({
+    adminSubmittedReports: false,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -145,24 +161,52 @@ export default function Reports() {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const toggleSection = (key: ReportsSectionKey) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   const loadPageData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
+      setSuccess("");
 
-      const [reportableGamesData, myReportsData] = await Promise.all([
-        getReportableGames(),
-        getMyReports(),
-      ]);
+      if (isRefereeMode) {
+        const [reportableGamesData, myReportsData] = await Promise.all([
+          getReportableGames(),
+          getMyReports(),
+        ]);
 
-      setReportableGames(reportableGamesData);
-      setReports(myReportsData);
+        setReportableGames(reportableGamesData);
+        setReports(myReportsData);
+        return;
+      }
+
+      if (isAdminReportsMode) {
+        const adminReports = await getAdminReports(
+          adminStatusFilter === "ALL"
+            ? undefined
+            : {
+                status: adminStatusFilter,
+              }
+        );
+        setReportableGames([]);
+        setReports(adminReports);
+        return;
+      }
+
+      setReportableGames([]);
+      setReports([]);
+      setError("You do not have permission to view reports.");
     } catch (err) {
       setError(getErrorMessage(err, "Failed to load reports."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [adminStatusFilter, isAdminReportsMode, isRefereeMode]);
 
   useEffect(() => {
     loadPageData();
@@ -237,10 +281,18 @@ export default function Reports() {
     <div className="reports-page">
       <div className="reports-page-header">
         <h1>Reports</h1>
-        <p>
-          Submit incident reports for games you refereed in the last 7 days,
-          then track review status below.
-        </p>
+        {isRefereeMode ? (
+          <p>
+            Submit incident reports for games you refereed in the last 7 days,
+            then track review status below.
+          </p>
+        ) : isAdminReportsMode ? (
+          <p>
+            Review referee-submitted reports for DOA/NL workflows.
+          </p>
+        ) : (
+          <p>This page is only available to referee, DOA, and NL roles.</p>
+        )}
       </div>
 
       {loading && <p className="reports-page-message">Loading report data...</p>}
@@ -249,96 +301,188 @@ export default function Reports() {
 
       {!loading && (
         <>
-          <section className="reports-section">
-            <div className="reports-section-header">
-              <h2>Past Games (Last 7 Days)</h2>
-              <p>Only completed/past games inside the 7-day report window are shown.</p>
-            </div>
+          {isRefereeMode ? (
+            <>
+              <section className="reports-section">
+                <div className="reports-section-header">
+                  <h2>Past Games (Last 7 Days)</h2>
+                  <p>Only completed/past games inside the 7-day report window are shown.</p>
+                </div>
 
-            {reportableGames.length === 0 ? (
-              <div className="reports-empty-state">
-                <p>No reportable games found in the last 7 days.</p>
+                {reportableGames.length === 0 ? (
+                  <div className="reports-empty-state">
+                    <p>No reportable games found in the last 7 days.</p>
+                  </div>
+                ) : (
+                  <div className="reports-game-list">
+                    {reportableGames.map((item) => (
+                      <article key={item.game_id} className="reports-game-card">
+                        <div className="reports-game-card-top">
+                          <h3>{gameTitle(item.game_details)}</h3>
+                          {item.has_report && (
+                            <span className={`reports-status-chip ${statusClassName(item.report_status)}`}>
+                              {item.report_status_display || "Reported"}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="reports-game-meta">
+                          {toDisplayDate(item.game_details?.date)} | {toDisplayTime(item.game_details?.time)} |{" "}
+                          {item.game_details?.venue_name || "Venue TBC"}
+                        </p>
+
+                        <div className="reports-game-tags">
+                          <span>{item.game_details?.division_display || item.game_details?.division_name || "Division TBC"}</span>
+                          <span>{item.game_details?.game_type_display || "Game"}</span>
+                          {item.roles_display.map((role) => (
+                            <span key={`${item.game_id}-${role}`}>{role}</span>
+                          ))}
+                        </div>
+
+                        <div className="reports-game-actions">
+                          <button
+                            type="button"
+                            className="reports-action-button"
+                            onClick={() => openReportModal(item)}
+                            disabled={item.has_report}
+                          >
+                            {item.has_report ? "Report Submitted" : "Report"}
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="reports-section">
+                <div className="reports-section-header">
+                  <h2>Report Status</h2>
+                  <p>Track your submitted reports by status: Pending, Reviewed, and Resolved.</p>
+                </div>
+
+                {reports.length === 0 ? (
+                  <div className="reports-empty-state">
+                    <p>You have not submitted any reports yet.</p>
+                  </div>
+                ) : (
+                  <div className="reports-status-list">
+                    {reports.map((report) => (
+                      <article key={report.id} className="reports-status-card">
+                        <div className="reports-status-card-top">
+                          <h3>{gameTitle(report.game_details)}</h3>
+                          <span className={`reports-status-chip ${statusClassName(report.status)}`}>
+                            {report.status_display}
+                          </span>
+                        </div>
+
+                        <p className="reports-status-meta">
+                          Submitted: {toDisplayDateTime(report.created_at)} | Game date:{" "}
+                          {toDisplayDate(report.game_details?.date)}
+                        </p>
+
+                        <p className="reports-status-summary">
+                          {report.incident_details}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
+          ) : isAdminReportsMode ? (
+            <section
+              className={`reports-section reports-collapsible-section ${
+                expandedSections.adminSubmittedReports ? "expanded" : "collapsed"
+              }`}
+            >
+              <div className="reports-section-header">
+                <h2>Submitted Referee Reports</h2>
+                <p>View reports submitted by referees, with status and game details.</p>
               </div>
-            ) : (
-              <div className="reports-game-list">
-                {reportableGames.map((item) => (
-                  <article key={item.game_id} className="reports-game-card">
-                    <div className="reports-game-card-top">
-                      <h3>{gameTitle(item.game_details)}</h3>
-                      {item.has_report && (
-                        <span className={`reports-status-chip ${statusClassName(item.report_status)}`}>
-                          {item.report_status_display || "Reported"}
-                        </span>
-                      )}
+
+              {expandedSections.adminSubmittedReports && (
+                <div className="reports-collapsible-content">
+                  <div className="reports-admin-toolbar">
+                    <label>
+                      <span>Status</span>
+                      <select
+                        value={adminStatusFilter}
+                        onChange={(event) =>
+                          setAdminStatusFilter(event.target.value as AdminStatusFilter)
+                        }
+                      >
+                        <option value="ALL">All</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="REVIEWED">Reviewed</option>
+                        <option value="RESOLVED">Resolved</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {reports.length === 0 ? (
+                    <div className="reports-empty-state">
+                      <p>No submitted reports for this filter.</p>
                     </div>
+                  ) : (
+                    <div className="reports-status-list">
+                      {reports.map((report) => (
+                        <article key={report.id} className="reports-status-card">
+                          <div className="reports-status-card-top">
+                            <h3>{gameTitle(report.game_details)}</h3>
+                            <span className={`reports-status-chip ${statusClassName(report.status)}`}>
+                              {report.status_display}
+                            </span>
+                          </div>
 
-                    <p className="reports-game-meta">
-                      {toDisplayDate(item.game_details?.date)} | {toDisplayTime(item.game_details?.time)} |{" "}
-                      {item.game_details?.venue_name || "Venue TBC"}
-                    </p>
+                          <p className="reports-status-meta">
+                            Submitted: {toDisplayDateTime(report.created_at)} | Referee:{" "}
+                            {report.referee_name || report.submitted_by_name || "Unknown"}{" "}
+                            {report.referee_grade ? `(${report.referee_grade})` : ""}
+                          </p>
 
-                    <div className="reports-game-tags">
-                      <span>{item.game_details?.division_display || item.game_details?.division_name || "Division TBC"}</span>
-                      <span>{item.game_details?.game_type_display || "Game"}</span>
-                      {item.roles_display.map((role) => (
-                        <span key={`${item.game_id}-${role}`}>{role}</span>
+                          <p className="reports-status-meta">
+                            Game: {toDisplayDate(report.game_details?.date)} |{" "}
+                            {toDisplayTime(report.game_details?.time)} |{" "}
+                            {report.game_details?.venue_name || "Venue TBC"}
+                          </p>
+
+                          <p className="reports-status-summary">
+                            <strong>Incident:</strong> {report.incident_details}
+                          </p>
+                          <p className="reports-status-summary">
+                            <strong>Action Taken:</strong> {report.action_taken}
+                          </p>
+                        </article>
                       ))}
                     </div>
+                  )}
+                </div>
+              )}
 
-                    <div className="reports-game-actions">
-                      <button
-                        type="button"
-                        className="reports-action-button"
-                        onClick={() => openReportModal(item)}
-                        disabled={item.has_report}
-                      >
-                        {item.has_report ? "Report Submitted" : "Report"}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="reports-section">
-            <div className="reports-section-header">
-              <h2>Report Status</h2>
-              <p>Track your submitted reports by status: Pending, Reviewed, and Resolved.</p>
-            </div>
-
-            {reports.length === 0 ? (
+              <button
+                type="button"
+                className="reports-section-toggle"
+                onClick={() => toggleSection("adminSubmittedReports")}
+                aria-expanded={expandedSections.adminSubmittedReports}
+              >
+                <span>{expandedSections.adminSubmittedReports ? "Collapse" : "Expand"}</span>
+                <span className="reports-section-toggle-icon" aria-hidden="true">
+                  {expandedSections.adminSubmittedReports ? "^" : "v"}
+                </span>
+              </button>
+            </section>
+          ) : (
+            <section className="reports-section">
               <div className="reports-empty-state">
-                <p>You have not submitted any reports yet.</p>
+                <p>You do not have permission to view reports.</p>
               </div>
-            ) : (
-              <div className="reports-status-list">
-                {reports.map((report) => (
-                  <article key={report.id} className="reports-status-card">
-                    <div className="reports-status-card-top">
-                      <h3>{gameTitle(report.game_details)}</h3>
-                      <span className={`reports-status-chip ${statusClassName(report.status)}`}>
-                        {report.status_display}
-                      </span>
-                    </div>
-
-                    <p className="reports-status-meta">
-                      Submitted: {toDisplayDateTime(report.created_at)} | Game date:{" "}
-                      {toDisplayDate(report.game_details?.date)}
-                    </p>
-
-                    <p className="reports-status-summary">
-                      {report.incident_details}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+            </section>
+          )}
         </>
       )}
 
-      {selectedGame && (
+      {isRefereeMode && selectedGame && (
         <div className="upload-modal-overlay" onClick={closeReportModal}>
           <div className="upload-modal reports-modal" onClick={(event) => event.stopPropagation()}>
             <div className="upload-modal-header">

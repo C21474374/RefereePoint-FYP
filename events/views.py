@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.models import RefereeProfile
+from notifications.services import notify_event_joined, notify_event_left
 
 from .models import Event, EventRefereeAssignment
 from .serializers import EventCreateUpdateSerializer, EventSerializer
@@ -259,6 +260,10 @@ class JoinEventAPIView(APIView):
                 event=event,
                 referee=referee_profile,
             )
+            try:
+                notify_event_joined(event, referee_user=request.user)
+            except Exception:
+                pass
 
         event = (
             Event.objects.select_related("venue", "created_by")
@@ -305,6 +310,10 @@ class LeaveEventAPIView(APIView):
             )
 
         assignment.delete()
+        try:
+            notify_event_left(event, referee_user=request.user)
+        except Exception:
+            pass
 
         event.refresh_from_db()
         serializer = EventSerializer(event, context={"request": request})

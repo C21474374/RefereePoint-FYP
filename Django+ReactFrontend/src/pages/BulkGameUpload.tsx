@@ -70,6 +70,8 @@ type SpreadsheetValidationResult =
   | SpreadsheetValidationError
   | SpreadsheetValidationSuccess;
 
+const MONTH_FILTER_ALL = "ALL_MONTHS";
+
 function normalizeTimeValue(value: string) {
   if (!value) {
     return "";
@@ -136,6 +138,91 @@ function createEmptyRow(id: number): UploadRow {
     status: "READY",
     message: "",
     uploading: false,
+  };
+}
+
+function toMonthKey(dateValue: string) {
+  if (!dateValue || dateValue.length < 7) {
+    return "";
+  }
+  return dateValue.slice(0, 7);
+}
+
+function getCurrentMonthKey() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${now.getFullYear()}-${month}`;
+}
+
+type PersistedDraftRow = SpreadsheetRowFields & {
+  id: number;
+};
+
+function getDraftStorageKey(userId?: number, accountType?: string) {
+  if (!userId || !accountType) {
+    return "";
+  }
+  return `refereepoint.bulk-upload-drafts.${accountType}.${userId}`;
+}
+
+function sanitizePersistedDraftRows(
+  value: unknown
+): { rows: UploadRow[]; nextRowId: number; monthFilter: string | null } | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const payload = value as {
+    rows?: unknown;
+    nextRowId?: unknown;
+    monthFilter?: unknown;
+  };
+
+  const rawRows = Array.isArray(payload.rows) ? payload.rows : [];
+  const rows: UploadRow[] = rawRows
+    .map((row): UploadRow | null => {
+      if (!row || typeof row !== "object") {
+        return null;
+      }
+      const candidate = row as Partial<PersistedDraftRow>;
+      const id = Number(candidate.id);
+      if (!Number.isFinite(id) || id <= 0) {
+        return null;
+      }
+      return {
+        id,
+        date: typeof candidate.date === "string" ? candidate.date : "",
+        time: typeof candidate.time === "string" ? candidate.time : "",
+        venue: typeof candidate.venue === "string" ? candidate.venue : "",
+        division: typeof candidate.division === "string" ? candidate.division : "",
+        home_team: typeof candidate.home_team === "string" ? candidate.home_team : "",
+        away_team: typeof candidate.away_team === "string" ? candidate.away_team : "",
+        crew_chief: typeof candidate.crew_chief === "string" ? candidate.crew_chief : "",
+        umpire_1: typeof candidate.umpire_1 === "string" ? candidate.umpire_1 : "",
+        status: "READY",
+        message: "",
+        uploading: false,
+      };
+    })
+    .filter((row): row is UploadRow => Boolean(row));
+
+  const safeRows = rows.length > 0 ? rows : [createEmptyRow(1)];
+  const maxRowId = safeRows.reduce((maxId, row) => Math.max(maxId, row.id), 0);
+  const rawNextRowId = Number(payload.nextRowId);
+  const nextRowId =
+    Number.isFinite(rawNextRowId) && rawNextRowId > maxRowId
+      ? rawNextRowId
+      : maxRowId + 1;
+
+  const monthFilter =
+    typeof payload.monthFilter === "string" && payload.monthFilter.trim()
+      ? payload.monthFilter
+      : null;
+
+  return {
+    rows: safeRows,
+    nextRowId,
+    monthFilter,
   };
 }
 
@@ -280,6 +367,8 @@ export default function BulkGameUpload({
   const [loadingExisting, setLoadingExisting] = useState(true);
   const [pageError, setPageError] = useState("");
   const [pageSuccess, setPageSuccess] = useState("");
+  const [monthFilter, setMonthFilter] = useState(getCurrentMonthKey());
+  const [draftsHydrated, setDraftsHydrated] = useState(false);
 
   const appointedDivisionIds = useMemo(
     () =>
@@ -376,6 +465,49 @@ export default function BulkGameUpload({
     [gameType]
   );
 
+  const monthOptions = useMemo(() => {
+    const uniqueMonths = new Set<string>();
+
+    existingRows.forEach((row) => {
+      const month = toMonthKey(row.date);
+      if (month) {
+        uniqueMonths.add(month);
+      }
+    });
+
+    rows.forEach((row) => {
+      const month = toMonthKey(row.date);
+      if (month) {
+        uniqueMonths.add(month);
+      }
+    });
+
+    uniqueMonths.add(getCurrentMonthKey());
+
+    if (monthFilter !== MONTH_FILTER_ALL) {
+      uniqueMonths.add(monthFilter);
+    }
+
+    return Array.from(uniqueMonths).sort((a, b) => b.localeCompare(a));
+  }, [existingRows, monthFilter, rows]);
+
+  const filteredExistingRows = useMemo(() => {
+    if (monthFilter === MONTH_FILTER_ALL) {
+      return existingRows;
+    }
+    return existingRows.filter((row) => toMonthKey(row.date) === monthFilter);
+  }, [existingRows, monthFilter]);
+
+  const filteredDraftRows = useMemo(() => {
+    if (monthFilter === MONTH_FILTER_ALL) {
+      return rows;
+    }
+    return rows.filter((row) => {
+      const rowMonth = toMonthKey(row.date);
+      return !rowMonth || rowMonth === monthFilter;
+    });
+  }, [monthFilter, rows]);
+
   const reloadUploadedSpreadsheet = useCallback(async () => {
     if (!isDoaOrNl) {
       setExistingRows([]);
@@ -435,6 +567,96 @@ export default function BulkGameUpload({
 
     loadInitialData();
   }, [isDoaOrNl, sortedUploadedGames]);
+
+  useEffect(() => {
+    if (!isDoaOrNl || !user?.id || typeof window === "undefined") {
+      return;
+    }
+
+    setDraftsHydrated(false);
+    const storageKey = getDraftStorageKey(user.id, user.account_type);
+    if (!storageKey) {
+      setDraftsHydrated(true);
+      return;
+    }
+
+    try {
+      const rawValue = window.localStorage.getItem(storageKey);
+      if (!rawValue) {
+        setRows([createEmptyRow(1)]);
+        setNextRowId(2);
+        setMonthFilter(getCurrentMonthKey());
+        return;
+      }
+
+      const parsed = JSON.parse(rawValue) as unknown;
+      const sanitized = sanitizePersistedDraftRows(parsed);
+      if (!sanitized) {
+        setRows([createEmptyRow(1)]);
+        setNextRowId(2);
+        setMonthFilter(getCurrentMonthKey());
+        return;
+      }
+
+      setRows(sanitized.rows);
+      setNextRowId(sanitized.nextRowId);
+
+      if (sanitized.monthFilter) {
+        setMonthFilter(sanitized.monthFilter);
+      }
+    } catch {
+      setRows([createEmptyRow(1)]);
+      setNextRowId(2);
+      setMonthFilter(getCurrentMonthKey());
+    }
+    setDraftsHydrated(true);
+  }, [isDoaOrNl, user?.account_type, user?.id]);
+
+  useEffect(() => {
+    if (!isDoaOrNl || !user?.id || typeof window === "undefined" || !draftsHydrated) {
+      return;
+    }
+
+    const storageKey = getDraftStorageKey(user.id, user.account_type);
+    if (!storageKey) {
+      return;
+    }
+
+    const persistedRows = rows.map<PersistedDraftRow>((row) => ({
+      id: row.id,
+      date: row.date,
+      time: row.time,
+      venue: row.venue,
+      division: row.division,
+      home_team: row.home_team,
+      away_team: row.away_team,
+      crew_chief: row.crew_chief,
+      umpire_1: row.umpire_1,
+    }));
+
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          rows: persistedRows,
+          nextRowId,
+          monthFilter,
+          savedAt: new Date().toISOString(),
+        })
+      );
+    } catch {
+      // Ignore local storage failures (private mode/quota).
+    }
+  }, [draftsHydrated, isDoaOrNl, monthFilter, nextRowId, rows, user?.account_type, user?.id]);
+
+  useEffect(() => {
+    if (monthFilter === MONTH_FILTER_ALL) {
+      return;
+    }
+    if (!monthOptions.includes(monthFilter)) {
+      setMonthFilter(getCurrentMonthKey());
+    }
+  }, [monthFilter, monthOptions]);
 
   useEffect(() => {
     if (!isDoaOrNl || loadingOptions) {
@@ -962,6 +1184,20 @@ export default function BulkGameUpload({
 
       <section className="bulk-upload-card">
         <div className="bulk-upload-actions-top">
+          <label className="bulk-upload-month-filter">
+            <span>Month</span>
+            <select
+              value={monthFilter}
+              onChange={(event) => setMonthFilter(event.target.value)}
+            >
+              <option value={MONTH_FILTER_ALL}>All Months</option>
+              {monthOptions.map((month) => (
+                <option key={month} value={month}>
+                  {month}
+                </option>
+              ))}
+            </select>
+          </label>
           <button type="button" onClick={addRow}>
             Add Row
           </button>
@@ -988,7 +1224,7 @@ export default function BulkGameUpload({
               </thead>
               <tbody>
                 {!loadingExisting &&
-                  existingRows.map((row) => (
+                  filteredExistingRows.map((row) => (
                     <tr key={row.game_id} className={`row-${row.status.toLowerCase()}`}>
                       <td>
                         <input
@@ -1168,7 +1404,7 @@ export default function BulkGameUpload({
                     </tr>
                   ))
                 }
-                {rows.map((row) => (
+                {filteredDraftRows.map((row) => (
                   <tr key={row.id} className={`row-${row.status.toLowerCase()}`}>
                     <td>
                       <input
@@ -1326,6 +1562,17 @@ export default function BulkGameUpload({
                     </td>
                   </tr>
                 ))}
+                {!loadingExisting &&
+                  filteredExistingRows.length === 0 &&
+                  filteredDraftRows.length === 0 && (
+                    <tr>
+                      <td colSpan={10}>
+                        <p className="bulk-upload-empty-inline">
+                          No uploaded or draft games for this month.
+                        </p>
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
