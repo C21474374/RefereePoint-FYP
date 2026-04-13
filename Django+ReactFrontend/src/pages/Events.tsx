@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import EventCard from "../components/events/EventCard";
 import EventForm from "../components/events/EventForm";
+import AppIcon from "../components/AppIcon";
 import { useAuth } from "../context/AuthContext";
 import {
   deleteEvent,
@@ -212,7 +213,10 @@ export default function Events() {
   return (
     <div className="events-page">
       <div className="events-page-header">
-        <h1>Events</h1>
+        <h1 className="page-title-with-icon">
+          <AppIcon name="events" className="page-title-icon" />
+          <span>Events</span>
+        </h1>
         <p>
           {isRefereeUser
             ? "Join tournament events, track referee coverage, and manage who is assigned."
@@ -258,7 +262,10 @@ export default function Events() {
             onClick={clearFilters}
             disabled={!hasActiveFilters}
           >
-            Clear Filters
+            <span className="button-with-icon">
+              <AppIcon name="filter" />
+              <span>Clear Filters</span>
+            </span>
           </button>
         </div>
       )}
@@ -274,7 +281,10 @@ export default function Events() {
             }`}
           >
             <div className="events-section-header">
-              <h2>Manage Uploaded Events</h2>
+              <h2 className="section-title-with-icon">
+                <AppIcon name="upload" className="section-title-icon" />
+                <span>Manage Uploaded Events</span>
+              </h2>
               <p>Events you uploaded. Use this section to manage or delete your events.</p>
             </div>
 
@@ -306,7 +316,10 @@ export default function Events() {
               onClick={() => toggleSection("manageEvents")}
               aria-expanded={expandedSections.manageEvents}
             >
-              <span>{expandedSections.manageEvents ? "Collapse" : "Expand"}</span>
+              <span className="inline-icon-label">
+                <AppIcon name={expandedSections.manageEvents ? "filter" : "plus"} />
+                <span>{expandedSections.manageEvents ? "Collapse" : "Expand"}</span>
+              </span>
               <span className="events-section-toggle-icon" aria-hidden="true">
                 {expandedSections.manageEvents ? "^" : "v"}
               </span>
@@ -321,7 +334,10 @@ export default function Events() {
                 }`}
               >
                 <div className="events-section-header">
-                  <h2>My Event Assignments</h2>
+                  <h2 className="section-title-with-icon">
+                    <AppIcon name="calendar" className="section-title-icon" />
+                    <span>My Event Assignments</span>
+                  </h2>
                   <p>Events you are currently assigned to referee.</p>
                 </div>
 
@@ -352,7 +368,10 @@ export default function Events() {
                   onClick={() => toggleSection("myEvents")}
                   aria-expanded={expandedSections.myEvents}
                 >
-                  <span>{expandedSections.myEvents ? "Collapse" : "Expand"}</span>
+                  <span className="inline-icon-label">
+                    <AppIcon name={expandedSections.myEvents ? "filter" : "plus"} />
+                    <span>{expandedSections.myEvents ? "Collapse" : "Expand"}</span>
+                  </span>
                   <span className="events-section-toggle-icon" aria-hidden="true">
                     {expandedSections.myEvents ? "^" : "v"}
                   </span>
@@ -365,7 +384,10 @@ export default function Events() {
                 }`}
               >
                 <div className="events-section-header">
-                  <h2>Open Tournament Events</h2>
+                  <h2 className="section-title-with-icon">
+                    <AppIcon name="events" className="section-title-icon" />
+                    <span>Open Tournament Events</span>
+                  </h2>
                   <p>Join open events and help cover tournament schedules.</p>
                 </div>
 
@@ -396,7 +418,10 @@ export default function Events() {
                   onClick={() => toggleSection("openEvents")}
                   aria-expanded={expandedSections.openEvents}
                 >
-                  <span>{expandedSections.openEvents ? "Collapse" : "Expand"}</span>
+                  <span className="inline-icon-label">
+                    <AppIcon name={expandedSections.openEvents ? "filter" : "plus"} />
+                    <span>{expandedSections.openEvents ? "Collapse" : "Expand"}</span>
+                  </span>
                   <span className="events-section-toggle-icon" aria-hidden="true">
                     {expandedSections.openEvents ? "^" : "v"}
                   </span>
@@ -410,7 +435,10 @@ export default function Events() {
                   }`}
                 >
                   <div className="events-section-header">
-                    <h2>Currently Full</h2>
+                    <h2 className="section-title-with-icon">
+                      <AppIcon name="user" className="section-title-icon" />
+                      <span>Currently Full</span>
+                    </h2>
                     <p>Events that are at capacity and waiting for a spot.</p>
                   </div>
 
@@ -435,7 +463,10 @@ export default function Events() {
                     onClick={() => toggleSection("fullEvents")}
                     aria-expanded={expandedSections.fullEvents}
                   >
-                    <span>{expandedSections.fullEvents ? "Collapse" : "Expand"}</span>
+                    <span className="inline-icon-label">
+                      <AppIcon name={expandedSections.fullEvents ? "filter" : "plus"} />
+                      <span>{expandedSections.fullEvents ? "Collapse" : "Expand"}</span>
+                    </span>
                     <span className="events-section-toggle-icon" aria-hidden="true">
                       {expandedSections.fullEvents ? "^" : "v"}
                     </span>
@@ -461,7 +492,10 @@ export default function Events() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="upload-modal-header">
-              <h2>Edit Event</h2>
+              <h2 className="section-title-with-icon">
+                <AppIcon name="settings" className="section-title-icon" />
+                <span>Edit Event</span>
+              </h2>
               <button
                 type="button"
                 className="upload-modal-close"

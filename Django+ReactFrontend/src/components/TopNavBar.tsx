@@ -8,27 +8,29 @@ import {
   markNotificationRead,
   type NotificationItem,
 } from "../services/notifications";
+import AppIcon, { type AppIconName } from "./AppIcon";
 import UploadGamePanel from "./UploadGamePanel";
 import UploadEventPanel from "./UploadEventPanel";
 
 type UploadModalType = "game" | "event" | null;
+type NavLinkItem = { name: string; path: string; icon: AppIconName };
 type UploadMenuItem =
-  | { label: string; kind: "modal"; type: Exclude<UploadModalType, null> }
-  | { label: string; kind: "route"; path: string };
+  | { label: string; icon: AppIconName; kind: "modal"; type: Exclude<UploadModalType, null> }
+  | { label: string; icon: AppIconName; kind: "route"; path: string };
 
-const refereeNavLinks = [
-  { name: "Dashboard", path: "/dashboard" },
-  { name: "Opportunities", path: "/games" },
-  { name: "Cover Requests", path: "/cover-requests" },
-  { name: "Events", path: "/events" },
-  { name: "Reports", path: "/reports" },
-  { name: "Earnings", path: "/earnings" },
+const refereeNavLinks: NavLinkItem[] = [
+  { name: "Dashboard", path: "/dashboard", icon: "dashboard" },
+  { name: "Opportunities", path: "/games", icon: "opportunities" },
+  { name: "Cover Requests", path: "/cover-requests", icon: "cover" },
+  { name: "Events", path: "/events", icon: "events" },
+  { name: "Reports", path: "/reports", icon: "reports" },
+  { name: "Earnings", path: "/earnings", icon: "earnings" },
 ];
 
-const managerBaseNavLinks = [
-  { name: "Dashboard", path: "/dashboard" },
-  { name: "Games", path: "/games" },
-  { name: "Events", path: "/events" },
+const managerBaseNavLinks: NavLinkItem[] = [
+  { name: "Dashboard", path: "/dashboard", icon: "dashboard" },
+  { name: "Games", path: "/games", icon: "games" },
+  { name: "Events", path: "/events", icon: "events" },
 ];
 
 function buildUserInitials(
@@ -335,10 +337,26 @@ const TopNavBar: React.FC = () => {
       user?.account_type === "DOA" ||
       user?.account_type === "NL"
   );
-  const managerNavLinks = [
+  const managerNavLinks: NavLinkItem[] = [
     ...managerBaseNavLinks.filter((link) => hasEventManagerScope || link.path !== "/events"),
-    ...(canViewReports ? [{ name: "Reports", path: "/reports" }] : []),
-    ...(canApproveAccounts ? [{ name: "Account Approvals", path: "/account-approvals" }] : []),
+    ...(canViewReports
+      ? ([
+          {
+            name: "Reports",
+            path: "/reports",
+            icon: "reports" as AppIconName,
+          },
+        ] as NavLinkItem[])
+      : []),
+    ...(canApproveAccounts
+      ? ([
+          {
+            name: "Account Approvals",
+            path: "/account-approvals",
+            icon: "approvals" as AppIconName,
+          },
+        ] as NavLinkItem[])
+      : []),
   ];
   const navLinks = isRefereeUser
     ? refereeNavLinks.filter(
@@ -358,11 +376,11 @@ const TopNavBar: React.FC = () => {
       ? [
           ...(showBulkGameUploadInGamesPage
             ? []
-            : ([{ label: "Upload Game", kind: "modal", type: "game" }] as const)),
+            : ([{ label: "Upload Game", icon: "games", kind: "modal", type: "game" }] as const)),
         ]
       : []),
     ...(canUploadEvent
-      ? ([{ label: "Upload Event", kind: "modal", type: "event" }] as const)
+      ? ([{ label: "Upload Event", icon: "events", kind: "modal", type: "event" }] as const)
       : []),
   ];
   const singleUploadRouteItem =
@@ -398,7 +416,10 @@ const TopNavBar: React.FC = () => {
               onClick={handleLinkClick}
               className={`nav-link ${location.pathname === link.path ? "active" : ""}`}
             >
-              {link.name}
+              <span className="nav-link-content">
+                <AppIcon name={link.icon} className="nav-link-icon" />
+                <span>{link.name}</span>
+              </span>
             </Link>
           ))}
 
@@ -409,7 +430,10 @@ const TopNavBar: React.FC = () => {
                 onClick={handleLinkClick}
                 className={`nav-link ${location.pathname === singleUploadRouteItem.path ? "active" : ""}`}
               >
-                Upload
+                <span className="nav-link-content">
+                  <AppIcon name={singleUploadRouteItem.icon} className="nav-link-icon" />
+                  <span>Upload</span>
+                </span>
               </Link>
             ) : (
               <div className={`upload-menu ${uploadMenuOpen ? "open" : ""}`}>
@@ -420,7 +444,10 @@ const TopNavBar: React.FC = () => {
                   aria-haspopup="menu"
                   type="button"
                 >
-                  Upload
+                  <span className="nav-link-content">
+                    <AppIcon name="upload" className="nav-link-icon" />
+                    <span>Upload</span>
+                  </span>
                 </button>
                 <div className="upload-menu-panel" role="menu">
                   {uploadItems.map((item) => (
@@ -432,7 +459,10 @@ const TopNavBar: React.FC = () => {
                         className="upload-menu-link upload-menu-action"
                         role="menuitem"
                       >
-                        {item.label}
+                        <span className="upload-menu-link-content">
+                          <AppIcon name={item.icon} className="upload-menu-link-icon" />
+                          <span>{item.label}</span>
+                        </span>
                       </button>
                     ) : (
                       <Link
@@ -442,7 +472,10 @@ const TopNavBar: React.FC = () => {
                         className="upload-menu-link upload-menu-action"
                         role="menuitem"
                       >
-                        {item.label}
+                        <span className="upload-menu-link-content">
+                          <AppIcon name={item.icon} className="upload-menu-link-icon" />
+                          <span>{item.label}</span>
+                        </span>
                       </Link>
                     )
                   ))}
@@ -458,7 +491,13 @@ const TopNavBar: React.FC = () => {
             type="button"
             title="Toggle theme"
           >
-            {theme === "dark" ? "Light" : "Dark"}
+            <span className="theme-toggle-content">
+              <AppIcon
+                name={theme === "dark" ? "sun" : "moon"}
+                className="theme-toggle-icon"
+              />
+              <span>{theme === "dark" ? "Light" : "Dark"}</span>
+            </span>
           </button>
 
           {user ? (
@@ -472,21 +511,7 @@ const TopNavBar: React.FC = () => {
                   type="button"
                   title="Notifications"
                 >
-                  <svg
-                    className="notifications-menu-icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M15 18H9M17 8a5 5 0 10-10 0c0 4-2 5-2 5h14s-2-1-2-5z"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <AppIcon name="notifications" className="notifications-menu-icon" />
                   {notificationUnreadCount > 0 && (
                     <span className="notifications-menu-badge">
                       {notificationUnreadCount > 9 ? "9+" : notificationUnreadCount}
@@ -576,7 +601,10 @@ const TopNavBar: React.FC = () => {
                     className="profile-menu-link"
                     role="menuitem"
                   >
-                    Account Settings
+                    <span className="profile-menu-link-content">
+                      <AppIcon name="settings" className="profile-menu-link-icon" />
+                      <span>Account Settings</span>
+                    </span>
                   </Link>
                   <button
                     type="button"
@@ -584,13 +612,21 @@ const TopNavBar: React.FC = () => {
                     className="profile-menu-link profile-menu-action profile-menu-action-danger"
                     role="menuitem"
                   >
-                    Logout
+                    <span className="profile-menu-link-content">
+                      <AppIcon name="logout" className="profile-menu-link-icon" />
+                      <span>Logout</span>
+                    </span>
                   </button>
                 </div>
               </div>
             </>
           ) : (
-            <Link to="/login">Login</Link>
+            <Link to="/login" className="nav-link">
+              <span className="nav-link-content">
+                <AppIcon name="user" className="nav-link-icon" />
+                <span>Login</span>
+              </span>
+            </Link>
           )}
         </div>
       </nav>
@@ -622,7 +658,10 @@ const TopNavBar: React.FC = () => {
                   onClick={handleLinkClick}
                   className={`mobile-menu-link ${location.pathname === link.path ? "active" : ""}`}
                 >
-                  {link.name}
+                  <span className="mobile-menu-link-content">
+                    <AppIcon name={link.icon} className="mobile-menu-link-icon" />
+                    <span>{link.name}</span>
+                  </span>
                 </Link>
               ))}
 
@@ -633,7 +672,10 @@ const TopNavBar: React.FC = () => {
                     onClick={handleLinkClick}
                     className={`mobile-menu-link ${location.pathname === singleUploadRouteItem.path ? "active" : ""}`}
                   >
-                    Upload
+                    <span className="mobile-menu-link-content">
+                      <AppIcon name="upload" className="mobile-menu-link-icon" />
+                      <span>Upload</span>
+                    </span>
                   </Link>
                 ) : (
                   <div className={`mobile-upload ${uploadMenuOpen ? "open" : ""}`}>
@@ -643,7 +685,10 @@ const TopNavBar: React.FC = () => {
                       onClick={handleUploadMenuToggle}
                       aria-expanded={uploadMenuOpen}
                     >
-                      Upload
+                      <span className="mobile-menu-action-content">
+                        <AppIcon name="upload" className="mobile-menu-link-icon" />
+                        <span>Upload</span>
+                      </span>
                     </button>
                     <div className="mobile-upload-panel">
                       {uploadItems.map((item) => (
@@ -654,7 +699,10 @@ const TopNavBar: React.FC = () => {
                             onClick={() => openUploadModal(item.type)}
                             className="mobile-upload-item"
                           >
-                            {item.label}
+                            <span className="mobile-upload-item-content">
+                              <AppIcon name={item.icon} className="mobile-menu-link-icon" />
+                              <span>{item.label}</span>
+                            </span>
                           </button>
                         ) : (
                           <Link
@@ -663,7 +711,10 @@ const TopNavBar: React.FC = () => {
                             onClick={handleLinkClick}
                             className="mobile-upload-item"
                           >
-                            {item.label}
+                            <span className="mobile-upload-item-content">
+                              <AppIcon name={item.icon} className="mobile-menu-link-icon" />
+                              <span>{item.label}</span>
+                            </span>
                           </Link>
                         )
                       ))}

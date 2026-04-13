@@ -12,6 +12,7 @@ import {
   getAccessToken,
   type CurrentUser,
 } from "../services/auth";
+import AppIcon from "../components/AppIcon";
 import UploadCoverRequestPanel from "../components/UploadCoverRequestPanel";
 import CoverRequestCard from "../components/coverRequests/CoverRequestCard";
 import "../pages_css/CoverRequests.css";
@@ -127,7 +128,10 @@ export default function CoverRequestsPage() {
     <div className="cover-requests-page">
       <div className="cover-requests-page-header">
         <div>
-          <h1>Cover Requests</h1>
+          <h1 className="page-title-with-icon">
+            <AppIcon name="cover" className="page-title-icon" />
+            <span>Cover Requests</span>
+          </h1>
           <p>
             Request cover for your games or claim open cover requests from other
             referees.
@@ -142,7 +146,10 @@ export default function CoverRequestsPage() {
               setShowRequestModal(true);
             }}
           >
-            Request Cover
+            <span className="button-with-icon">
+              <AppIcon name="plus" />
+              <span>Request Cover</span>
+            </span>
           </button>
         )}
       </div>
@@ -161,7 +168,10 @@ export default function CoverRequestsPage() {
             }`}
           >
             <div className="cover-requests-section-header">
-              <h2>Manage Cover Requests</h2>
+              <h2 className="section-title-with-icon">
+                <AppIcon name="settings" className="section-title-icon" />
+                <span>Manage Cover Requests</span>
+              </h2>
               <p>Requests you created and requests you have claimed.</p>
             </div>
 
@@ -207,7 +217,10 @@ export default function CoverRequestsPage() {
               onClick={() => toggleSection("manageCoverRequests")}
               aria-expanded={expandedSections.manageCoverRequests}
             >
-              <span>{expandedSections.manageCoverRequests ? "Collapse" : "Expand"}</span>
+              <span className="inline-icon-label">
+                <AppIcon name={expandedSections.manageCoverRequests ? "filter" : "plus"} />
+                <span>{expandedSections.manageCoverRequests ? "Collapse" : "Expand"}</span>
+              </span>
               <span className="cover-requests-section-toggle-icon" aria-hidden="true">
                 {expandedSections.manageCoverRequests ? "^" : "v"}
               </span>
@@ -220,7 +233,10 @@ export default function CoverRequestsPage() {
             }`}
           >
             <div className="cover-requests-section-header">
-              <h2>Find Games to Cover</h2>
+              <h2 className="section-title-with-icon">
+                <AppIcon name="games" className="section-title-icon" />
+                <span>Find Games to Cover</span>
+              </h2>
               <p>Open requests from other referees that you can claim.</p>
             </div>
 
@@ -252,7 +268,10 @@ export default function CoverRequestsPage() {
               onClick={() => toggleSection("availableCoverRequests")}
               aria-expanded={expandedSections.availableCoverRequests}
             >
-              <span>{expandedSections.availableCoverRequests ? "Collapse" : "Expand"}</span>
+              <span className="inline-icon-label">
+                <AppIcon name={expandedSections.availableCoverRequests ? "filter" : "plus"} />
+                <span>{expandedSections.availableCoverRequests ? "Collapse" : "Expand"}</span>
+              </span>
               <span className="cover-requests-section-toggle-icon" aria-hidden="true">
                 {expandedSections.availableCoverRequests ? "^" : "v"}
               </span>
@@ -268,7 +287,10 @@ export default function CoverRequestsPage() {
         >
           <div className="upload-modal" onClick={(event) => event.stopPropagation()}>
             <div className="upload-modal-header">
-              <h2>Request Cover</h2>
+              <h2 className="section-title-with-icon">
+                <AppIcon name="cover" className="section-title-icon" />
+                <span>Request Cover</span>
+              </h2>
               <button
                 type="button"
                 className="upload-modal-close"

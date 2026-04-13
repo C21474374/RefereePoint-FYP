@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Opportunity } from "../pages/Games";
 import { useAuth } from "../context/AuthContext";
+import AppIcon from "./AppIcon";
 import GameDetailsModal, { type GameDetailsModalData } from "./GameDetailsModal";
 
 type GameCardProps = {
@@ -148,10 +149,18 @@ const GameCard = ({
     <>
       <div className="game-card">
         <div className="game-card-top">
-          <span className={`game-card-type ${typeClassName}`}>{typeLabel}</span>
+          <span className={`game-card-type ${typeClassName}`}>
+            <span className="inline-icon-label">
+              <AppIcon name={isEvent ? "events" : isCoverRequest ? "cover" : "games"} />
+              <span>{typeLabel}</span>
+            </span>
+          </span>
 
           {opportunity.role_display && (
-            <span className="game-card-role">{opportunity.role_display}</span>
+            <span className="game-card-role inline-icon-label">
+              <AppIcon name="user" />
+              <span>{opportunity.role_display}</span>
+            </span>
           )}
         </div>
 
@@ -165,20 +174,32 @@ const GameCard = ({
 
         <div className="game-card-meta">
           {isEvent ? (
-            <span>
-              {formatDate(opportunity.date)}
-              {opportunity.event_end_date ? ` to ${formatDate(opportunity.event_end_date)}` : ""}
+            <span className="inline-icon-label">
+              <AppIcon name="calendar" />
+              <span>
+                {formatDate(opportunity.date)}
+                {opportunity.event_end_date ? ` to ${formatDate(opportunity.event_end_date)}` : ""}
+              </span>
             </span>
           ) : (
             <>
-              <span>{formatDate(opportunity.date)}</span>
+              <span className="inline-icon-label">
+                <AppIcon name="calendar" />
+                <span>{formatDate(opportunity.date)}</span>
+              </span>
               <span>|</span>
-              <span>{formatTime(opportunity.time)}</span>
+              <span className="inline-icon-label">
+                <AppIcon name="time" />
+                <span>{formatTime(opportunity.time)}</span>
+              </span>
             </>
           )}
         </div>
 
-        <div className="game-card-venue">{opportunity.venue_name ?? "Venue TBC"}</div>
+        <div className="game-card-venue inline-icon-label">
+          <AppIcon name="home" />
+          <span>{opportunity.venue_name ?? "Venue TBC"}</span>
+        </div>
 
         {recommendationScore !== null && (
           <div className="game-card-recommendation">
@@ -201,7 +222,10 @@ const GameCard = ({
             className="game-card-view-btn"
             onClick={() => setDetailsOpen(true)}
           >
-            View Details
+            <span className="button-with-icon">
+              <AppIcon name="reports" />
+              <span>View Details</span>
+            </span>
           </button>
         </div>
       </div>

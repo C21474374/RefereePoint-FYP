@@ -1,3 +1,4 @@
+import AppIcon from "./AppIcon";
 import GameCard from "./GameCard";
 import type { Opportunity } from "../pages/Games";
 
@@ -34,7 +35,10 @@ const Gameslist = ({
       {showRecommendations && recommended.length > 0 && (
         <>
           <div className="games-list-section-header">
-            <h3>Recommended For You</h3>
+            <h3 className="section-title-with-icon">
+              <AppIcon name="opportunities" className="section-title-icon" />
+              <span>Recommended For You</span>
+            </h3>
             <p>Top opportunities ranked by fit, distance, and urgency.</p>
           </div>
           {recommended.map((opportunity) => (
@@ -52,7 +56,10 @@ const Gameslist = ({
 
       {showRecommendations && otherOpportunities.length > 0 && (
         <div className="games-list-section-header">
-          <h3>More Opportunities</h3>
+          <h3 className="section-title-with-icon">
+            <AppIcon name="games" className="section-title-icon" />
+            <span>More Opportunities</span>
+          </h3>
           <p>Additional matches and requests available to you.</p>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AppIcon from "../components/AppIcon";
 import {
   getEarnings,
   type EarningsGameType,
@@ -80,7 +81,10 @@ export default function Earnings() {
   return (
     <div className="earnings-page">
       <div className="earnings-header">
-        <h1>Earnings</h1>
+        <h1 className="page-title-with-icon">
+          <AppIcon name="earnings" className="page-title-icon" />
+          <span>Earnings</span>
+        </h1>
         <p>View monthly appointed claims by type. DOA and NL are tracked separately.</p>
       </div>
 
@@ -135,7 +139,10 @@ export default function Earnings() {
           )}
 
           <section className="earnings-section">
-            <h2>Summary</h2>
+            <h2 className="section-title-with-icon">
+              <AppIcon name="dashboard" className="section-title-icon" />
+              <span>Summary</span>
+            </h2>
             <div className="earnings-summary-grid">
               <div className="earnings-summary-card">
                 <p>Appointed {report.rules.game_type_display} Games</p>
@@ -161,7 +168,10 @@ export default function Earnings() {
           </section>
 
           <section className="earnings-section">
-            <h2>Per-Game Breakdown</h2>
+            <h2 className="section-title-with-icon">
+              <AppIcon name="games" className="section-title-icon" />
+              <span>Per-Game Breakdown</span>
+            </h2>
             {report.items.length === 0 ? (
               <p className="earnings-info">
                 No appointed {report.rules.game_type_display} games found for this month.

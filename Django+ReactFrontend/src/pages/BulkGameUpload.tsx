@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AppIcon from "../components/AppIcon";
 import { useAuth } from "../context/AuthContext";
 import {
   deleteUploadedGame,
@@ -1158,7 +1159,10 @@ export default function BulkGameUpload({
     return (
       <div className="bulk-upload-page">
         <div className="bulk-upload-header">
-          <h1>Upload Games</h1>
+          <h1 className="page-title-with-icon">
+            <AppIcon name="upload" className="page-title-icon" />
+            <span>Upload Games</span>
+          </h1>
           <p>Bulk upload is currently available for DOA/NL accounts only.</p>
         </div>
       </div>
@@ -1168,7 +1172,17 @@ export default function BulkGameUpload({
   return (
     <div className={`bulk-upload-page ${embedded ? "bulk-upload-page-embedded" : ""}`.trim()}>
       <div className="bulk-upload-header">
-        {embedded ? <h2>Upload Games</h2> : <h1>Upload Games</h1>}
+        {embedded ? (
+          <h2 className="section-title-with-icon">
+            <AppIcon name="upload" className="section-title-icon" />
+            <span>Upload Games</span>
+          </h2>
+        ) : (
+          <h1 className="page-title-with-icon">
+            <AppIcon name="upload" className="page-title-icon" />
+            <span>Upload Games</span>
+          </h1>
+        )}
         <p>
           Add multiple {gameType === "NL" ? "NL" : "DOA"} games in one go. Each row is one game.
         </p>
@@ -1185,7 +1199,10 @@ export default function BulkGameUpload({
       <section className="bulk-upload-card">
         <div className="bulk-upload-actions-top">
           <label className="bulk-upload-month-filter">
-            <span>Month</span>
+            <span className="inline-icon-label">
+              <AppIcon name="calendar" />
+              <span>Month</span>
+            </span>
             <select
               value={monthFilter}
               onChange={(event) => setMonthFilter(event.target.value)}
@@ -1199,7 +1216,10 @@ export default function BulkGameUpload({
             </select>
           </label>
           <button type="button" onClick={addRow}>
-            Add Row
+            <span className="button-with-icon">
+              <AppIcon name="plus" />
+              <span>Add Row</span>
+            </span>
           </button>
         </div>
 

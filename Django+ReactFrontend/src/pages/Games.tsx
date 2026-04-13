@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import GamesMap from "../components/GamesMap";
 import Gameslist from "../components/Gameslist";
+import AppIcon from "../components/AppIcon";
 import BulkGameUpload from "./BulkGameUpload";
 import { getAccessToken } from "../services/auth";
 import { useAuth } from "../context/AuthContext";
@@ -566,7 +567,13 @@ export default function Games() {
     <div className="games-page">
       <div className="games-header">
         <div>
-          <h1>{isRefereeUser ? "Opportunities" : "Games"}</h1>
+          <h1 className="page-title-with-icon">
+            <AppIcon
+              name={isRefereeUser ? "opportunities" : "games"}
+              className="page-title-icon"
+            />
+            <span>{isRefereeUser ? "Opportunities" : "Games"}</span>
+          </h1>
           <p>
             {isRefereeUser
               ? "Find non-appointed games, cover requests, and events."
@@ -592,7 +599,10 @@ export default function Games() {
               onClick={() => setSelectedVenueId(null)}
               disabled={selectedVenueId === null}
             >
-              Clear Venue
+              <span className="button-with-icon">
+                <AppIcon name="filter" />
+                <span>Clear Venue</span>
+              </span>
             </button>
           </div>
         )}
@@ -636,14 +646,20 @@ export default function Games() {
           }`}
         >
           <div className="games-manage-header">
-            <h2>Manage Uploaded Games</h2>
+            <h2 className="section-title-with-icon">
+              <AppIcon name="upload" className="section-title-icon" />
+              <span>Manage Uploaded Games</span>
+            </h2>
             <p>Games your account uploaded. Edit, delete, and filter by month.</p>
           </div>
           {expandedSections.manageUploadedGames && (
             <div className="games-manage-section-content">
               <div className="games-manage-toolbar">
                 <label>
-                  <span>Month</span>
+                  <span className="inline-icon-label">
+                    <AppIcon name="calendar" />
+                    <span>Month</span>
+                  </span>
                   <select
                     value={manageMonthFilter}
                     onChange={(event) => setManageMonthFilter(event.target.value)}
@@ -684,7 +700,10 @@ export default function Games() {
                               onClick={() => openEditModal(game)}
                               disabled={manageActionId === game.id}
                             >
-                              Edit
+                              <span className="button-with-icon">
+                                <AppIcon name="settings" />
+                                <span>Edit</span>
+                              </span>
                             </button>
                             <button
                               type="button"
@@ -692,7 +711,10 @@ export default function Games() {
                               onClick={() => handleDeleteUploaded(game.id)}
                               disabled={manageActionId === game.id}
                             >
-                              {manageActionId === game.id ? "Deleting..." : "Delete"}
+                              <span className="button-with-icon">
+                                <AppIcon name="logout" />
+                                <span>{manageActionId === game.id ? "Deleting..." : "Delete"}</span>
+                              </span>
                             </button>
                           </div>
                         ) : (
@@ -716,7 +738,10 @@ export default function Games() {
                         (slot) => slot.status === "CLAIMED" && Boolean(slot.claimed_by_name)
                       ) && (
                         <div className="games-manage-claim-notifications">
-                          <p className="games-manage-claim-title">Referee Claim Notifications</p>
+                          <p className="games-manage-claim-title inline-icon-label">
+                            <AppIcon name="notifications" />
+                            <span>Referee Claim Notifications</span>
+                          </p>
                           <div className="games-manage-claim-list">
                             {game.uploaded_slots
                               .filter(
@@ -744,7 +769,10 @@ export default function Games() {
             onClick={() => toggleSection("manageUploadedGames")}
             aria-expanded={expandedSections.manageUploadedGames}
           >
-            <span>{expandedSections.manageUploadedGames ? "Collapse" : "Expand"}</span>
+            <span className="inline-icon-label">
+              <AppIcon name={expandedSections.manageUploadedGames ? "filter" : "plus"} />
+              <span>{expandedSections.manageUploadedGames ? "Collapse" : "Expand"}</span>
+            </span>
             <span className="games-manage-section-toggle-icon" aria-hidden="true">
               {expandedSections.manageUploadedGames ? "^" : "v"}
             </span>
@@ -756,7 +784,10 @@ export default function Games() {
         <div className="upload-modal-overlay" onClick={closeEditModal}>
           <div className="upload-modal manage-game-modal" onClick={(event) => event.stopPropagation()}>
             <div className="upload-modal-header">
-              <h2>Edit Uploaded Game</h2>
+              <h2 className="section-title-with-icon">
+                <AppIcon name="settings" className="section-title-icon" />
+                <span>Edit Uploaded Game</span>
+              </h2>
               <button type="button" className="upload-modal-close" onClick={closeEditModal}>
                 Close
               </button>

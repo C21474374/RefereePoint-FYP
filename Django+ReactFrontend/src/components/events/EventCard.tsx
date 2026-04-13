@@ -1,4 +1,5 @@
 import type { EventItem } from "../../services/events";
+import AppIcon from "../AppIcon";
 import "./EventCard.css";
 
 type EventCardProps = {
@@ -57,7 +58,10 @@ export default function EventCard({
   return (
     <article className="event-card">
       <div className="event-card-top">
-        <h3 className="event-card-title">{event.venue_name || "Tournament Venue TBC"}</h3>
+        <h3 className="event-card-title section-title-with-icon">
+          <AppIcon name="events" className="section-title-icon" />
+          <span>{event.venue_name || "Tournament Venue TBC"}</span>
+        </h3>
         <span className="event-card-fee">
           {event.fee_per_game ? `EUR ${event.fee_per_game} / game` : "Fee TBC"}
         </span>
@@ -113,13 +117,18 @@ export default function EventCard({
                 onClick={handleAction}
                 disabled={isLoading || (!event.current_user_joined && !canJoin)}
               >
-                {isLoading
-                  ? event.current_user_joined
-                    ? "Leaving..."
-                    : "Joining..."
-                  : event.current_user_joined
-                    ? "Leave Event"
-                    : "Join Event"}
+                <span className="button-with-icon">
+                  <AppIcon name={event.current_user_joined ? "logout" : "plus"} />
+                  <span>
+                    {isLoading
+                      ? event.current_user_joined
+                        ? "Leaving..."
+                        : "Joining..."
+                      : event.current_user_joined
+                        ? "Leave Event"
+                        : "Join Event"}
+                  </span>
+                </span>
               </button>
             )}
 
@@ -130,7 +139,10 @@ export default function EventCard({
                 type="button"
                 disabled={isLoading}
               >
-                Edit
+                <span className="button-with-icon">
+                  <AppIcon name="settings" />
+                  <span>Edit</span>
+                </span>
               </button>
             )}
             {event.can_manage && onDelete && (
@@ -140,7 +152,10 @@ export default function EventCard({
                 type="button"
                 disabled={isLoading}
               >
-                Delete
+                <span className="button-with-icon">
+                  <AppIcon name="logout" />
+                  <span>Delete</span>
+                </span>
               </button>
             )}
           </div>

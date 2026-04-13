@@ -14,6 +14,44 @@
   z-index: 1000;
 }
 
+.app-icon {
+  flex-shrink: 0;
+}
+
+.page-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-title-icon {
+  width: 1.08em;
+  height: 1.08em;
+}
+
+.section-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title-icon {
+  width: 1em;
+  height: 1em;
+}
+
+.inline-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.button-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .nav-left,
 .nav-right {
   display: flex;
@@ -316,6 +354,17 @@
   text-align: left;
 }
 
+.profile-menu-link-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-menu-link-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .profile-menu-link:last-child {
   border-bottom: none;
 }
@@ -351,6 +400,18 @@
   font-weight: 500;
   padding: 6px 0;
   transition: color 0.2s ease;
+}
+
+.nav-link-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-link-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
 }
 
 .nav-link:hover {
@@ -419,6 +480,18 @@
   text-decoration: none;
   font-size: 0.9rem;
   text-align: left;
+}
+
+.upload-menu-link-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.upload-menu-link-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
 }
 
 .upload-menu-action {
@@ -644,6 +717,17 @@
   cursor: pointer;
 }
 
+.theme-toggle-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.theme-toggle-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .theme-toggle:hover {
   background: var(--color-bg-panel-2);
 }
@@ -763,6 +847,18 @@
     font-weight: 600;
   }
 
+  .mobile-menu-link-content,
+  .mobile-menu-action-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-menu-link-icon {
+    width: 14px;
+    height: 14px;
+  }
+
   .mobile-menu-link.active {
     border-color: var(--color-accent);
     color: var(--color-link-hover);
@@ -791,6 +887,12 @@
     text-align: left;
     font-size: 0.88rem;
     font-weight: 600;
+  }
+
+  .mobile-upload-item-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .mobile-menu-danger {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AppIcon from "../components/AppIcon";
 import { useAuth } from "../context/AuthContext";
 import { switchTestingRole, type AccountType } from "../services/auth";
 import { updateHomeLocation } from "../services/earnings";
@@ -292,7 +293,10 @@ export default function AccountSettings() {
   return (
     <div className="account-settings-page">
       <div className="account-settings-header">
-        <h1>Account Settings</h1>
+        <h1 className="page-title-with-icon">
+          <AppIcon name="settings" className="page-title-icon" />
+          <span>Account Settings</span>
+        </h1>
         <p>Manage your account details. Profile picture upload will be added next.</p>
       </div>
 
@@ -310,7 +314,10 @@ export default function AccountSettings() {
       </section>
 
       <section className="account-settings-card">
-        <h2>Profile Details</h2>
+        <h2 className="section-title-with-icon">
+          <AppIcon name="user" className="section-title-icon" />
+          <span>Profile Details</span>
+        </h2>
         <div className="account-settings-grid">
           <article>
             <span>{isRefereeUser ? "Grade" : "Role"}</span>
@@ -333,7 +340,10 @@ export default function AccountSettings() {
 
       {isRefereeUser && (
         <section className="account-settings-card">
-          <h2>Home Location</h2>
+          <h2 className="section-title-with-icon">
+            <AppIcon name="home" className="section-title-icon" />
+            <span>Home Location</span>
+          </h2>
           <p className="account-settings-availability-copy">
             Mileage is calculated from this address/location. Save with address/postcode to geocode
             automatically, or use current location.
@@ -374,7 +384,10 @@ export default function AccountSettings() {
               onClick={handleUseCurrentLocation}
               disabled={homeLocating}
             >
-              {homeLocating ? "Getting Location..." : "Use Current Location"}
+              <span className="button-with-icon">
+                <AppIcon name="home" />
+                <span>{homeLocating ? "Getting Location..." : "Use Current Location"}</span>
+              </span>
             </button>
             <button
               type="button"
@@ -382,7 +395,10 @@ export default function AccountSettings() {
               onClick={handleSaveHomeLocation}
               disabled={homeSaving}
             >
-              {homeSaving ? "Saving..." : "Save Home Location"}
+              <span className="button-with-icon">
+                <AppIcon name="settings" />
+                <span>{homeSaving ? "Saving..." : "Save Home Location"}</span>
+              </span>
             </button>
           </div>
           <p className="account-settings-availability-copy">
@@ -393,7 +409,10 @@ export default function AccountSettings() {
 
       {isRefereeUser && (
         <section className="account-settings-card">
-          <h2>Appointed Games Availability</h2>
+          <h2 className="section-title-with-icon">
+            <AppIcon name="calendar" className="section-title-icon" />
+            <span>Appointed Games Availability</span>
+          </h2>
           <p className="account-settings-availability-copy">
             Monday-Friday availability window is 19:00-22:00. Saturday-Sunday is 10:00-22:00.
             Changes saved here become active on the first day of next month.
@@ -480,14 +499,20 @@ export default function AccountSettings() {
               onClick={handleSaveAvailability}
               disabled={availabilitySaving || availabilityLoading}
             >
-              {availabilitySaving ? "Saving..." : "Save Availability Changes"}
+              <span className="button-with-icon">
+                <AppIcon name="settings" />
+                <span>{availabilitySaving ? "Saving..." : "Save Availability Changes"}</span>
+              </span>
             </button>
           </div>
         </section>
       )}
 
       <section className="account-settings-card">
-        <h2>Testing Bypass (Temporary)</h2>
+        <h2 className="section-title-with-icon">
+          <AppIcon name="approvals" className="section-title-icon" />
+          <span>Testing Bypass (Temporary)</span>
+        </h2>
         <p className="account-settings-testing-copy">
           Switch account role on the fly for faster testing. This is a temporary cheat flow.
         </p>
@@ -515,7 +540,10 @@ export default function AccountSettings() {
             onClick={handleRoleSwitch}
             disabled={switchingRole || !user || selectedRole === user.account_type}
           >
-            {switchingRole ? "Switching..." : "Switch Role"}
+            <span className="button-with-icon">
+              <AppIcon name="settings" />
+              <span>{switchingRole ? "Switching..." : "Switch Role"}</span>
+            </span>
           </button>
         </div>
       </section>

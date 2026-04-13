@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import AppIcon from "../components/AppIcon";
 import {
   approvePendingAccount,
   disapprovePendingAccount,
@@ -115,7 +116,10 @@ export default function AccountApprovals() {
     return (
       <div className="account-approvals-page">
         <div className="account-approvals-header">
-          <h1>Account Approvals</h1>
+          <h1 className="page-title-with-icon">
+            <AppIcon name="approvals" className="page-title-icon" />
+            <span>Account Approvals</span>
+          </h1>
           <p>Review and approve pending registrations.</p>
         </div>
 
@@ -131,7 +135,10 @@ export default function AccountApprovals() {
   return (
     <div className="account-approvals-page">
       <div className="account-approvals-header">
-        <h1>Account Approvals</h1>
+        <h1 className="page-title-with-icon">
+          <AppIcon name="approvals" className="page-title-icon" />
+          <span>Account Approvals</span>
+        </h1>
         <p>Approve pending user accounts submitted for manual review.</p>
       </div>
 
@@ -144,7 +151,10 @@ export default function AccountApprovals() {
         }`}
       >
         <div className="account-approvals-top">
-          <h2>Pending Accounts</h2>
+          <h2 className="section-title-with-icon">
+            <AppIcon name="user" className="section-title-icon" />
+            <span>Pending Accounts</span>
+          </h2>
           <span>{pendingAccounts.length}</span>
         </div>
         <p className="account-approvals-section-copy">
@@ -230,14 +240,22 @@ export default function AccountApprovals() {
                           onClick={() => handleDisapprove(account)}
                           disabled={actionUserId === account.id}
                         >
-                          {actionUserId === account.id ? "Processing..." : "Disapprove Request"}
+                          <span className="button-with-icon">
+                            <AppIcon name="logout" />
+                            <span>
+                              {actionUserId === account.id ? "Processing..." : "Disapprove Request"}
+                            </span>
+                          </span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleApprove(account)}
                           disabled={actionUserId === account.id}
                         >
-                          {actionUserId === account.id ? "Approving..." : "Approve Account"}
+                          <span className="button-with-icon">
+                            <AppIcon name="approvals" />
+                            <span>{actionUserId === account.id ? "Approving..." : "Approve Account"}</span>
+                          </span>
                         </button>
                       </div>
                     </article>
@@ -254,7 +272,10 @@ export default function AccountApprovals() {
           onClick={() => setPendingSectionExpanded((prev) => !prev)}
           aria-expanded={pendingSectionExpanded}
         >
-          <span>{pendingSectionExpanded ? "Collapse" : "Expand"}</span>
+          <span className="inline-icon-label">
+            <AppIcon name={pendingSectionExpanded ? "filter" : "plus"} />
+            <span>{pendingSectionExpanded ? "Collapse" : "Expand"}</span>
+          </span>
           <span className="account-approvals-section-toggle-icon" aria-hidden="true">
             {pendingSectionExpanded ? "^" : "v"}
           </span>

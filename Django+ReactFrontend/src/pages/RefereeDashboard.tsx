@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AppIcon from "../components/AppIcon";
 import DashboardHero from "../components/DashboardHero";
 import DashboardStats from "../components/DashboardStats";
 import DashboardQuickActions from "../components/DashboardQuickActions";
@@ -992,7 +993,9 @@ export default function RefereeDashboard() {
 
   useEffect(() => {
     if (upcomingCalendarItems.length === 0) {
-      setSelectedDateKey(null);
+      if (!selectedDateKey) {
+        setSelectedDateKey(formatDateKey(new Date()));
+      }
       return;
     }
 
@@ -1068,7 +1071,10 @@ export default function RefereeDashboard() {
 
       <section className="dashboard-notifications-section">
         <div className="dashboard-notifications-header">
-          <h2>Recent Notifications</h2>
+          <h2 className="section-title-with-icon">
+            <AppIcon name="notifications" className="section-title-icon" />
+            <span>Recent Notifications</span>
+          </h2>
           <p>
             {recentNotificationUnreadCount} unread
           </p>
@@ -1119,7 +1125,13 @@ export default function RefereeDashboard() {
       {!isRefereeUser && (
         <section className="dashboard-role-overview">
           <div className="dashboard-role-overview-header">
-            <h2>{roleOverviewTitle}</h2>
+            <h2 className="section-title-with-icon">
+              <AppIcon
+                name={isAdminDashboard ? "approvals" : "dashboard"}
+                className="section-title-icon"
+              />
+              <span>{roleOverviewTitle}</span>
+            </h2>
             <p>{roleOverviewCopy}</p>
           </div>
 
@@ -1133,7 +1145,10 @@ export default function RefereeDashboard() {
                     Pending accounts waiting on admin approval.
                   </p>
                   <Link className="dashboard-role-overview-link" to="/account-approvals">
-                    Review Approvals
+                    <span className="inline-icon-label">
+                      <AppIcon name="approvals" />
+                      <span>Review Approvals</span>
+                    </span>
                   </Link>
                 </article>
                 <article className="dashboard-role-overview-card">
@@ -1186,7 +1201,10 @@ export default function RefereeDashboard() {
 
       <section className="dashboard-calendar-section">
         <div className="dashboard-calendar-header">
-          <h2>{calendarSectionTitle}</h2>
+          <h2 className="section-title-with-icon">
+            <AppIcon name="calendar" className="section-title-icon" />
+            <span>{calendarSectionTitle}</span>
+          </h2>
           <div className="dashboard-calendar-nav">
             <button
               type="button"
@@ -1215,10 +1233,6 @@ export default function RefereeDashboard() {
         {loadingDashboard ? (
           <div className="dashboard-no-games-message">
             <p>{calendarLoadingCopy}</p>
-          </div>
-        ) : upcomingCalendarItems.length === 0 ? (
-          <div className="dashboard-no-games-message">
-            <p>{calendarEmptyCopy}</p>
           </div>
         ) : (
           <>
@@ -1274,6 +1288,12 @@ export default function RefereeDashboard() {
                 )}
               </div>
 
+              {upcomingCalendarItems.length === 0 && (
+                <div className="dashboard-no-games-message">
+                  <p>{calendarEmptyCopy}</p>
+                </div>
+              )}
+
               {selectedDateKey && selectedDayItems.length > 0 ? (
                 <div className="dashboard-day-list">
                   {selectedDayItems.map((item) => (
@@ -1297,7 +1317,10 @@ export default function RefereeDashboard() {
                           className="dashboard-day-view-btn"
                           onClick={() => setSelectedCalendarItem(item)}
                         >
-                          View Details
+                          <span className="button-with-icon">
+                            <AppIcon name="reports" />
+                            <span>View Details</span>
+                          </span>
                         </button>
                       </div>
                     </article>

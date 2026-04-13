@@ -1,3 +1,4 @@
+import AppIcon from "./AppIcon";
 import "./DashboardHero.css";
 
 type DashboardHeroProps = {
@@ -16,7 +17,10 @@ export default function DashboardHero({
   return (
     <section className="dashboard-hero">
       <div className="dashboard-hero-content">
-        <h1>Welcome back, {name.split(' ')[0]}</h1>
+        <h1 className="page-title-with-icon">
+          <AppIcon name="dashboard" className="page-title-icon" />
+          <span>Welcome back, {name.split(" ")[0]}</span>
+        </h1>
         <p className="dashboard-hero-subtitle">
           {subtitle || "Ready to referee? Check your next game and take action."}
         </p>

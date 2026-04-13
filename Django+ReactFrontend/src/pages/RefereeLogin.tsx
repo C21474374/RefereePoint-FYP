@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import AppIcon from "../components/AppIcon";
 import "../pages_css/Auth.css";
 
 export default function LoginPage() {
@@ -38,7 +39,10 @@ export default function LoginPage() {
         <p className="auth-brand">RefereePoint</p>
         <div className="auth-card">
           <div className="auth-header">
-            <h1>Welcome Back</h1>
+            <h1 className="page-title-with-icon">
+              <AppIcon name="user" className="page-title-icon" />
+              <span>Welcome Back</span>
+            </h1>
             <p>Sign in to access your referee dashboard and opportunities.</p>
           </div>
 
@@ -66,7 +70,10 @@ export default function LoginPage() {
             {error && <p className="auth-message auth-message-error">{error}</p>}
 
             <button className="auth-submit" type="submit" disabled={submitting}>
-              {submitting ? "Logging in..." : "Login"}
+              <span className="button-with-icon">
+                <AppIcon name="user" />
+                <span>{submitting ? "Logging in..." : "Login"}</span>
+              </span>
             </button>
           </form>
 

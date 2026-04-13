@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
 import { useTheme } from "../context/ThemeContext";
+import AppIcon from "./AppIcon";
 import "leaflet/dist/leaflet.css";
 import "./GameDetailsModal.css";
 
@@ -194,8 +195,14 @@ const GameDetailsModal = ({
       <div className="game-details-modal" onClick={(event) => event.stopPropagation()}>
         <div className="game-details-modal-header">
           <div>
-            <h2>{details.title}</h2>
-            <p>{details.typeLabel || "Game Opportunity"}</p>
+            <h2 className="section-title-with-icon">
+              <AppIcon name="games" className="section-title-icon" />
+              <span>{details.title}</span>
+            </h2>
+            <p className="inline-icon-label">
+              <AppIcon name="opportunities" />
+              <span>{details.typeLabel || "Game Opportunity"}</span>
+            </p>
           </div>
           <button type="button" onClick={onClose}>
             Close
@@ -224,21 +231,30 @@ const GameDetailsModal = ({
 
           {details.description && (
             <div className="game-details-block">
-              <h3>Description</h3>
+              <h3 className="section-title-with-icon">
+                <AppIcon name="reports" className="section-title-icon" />
+                <span>Description</span>
+              </h3>
               <p>{details.description}</p>
             </div>
           )}
 
           {details.reason && (
             <div className="game-details-block">
-              <h3>Reason</h3>
+              <h3 className="section-title-with-icon">
+                <AppIcon name="cover" className="section-title-icon" />
+                <span>Reason</span>
+              </h3>
               <p>{details.reason}</p>
             </div>
           )}
 
           {shouldShowAssignedReferees && (
             <div className="game-details-block">
-              <h3>Assigned Referees</h3>
+              <h3 className="section-title-with-icon">
+                <AppIcon name="user" className="section-title-icon" />
+                <span>Assigned Referees</span>
+              </h3>
               {assignedReferees.length === 0 ? (
                 <p>No referees assigned yet.</p>
               ) : (
@@ -266,7 +282,10 @@ const GameDetailsModal = ({
           )}
 
           <div className="game-details-map-section">
-            <h3>Location</h3>
+            <h3 className="section-title-with-icon">
+              <AppIcon name="home" className="section-title-icon" />
+              <span>Location</span>
+            </h3>
             {hasCoordinates ? (
               <MapContainer
                 center={mapCenter}
@@ -304,11 +323,17 @@ const GameDetailsModal = ({
               onClick={onAction}
               disabled={actionDisabled || actionBusy}
             >
-              {actionBusy ? actionBusyLabel : actionLabel}
+              <span className="button-with-icon">
+                <AppIcon name="plus" />
+                <span>{actionBusy ? actionBusyLabel : actionLabel}</span>
+              </span>
             </button>
           )}
           <button type="button" className="game-details-secondary" onClick={onClose}>
-            Close
+            <span className="button-with-icon">
+              <AppIcon name="filter" />
+              <span>Close</span>
+            </span>
           </button>
         </div>
 

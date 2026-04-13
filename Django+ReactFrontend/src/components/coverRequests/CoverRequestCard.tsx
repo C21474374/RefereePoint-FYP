@@ -1,6 +1,7 @@
 import "./CoverRequestCard.css";
 import CoverRequestStatusBadge from "./CoverRequestStatusBadge";
 import type { CoverRequest } from "../../services/coverRequests";
+import AppIcon from "../AppIcon";
 
 type CoverRequestCardProps = {
   coverRequest: CoverRequest;
@@ -94,17 +95,26 @@ export default function CoverRequestCard({
 
       <div className="cover-request-meta-grid">
         <div>
-          <span className="cover-request-label">Date</span>
+          <span className="cover-request-label inline-icon-label">
+            <AppIcon name="calendar" />
+            <span>Date</span>
+          </span>
           <p>{formatGameDate(game_details)}</p>
         </div>
 
         <div>
-          <span className="cover-request-label">Venue</span>
+          <span className="cover-request-label inline-icon-label">
+            <AppIcon name="home" />
+            <span>Venue</span>
+          </span>
           <p>{venueName}</p>
         </div>
 
         <div>
-          <span className="cover-request-label">Role</span>
+          <span className="cover-request-label inline-icon-label">
+            <AppIcon name="user" />
+            <span>Role</span>
+          </span>
           <p>{role_display}</p>
         </div>
 
@@ -145,7 +155,10 @@ export default function CoverRequestCard({
             onClick={() => onCancel?.(id)}
             disabled={isLoading}
           >
-            {isLoading ? "Cancelling..." : "Cancel Request"}
+            <span className="button-with-icon">
+              <AppIcon name="logout" />
+              <span>{isLoading ? "Cancelling..." : "Cancel Request"}</span>
+            </span>
           </button>
         )}
 
@@ -155,7 +168,10 @@ export default function CoverRequestCard({
             onClick={() => onWithdrawClaim?.(id)}
             disabled={isLoading}
           >
-            {isLoading ? "Cancelling..." : "Cancel Claim"}
+            <span className="button-with-icon">
+              <AppIcon name="logout" />
+              <span>{isLoading ? "Cancelling..." : "Cancel Claim"}</span>
+            </span>
           </button>
         )}
 
@@ -165,7 +181,10 @@ export default function CoverRequestCard({
             onClick={() => onClaim?.(id)}
             disabled={isLoading}
           >
-            {isLoading ? "Claiming..." : "Claim Cover"}
+            <span className="button-with-icon">
+              <AppIcon name="cover" />
+              <span>{isLoading ? "Claiming..." : "Claim Cover"}</span>
+            </span>
           </button>
         )}
       </div>

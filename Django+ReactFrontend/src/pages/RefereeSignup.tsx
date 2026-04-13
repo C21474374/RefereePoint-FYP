@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import AppIcon from "../components/AppIcon";
 import "../pages_css/Auth.css";
 
 type TeamOption = {
@@ -440,7 +441,10 @@ export default function RefereeSignup() {
         <p className="auth-brand">RefereePoint</p>
         <div className="auth-card">
           <div className="auth-header">
-            <h1>Create Account</h1>
+            <h1 className="page-title-with-icon">
+              <AppIcon name="plus" className="page-title-icon" />
+              <span>Create Account</span>
+            </h1>
             <p>
               Register your role and complete verification details to unlock upload permissions.
             </p>
@@ -734,7 +738,10 @@ export default function RefereeSignup() {
             {success && <p className="auth-message auth-message-success">{success}</p>}
 
             <button className="auth-submit" type="submit" disabled={submitting}>
-              {submitting ? "Creating account..." : "Create Account"}
+              <span className="button-with-icon">
+                <AppIcon name="plus" />
+                <span>{submitting ? "Creating account..." : "Create Account"}</span>
+              </span>
             </button>
           </form>
 

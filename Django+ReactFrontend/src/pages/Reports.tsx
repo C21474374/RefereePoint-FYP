@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import AppIcon from "../components/AppIcon";
 import {
   createGameReport,
   getAdminReports,
@@ -280,7 +281,10 @@ export default function Reports() {
   return (
     <div className="reports-page">
       <div className="reports-page-header">
-        <h1>Reports</h1>
+        <h1 className="page-title-with-icon">
+          <AppIcon name="reports" className="page-title-icon" />
+          <span>Reports</span>
+        </h1>
         {isRefereeMode ? (
           <p>
             Submit incident reports for games you refereed in the last 7 days,
@@ -305,7 +309,10 @@ export default function Reports() {
             <>
               <section className="reports-section">
                 <div className="reports-section-header">
-                  <h2>Past Games (Last 7 Days)</h2>
+                  <h2 className="section-title-with-icon">
+                    <AppIcon name="games" className="section-title-icon" />
+                    <span>Past Games (Last 7 Days)</span>
+                  </h2>
                   <p>Only completed/past games inside the 7-day report window are shown.</p>
                 </div>
 
@@ -357,7 +364,10 @@ export default function Reports() {
 
               <section className="reports-section">
                 <div className="reports-section-header">
-                  <h2>Report Status</h2>
+                  <h2 className="section-title-with-icon">
+                    <AppIcon name="notifications" className="section-title-icon" />
+                    <span>Report Status</span>
+                  </h2>
                   <p>Track your submitted reports by status: Pending, Reviewed, and Resolved.</p>
                 </div>
 
@@ -397,7 +407,10 @@ export default function Reports() {
               }`}
             >
               <div className="reports-section-header">
-                <h2>Submitted Referee Reports</h2>
+                <h2 className="section-title-with-icon">
+                  <AppIcon name="reports" className="section-title-icon" />
+                  <span>Submitted Referee Reports</span>
+                </h2>
                 <p>View reports submitted by referees, with status and game details.</p>
               </div>
 
@@ -405,7 +418,10 @@ export default function Reports() {
                 <div className="reports-collapsible-content">
                   <div className="reports-admin-toolbar">
                     <label>
-                      <span>Status</span>
+                      <span className="inline-icon-label">
+                        <AppIcon name="filter" />
+                        <span>Status</span>
+                      </span>
                       <select
                         value={adminStatusFilter}
                         onChange={(event) =>
@@ -466,7 +482,10 @@ export default function Reports() {
                 onClick={() => toggleSection("adminSubmittedReports")}
                 aria-expanded={expandedSections.adminSubmittedReports}
               >
-                <span>{expandedSections.adminSubmittedReports ? "Collapse" : "Expand"}</span>
+                <span className="inline-icon-label">
+                  <AppIcon name={expandedSections.adminSubmittedReports ? "filter" : "plus"} />
+                  <span>{expandedSections.adminSubmittedReports ? "Collapse" : "Expand"}</span>
+                </span>
                 <span className="reports-section-toggle-icon" aria-hidden="true">
                   {expandedSections.adminSubmittedReports ? "^" : "v"}
                 </span>
@@ -486,7 +505,10 @@ export default function Reports() {
         <div className="upload-modal-overlay" onClick={closeReportModal}>
           <div className="upload-modal reports-modal" onClick={(event) => event.stopPropagation()}>
             <div className="upload-modal-header">
-              <h2>Submit Match Report</h2>
+              <h2 className="section-title-with-icon">
+                <AppIcon name="reports" className="section-title-icon" />
+                <span>Submit Match Report</span>
+              </h2>
               <button
                 type="button"
                 className="upload-modal-close"
