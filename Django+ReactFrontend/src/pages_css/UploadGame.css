@@ -80,6 +80,13 @@
   margin-bottom: 10px;
 }
 
+.upload-step-caption {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
 .radio-title {
   font-weight: 700;
   margin-bottom: 8px;
@@ -96,6 +103,47 @@
 
 .checkbox-option {
   margin-top: 10px;
+}
+
+.upload-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.upload-choice-card {
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+  padding: 10px 12px;
+}
+
+.upload-choice-card strong {
+  font-size: 0.95rem;
+}
+
+.upload-choice-card span {
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.upload-choice-card.active {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.upload-choice-card:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.upload-choice-card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .availability-text {
@@ -125,6 +173,31 @@
 .helper-box strong {
   color: var(--color-text);
   margin-right: 4px;
+}
+
+.upload-requirement-summary {
+  margin-top: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-panel);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.upload-slot-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.upload-slot-pill {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
 }
 
 .upload-actions {
@@ -182,6 +255,10 @@
 
 @media (max-width: 900px) {
   .upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-choice-grid {
     grid-template-columns: 1fr;
   }
 }

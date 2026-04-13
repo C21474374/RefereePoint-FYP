@@ -53,8 +53,6 @@ class GameAdmin(admin.ModelAdmin):
         "venue__name",
         "division__name",
         "created_by__email",
-        "notes",
-        "original_post_text",
     )
     ordering = ("-date", "-time")
     autocomplete_fields = (
@@ -90,13 +88,7 @@ class GameAdmin(admin.ModelAdmin):
                 "time",
             )
         }),
-        ("Created By / Notes", {
-            "fields": (
-                "created_by",
-                "notes",
-                "original_post_text",
-            )
-        }),
+        ("Created By", {"fields": ("created_by",)}),
         ("Counts", {
             "fields": (
                 "assigned_roles_count",

@@ -66,7 +66,7 @@ export default function ConfigurePage() {
   const [teams, setTeams] = useState<ConfigureTeam[]>([]);
 
   const [newDivisionName, setNewDivisionName] = useState("");
-  const [newDivisionGender, setNewDivisionGender] = useState<"M" | "F" | "MIXED">("M");
+  const [newDivisionGender, setNewDivisionGender] = useState<"M" | "F">("M");
   const [newDivisionAppointed, setNewDivisionAppointed] = useState(true);
   const [newTeamClubId, setNewTeamClubId] = useState("");
   const [newTeamDivisionId, setNewTeamDivisionId] = useState("");
@@ -301,11 +301,10 @@ export default function ConfigurePage() {
                     <span>Gender</span>
                     <select
                       value={newDivisionGender}
-                      onChange={(event) => setNewDivisionGender(event.target.value as "M" | "F" | "MIXED")}
+                      onChange={(event) => setNewDivisionGender(event.target.value as "M" | "F")}
                     >
                       <option value="M">Male</option>
                       <option value="F">Female</option>
-                      <option value="MIXED">Mixed</option>
                     </select>
                   </label>
                   <label className="configure-checkbox">

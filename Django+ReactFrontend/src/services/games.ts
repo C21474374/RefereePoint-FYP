@@ -28,7 +28,6 @@ export type UploadedGameSlot = {
   role_display: string;
   status: "OPEN" | "CLAIMED" | "CLOSED" | "CANCELLED";
   status_display: string;
-  description: string;
   is_active: boolean;
   claimed_by_name: string | null;
   claimed_by_phone: string | null;
@@ -66,8 +65,6 @@ export type UploadedGame = {
   home_team_name: string | null;
   away_team: number | null;
   away_team_name: string | null;
-  notes: string;
-  original_post_text: string;
   created_by: number | null;
   assigned_roles_count: number;
   open_non_appointed_slots_count: number;
@@ -88,11 +85,8 @@ export type ManageUploadedGamePayload = {
   venue: number;
   home_team: number;
   away_team: number;
-  notes: string;
-  original_post_text: string;
   slots?: Array<{
     role: "CREW_CHIEF" | "UMPIRE_1";
-    description?: string;
   }>;
   appointed_assignments?: Array<{
     role: "CREW_CHIEF" | "UMPIRE_1";
@@ -109,8 +103,6 @@ export type AppointedGameUploadPayload = {
   venue: number;
   home_team: number;
   away_team: number;
-  notes?: string;
-  original_post_text?: string;
   appointed_assignments?: Array<{
     role: "CREW_CHIEF" | "UMPIRE_1";
     referee: number;
@@ -192,7 +184,7 @@ export const getUploadGameFormOptions = async (): Promise<{
       id: division.id,
       name:
         division.display ||
-        `${division.name}-${division.gender === "MIXED" ? "X" : division.gender}`,
+        `${division.name}-${division.gender}`,
       requires_appointed_referees: Boolean(division.requires_appointed_referees),
     })),
     venues: venueResponse.data.map((venue) => ({

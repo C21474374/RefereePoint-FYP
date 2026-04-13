@@ -35,6 +35,11 @@ APPOINTED_UPLOAD_GAME_TYPES = [
 ]
 
 
+def _shared_appointed_game_types_for_user(user):
+    allowed_types = user.get_allowed_upload_game_types()
+    return [game_type for game_type in APPOINTED_UPLOAD_GAME_TYPES if game_type in allowed_types]
+
+
 def _uploaded_games_queryset():
     return Game.objects.select_related(
         "venue",
@@ -51,6 +56,7 @@ def _uploaded_games_queryset():
 
 
 def _get_uploaded_game_for_user(user, pk):
+    shared_appointed_types = _shared_appointed_game_types_for_user(user)
     return _uploaded_games_queryset().filter(
         pk=pk,
     ).filter(
@@ -59,8 +65,7 @@ def _get_uploaded_game_for_user(user, pk):
             non_appointed_slots__posted_by=user,
         )
         | Q(
-            game_type__in=APPOINTED_UPLOAD_GAME_TYPES,
-            created_by=user,
+            game_type__in=shared_appointed_types,
         )
     ).first()
 
@@ -310,6 +315,7 @@ class MyUploadedGamesAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        shared_appointed_types = _shared_appointed_game_types_for_user(self.request.user)
         return (
             _uploaded_games_queryset()
             .filter(
@@ -318,8 +324,7 @@ class MyUploadedGamesAPIView(generics.ListAPIView):
                     non_appointed_slots__posted_by=self.request.user,
                 )
                 | Q(
-                    game_type__in=APPOINTED_UPLOAD_GAME_TYPES,
-                    created_by=self.request.user,
+                    game_type__in=shared_appointed_types,
                 )
             )
             .distinct()
@@ -517,8 +522,16 @@ class OpportunityFeedAPIView(APIView):
                         "venue_name": venue.name if venue else None,
                         "lat": venue.lat if venue else None,
                         "lng": venue.lon if venue else None,
-                        "home_team_name": str(game.home_team) if game.home_team else None,
-                        "away_team_name": str(game.away_team) if game.away_team else None,
+                        "home_team_name": (
+                            game.home_team.club.name
+                            if game.home_team and game.home_team.club
+                            else None
+                        ),
+                        "away_team_name": (
+                            game.away_team.club.name
+                            if game.away_team and game.away_team.club
+                            else None
+                        ),
                         "division_name": division.name if division else None,
                         "division_gender": getattr(division, "gender", None) if division else None,
                         "payment_type": game.payment_type,
@@ -562,8 +575,16 @@ class OpportunityFeedAPIView(APIView):
                         "venue_name": venue.name if venue else None,
                         "lat": venue.lat if venue else None,
                         "lng": venue.lon if venue else None,
-                        "home_team_name": str(game.home_team) if game.home_team else None,
-                        "away_team_name": str(game.away_team) if game.away_team else None,
+                        "home_team_name": (
+                            game.home_team.club.name
+                            if game.home_team and game.home_team.club
+                            else None
+                        ),
+                        "away_team_name": (
+                            game.away_team.club.name
+                            if game.away_team and game.away_team.club
+                            else None
+                        ),
                         "division_name": division.name if division else None,
                         "division_gender": getattr(division, "gender", None) if division else None,
                         "payment_type": game.payment_type,

@@ -278,8 +278,16 @@ def _build_candidates(
                     "venue_name": venue.name if venue else None,
                     "lat": venue.lat if venue else None,
                     "lng": venue.lon if venue else None,
-                    "home_team_name": str(game.home_team) if game.home_team else None,
-                    "away_team_name": str(game.away_team) if game.away_team else None,
+                    "home_team_name": (
+                        game.home_team.club.name
+                        if game.home_team and game.home_team.club
+                        else None
+                    ),
+                    "away_team_name": (
+                        game.away_team.club.name
+                        if game.away_team and game.away_team.club
+                        else None
+                    ),
                     "division_name": division.name if division else None,
                     "division_gender": getattr(division, "gender", None) if division else None,
                     "payment_type": game.payment_type,
@@ -327,8 +335,16 @@ def _build_candidates(
                     "venue_name": venue.name if venue else None,
                     "lat": venue.lat if venue else None,
                     "lng": venue.lon if venue else None,
-                    "home_team_name": str(game.home_team) if game.home_team else None,
-                    "away_team_name": str(game.away_team) if game.away_team else None,
+                    "home_team_name": (
+                        game.home_team.club.name
+                        if game.home_team and game.home_team.club
+                        else None
+                    ),
+                    "away_team_name": (
+                        game.away_team.club.name
+                        if game.away_team and game.away_team.club
+                        else None
+                    ),
                     "division_name": division.name if division else None,
                     "division_gender": getattr(division, "gender", None) if division else None,
                     "payment_type": game.payment_type,

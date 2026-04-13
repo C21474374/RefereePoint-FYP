@@ -4,6 +4,7 @@ import type { EventItem, EventPayload, EventVenueOption } from "../../services/e
 type EventFormProps = {
   venues: EventVenueOption[];
   initialEvent?: EventItem | null;
+  eventTypeLabel?: string;
   loading?: boolean;
   onSubmit: (payload: EventPayload) => Promise<void>;
   onCancelEdit?: () => void;
@@ -48,11 +49,13 @@ function buildFormState(initialEvent?: EventItem | null): FormState {
 export default function EventForm({
   venues,
   initialEvent = null,
+  eventTypeLabel,
   loading = false,
   onSubmit,
   onCancelEdit,
 }: EventFormProps) {
   const [form, setForm] = useState<FormState>(() => buildFormState(initialEvent));
+  const [localError, setLocalError] = useState("");
 
   const onFieldChange = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -60,6 +63,18 @@ export default function EventForm({
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    setLocalError("");
+
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+      setLocalError("End date must be on or after start date.");
+      return;
+    }
+
+    const parsedRefereesRequired = Number(form.referees_required || 0);
+    if (!Number.isFinite(parsedRefereesRequired) || parsedRefereesRequired < 0) {
+      setLocalError("Referees required must be 0 or more.");
+      return;
+    }
 
     const payload: EventPayload = {
       start_date: form.start_date,
@@ -68,7 +83,7 @@ export default function EventForm({
       description: form.description.trim(),
       fee_per_game: form.fee_per_game ? form.fee_per_game : null,
       contact_information: form.contact_information.trim(),
-      referees_required: Number(form.referees_required || 0),
+      referees_required: parsedRefereesRequired,
     };
 
     await onSubmit(payload);
@@ -80,6 +95,14 @@ export default function EventForm({
 
   return (
     <form className="events-form" onSubmit={handleSubmit}>
+      {eventTypeLabel && (
+        <div className="events-form-event-type">
+          <span>Event Type</span>
+          <strong>{eventTypeLabel}</strong>
+        </div>
+      )}
+      {localError && <p className="events-form-inline-error">{localError}</p>}
+
       <div className="events-form-grid">
         <label>
           <span>Start Date</span>
@@ -137,6 +160,38 @@ export default function EventForm({
             required
           />
         </label>
+
+        <div className="events-form-wide events-referee-quick-wrap">
+          <span className="events-referee-quick-title">Quick Set Referees</span>
+          <div className="events-referee-quick">
+            {[1, 2, 4, 6].map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={`events-referee-quick-button ${
+                  Number(form.referees_required || 0) === value ? "active" : ""
+                }`}
+                onClick={() => onFieldChange("referees_required", String(value))}
+                disabled={loading}
+              >
+                {value}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`events-referee-quick-button ${
+                Number(form.referees_required || 0) === 0 ? "active" : ""
+              }`}
+              onClick={() => onFieldChange("referees_required", "0")}
+              disabled={loading}
+            >
+              Open
+            </button>
+          </div>
+          <p className="events-referee-quick-hint">
+            Use Open for flexible capacity, or set a fixed limit for signups.
+          </p>
+        </div>
 
         <label className="events-form-wide">
           <span>Contact Information</span>

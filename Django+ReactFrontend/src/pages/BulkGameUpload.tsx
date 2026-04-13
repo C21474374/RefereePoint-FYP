@@ -40,12 +40,11 @@ type UploadRow = SpreadsheetRowFields & {
   status: RowStatus;
   message: string;
   uploading: boolean;
+  is_dirty: boolean;
 };
 
 type ExistingRow = SpreadsheetRowFields & {
   game_id: number;
-  notes: string;
-  original_post_text: string;
   status: RowStatus;
   message: string;
   saving: boolean;
@@ -53,6 +52,7 @@ type ExistingRow = SpreadsheetRowFields & {
   can_edit: boolean;
   can_delete: boolean;
   lock_reason: string;
+  is_dirty: boolean;
 };
 
 type SpreadsheetValidationError = {
@@ -70,6 +70,14 @@ type SpreadsheetValidationSuccess = {
 type SpreadsheetValidationResult =
   | SpreadsheetValidationError
   | SpreadsheetValidationSuccess;
+
+function sortExistingSpreadsheetRows(rows: ExistingRow[]) {
+  return [...rows].sort((a, b) =>
+    `${a.date} ${normalizeTimeValue(a.time)}`.localeCompare(
+      `${b.date} ${normalizeTimeValue(b.time)}`
+    )
+  );
+}
 
 const MONTH_FILTER_ALL = "ALL_MONTHS";
 
@@ -139,7 +147,21 @@ function createEmptyRow(id: number): UploadRow {
     status: "READY",
     message: "",
     uploading: false,
+    is_dirty: false,
   };
+}
+
+function hasAnyRowInput(row: SpreadsheetRowFields) {
+  return Boolean(
+    row.date ||
+      row.time ||
+      row.venue ||
+      row.division ||
+      row.home_team ||
+      row.away_team ||
+      row.crew_chief ||
+      row.umpire_1
+  );
 }
 
 function toMonthKey(dateValue: string) {
@@ -203,6 +225,16 @@ function sanitizePersistedDraftRows(
         status: "READY",
         message: "",
         uploading: false,
+        is_dirty: hasAnyRowInput({
+          date: typeof candidate.date === "string" ? candidate.date : "",
+          time: typeof candidate.time === "string" ? candidate.time : "",
+          venue: typeof candidate.venue === "string" ? candidate.venue : "",
+          division: typeof candidate.division === "string" ? candidate.division : "",
+          home_team: typeof candidate.home_team === "string" ? candidate.home_team : "",
+          away_team: typeof candidate.away_team === "string" ? candidate.away_team : "",
+          crew_chief: typeof candidate.crew_chief === "string" ? candidate.crew_chief : "",
+          umpire_1: typeof candidate.umpire_1 === "string" ? candidate.umpire_1 : "",
+        }),
       };
     })
     .filter((row): row is UploadRow => Boolean(row));
@@ -328,8 +360,6 @@ function buildExistingRowFromGame(game: UploadedGame): ExistingRow {
     away_team: game.away_team ? String(game.away_team) : "",
     crew_chief: crewChiefAssignment?.referee ? String(crewChiefAssignment.referee) : "",
     umpire_1: umpireOneAssignment?.referee ? String(umpireOneAssignment.referee) : "",
-    notes: game.notes || "",
-    original_post_text: game.original_post_text || "",
     status: "READY",
     message: "",
     saving: false,
@@ -340,6 +370,7 @@ function buildExistingRowFromGame(game: UploadedGame): ExistingRow {
       !game.can_edit || !game.can_delete
         ? "This game is locked and cannot be edited or deleted."
         : "",
+    is_dirty: false,
   };
 }
 
@@ -368,6 +399,7 @@ export default function BulkGameUpload({
   const [loadingExisting, setLoadingExisting] = useState(true);
   const [pageError, setPageError] = useState("");
   const [pageSuccess, setPageSuccess] = useState("");
+  const [savingAllChanges, setSavingAllChanges] = useState(false);
   const [monthFilter, setMonthFilter] = useState(getCurrentMonthKey());
   const [draftsHydrated, setDraftsHydrated] = useState(false);
 
@@ -509,26 +541,15 @@ export default function BulkGameUpload({
     });
   }, [monthFilter, rows]);
 
-  const reloadUploadedSpreadsheet = useCallback(async () => {
-    if (!isDoaOrNl) {
-      setExistingRows([]);
-      setLoadingExisting(false);
-      return;
-    }
-
-    setLoadingExisting(true);
-    try {
-      const uploads = await getMyUploadedGames();
-      const nextRows = sortedUploadedGames(uploads).map(buildExistingRowFromGame);
-      setExistingRows(nextRows);
-    } catch (error) {
-      setPageError(
-        getErrorMessage(error, "Failed to load uploaded games. Please try again.")
-      );
-    } finally {
-      setLoadingExisting(false);
-    }
-  }, [isDoaOrNl, sortedUploadedGames]);
+  const dirtyExistingRows = useMemo(
+    () => existingRows.filter((row) => row.is_dirty),
+    [existingRows]
+  );
+  const dirtyDraftRows = useMemo(
+    () => rows.filter((row) => row.is_dirty),
+    [rows]
+  );
+  const pendingSaveCount = dirtyExistingRows.length + dirtyDraftRows.length;
 
   useEffect(() => {
     async function loadInitialData() {
@@ -837,12 +858,16 @@ export default function BulkGameUpload({
     setRows((prev) =>
       prev.map((row) =>
         row.id === rowId
-          ? {
-              ...patchSpreadsheetRow(row, key, value),
-              status: "READY",
-              message: "",
-              uploading: false,
-            }
+          ? (() => {
+              const nextRow = patchSpreadsheetRow(row, key, value);
+              return {
+                ...nextRow,
+                status: "READY",
+                message: "",
+                uploading: false,
+                is_dirty: hasAnyRowInput(nextRow),
+              };
+            })()
           : row
       )
     );
@@ -858,10 +883,11 @@ export default function BulkGameUpload({
     setExistingRows((prev) =>
       prev.map((row) =>
         row.game_id === gameId
-          ? {
+            ? {
               ...patchSpreadsheetRow(row, key, value),
               status: "READY",
               message: "",
+              is_dirty: true,
             }
           : row
       )
@@ -910,23 +936,46 @@ export default function BulkGameUpload({
     return divisionTeams.filter((team) => team.id !== oppositeTeamId);
   };
 
-  const uploadDraftRow = useCallback(
-    async (row: UploadRow, validation: SpreadsheetValidationSuccess) => {
-      setRows((prev) =>
-        prev.map((item) =>
-          item.id === row.id
-            ? {
-                ...item,
-                uploading: true,
-                status: "UPLOADING",
-                message: "Uploading...",
-              }
-            : item
-        )
-      );
+  const handleSaveAllRows = async () => {
+    if (!user?.uploads_approved || loadingOptions || savingAllChanges) {
+      return;
+    }
 
-      try {
-        await uploadAppointedGame({
+    const targetExistingRows = existingRows.filter((row) => row.is_dirty);
+    const targetDraftRows = rows.filter((row) => row.is_dirty && hasAnyRowInput(row));
+
+    if (targetExistingRows.length === 0 && targetDraftRows.length === 0) {
+      setPageError("");
+      setPageSuccess("No edited rows to save.");
+      return;
+    }
+
+    const existingErrors = new Map<number, string>();
+    const draftErrors = new Map<number, string>();
+    const existingPayloads: Array<{ gameId: number; payload: ManageUploadedGamePayload }> = [];
+    const draftPayloads: Array<{
+      row: UploadRow;
+      payload: Parameters<typeof uploadAppointedGame>[0];
+    }> = [];
+
+    targetExistingRows.forEach((row) => {
+      if (!row.can_edit) {
+        existingErrors.set(
+          row.game_id,
+          row.lock_reason || "This row cannot be edited."
+        );
+        return;
+      }
+
+      const validation = validateSpreadsheetRow(row);
+      if ("error" in validation) {
+        existingErrors.set(row.game_id, validation.error);
+        return;
+      }
+
+      existingPayloads.push({
+        gameId: row.game_id,
+        payload: {
           game_type: gameType,
           payment_type: "CLAIM",
           division: validation.selectedDivisionId,
@@ -935,163 +984,230 @@ export default function BulkGameUpload({
           venue: validation.venueId,
           home_team: validation.homeTeamId,
           away_team: validation.awayTeamId,
-          notes: "",
-          original_post_text: "",
           appointed_assignments: validation.appointedAssignments,
-        });
+        },
+      });
+    });
 
-        setRows((prev) =>
-          prev.map((item) => (item.id === row.id ? createEmptyRow(item.id) : item))
+    targetDraftRows.forEach((row) => {
+      if (!isRowComplete(row)) {
+        draftErrors.set(
+          row.id,
+          "Please complete Date, Time, Venue, Division, Home Team, and Away Team."
         );
-        setPageError("");
-        setPageSuccess("Game uploaded.");
-        await reloadUploadedSpreadsheet();
-        onUploaded?.();
-      } catch (error) {
-        setRows((prev) =>
-          prev.map((item) =>
-            item.id === row.id
-              ? {
-                  ...item,
-                  uploading: false,
-                  status: "ERROR",
-                  message: getErrorMessage(error, "Upload failed."),
-                }
-              : item
-          )
-        );
+        return;
       }
-    },
-    [gameType, onUploaded, reloadUploadedSpreadsheet]
-  );
 
-  useEffect(() => {
-    if (!user?.uploads_approved || loadingOptions) {
-      return;
-    }
+      const validation = validateSpreadsheetRow(row);
+      if ("error" in validation) {
+        draftErrors.set(row.id, validation.error);
+        return;
+      }
 
-    const candidate = rows.find(
-      (row) => row.status === "READY" && !row.uploading && isRowComplete(row)
-    );
-    if (!candidate) {
-      return;
-    }
+      draftPayloads.push({
+        row,
+        payload: {
+          game_type: gameType,
+          payment_type: "CLAIM",
+          division: validation.selectedDivisionId,
+          date: row.date,
+          time: row.time,
+          venue: validation.venueId,
+          home_team: validation.homeTeamId,
+          away_team: validation.awayTeamId,
+          appointed_assignments: validation.appointedAssignments,
+        },
+      });
+    });
 
-    const validation = validateSpreadsheetRow(candidate);
-    if ("error" in validation) {
+    if (existingErrors.size > 0 || draftErrors.size > 0) {
+      const validationFailures = [
+        ...Array.from(existingErrors.entries()).map(
+          ([gameId, message]) => `Game ${gameId}: ${message}`
+        ),
+        ...Array.from(draftErrors.entries()).map(
+          ([rowId, message]) => `Draft row ${rowId}: ${message}`
+        ),
+      ];
+      const validationPreview = validationFailures.slice(0, 3).join(" | ");
+
+      setExistingRows((prev) =>
+        prev.map((row) => {
+          const message = existingErrors.get(row.game_id);
+          if (!message) {
+            return row;
+          }
+          return {
+            ...row,
+            status: "ERROR",
+            message,
+            saving: false,
+          };
+        })
+      );
       setRows((prev) =>
-        prev.map((item) =>
-          item.id === candidate.id
-            ? {
-                ...item,
-                status: "ERROR",
-                message: validation.error,
-                uploading: false,
-              }
-            : item
-        )
+        prev.map((row) => {
+          const message = draftErrors.get(row.id);
+          if (!message) {
+            return row;
+          }
+          return {
+            ...row,
+            status: "ERROR",
+            message,
+            uploading: false,
+          };
+        })
+      );
+      setPageSuccess("");
+      setPageError(
+        validationFailures.length > 3
+          ? `${validationPreview} | +${validationFailures.length - 3} more error(s).`
+          : validationPreview
       );
       return;
     }
 
-    void uploadDraftRow(candidate, validation);
-  }, [loadingOptions, rows, uploadDraftRow, user?.uploads_approved, validateSpreadsheetRow]);
+    const existingIds = new Set(existingPayloads.map((item) => item.gameId));
+    const draftIds = new Set(draftPayloads.map((item) => item.row.id));
 
-  const handleSaveExistingRow = async (gameId: number) => {
-    const row = existingRows.find((item) => item.game_id === gameId);
-    if (!row) {
-      return;
-    }
-
-    if (!row.can_edit) {
-      setExistingRows((prev) =>
-        prev.map((item) =>
-          item.game_id === gameId
-            ? {
-                ...item,
-                status: "ERROR",
-                message: item.lock_reason || "This row cannot be edited.",
-              }
-            : item
-        )
-      );
-      return;
-    }
-
-    const validation = validateSpreadsheetRow(row);
-    if ("error" in validation) {
-      setExistingRows((prev) =>
-        prev.map((item) =>
-          item.game_id === gameId
-            ? {
-                ...item,
-                status: "ERROR",
-                message: validation.error,
-              }
-            : item
-        )
-      );
-      return;
-    }
+    setSavingAllChanges(true);
+    setPageError("");
+    setPageSuccess("");
 
     setExistingRows((prev) =>
-      prev.map((item) =>
-        item.game_id === gameId
+      prev.map((row) =>
+        existingIds.has(row.game_id)
           ? {
-              ...item,
+              ...row,
               saving: true,
-              status: "READY",
+              status: "UPLOADING",
               message: "",
             }
-          : item
+          : row
       )
     );
 
-    try {
-      const payload: ManageUploadedGamePayload = {
-        game_type: gameType,
-        payment_type: "CLAIM",
-        division: validation.selectedDivisionId,
-        date: row.date,
-        time: row.time,
-        venue: validation.venueId,
-        home_team: validation.homeTeamId,
-        away_team: validation.awayTeamId,
-        notes: row.notes,
-        original_post_text: row.original_post_text,
-        appointed_assignments: validation.appointedAssignments,
-      };
+    setRows((prev) =>
+      prev.map((row) =>
+        draftIds.has(row.id)
+          ? {
+              ...row,
+              uploading: true,
+              status: "UPLOADING",
+              message: "",
+            }
+          : row
+      )
+    );
 
-      const updatedGame = await updateUploadedGame(gameId, payload);
-      const updatedRow = buildExistingRowFromGame(updatedGame);
+    let successCount = 0;
+    const failures: string[] = [];
 
-      setExistingRows((prev) =>
-        prev.map((item) =>
-          item.game_id === gameId
-            ? {
-                ...updatedRow,
-                status: "UPLOADED",
-                message: "Saved successfully.",
-                saving: false,
-              }
-            : item
-        )
-      );
+    for (const item of existingPayloads) {
+      try {
+        const updatedGame = await updateUploadedGame(item.gameId, item.payload);
+        const updatedRow = buildExistingRowFromGame(updatedGame);
+        setExistingRows((prev) =>
+          prev.map((row) => (row.game_id === item.gameId ? updatedRow : row))
+        );
+        successCount += 1;
+      } catch (error) {
+        const message = getErrorMessage(error, "Failed to save row.");
+        failures.push(`Game ${item.gameId}: ${message}`);
+        setExistingRows((prev) =>
+          prev.map((row) =>
+            row.game_id === item.gameId
+              ? {
+                  ...row,
+                  saving: false,
+                  status: "ERROR",
+                  message,
+                }
+              : row
+          )
+        );
+      }
+    }
+
+    for (const item of draftPayloads) {
+      try {
+        const createdGame = (await uploadAppointedGame(item.payload)) as
+          | { id?: number }
+          | undefined;
+        const createdGameId = Number(createdGame?.id);
+
+        setRows((prev) =>
+          prev.map((row) => (row.id === item.row.id ? createEmptyRow(row.id) : row))
+        );
+
+        if (Number.isFinite(createdGameId) && createdGameId > 0) {
+          const newExistingRow: ExistingRow = {
+            game_id: createdGameId,
+            date: item.row.date,
+            time: item.row.time,
+            venue: item.row.venue,
+            division: item.row.division,
+            home_team: item.row.home_team,
+            away_team: item.row.away_team,
+            crew_chief: item.row.crew_chief,
+            umpire_1: item.row.umpire_1,
+            status: "READY",
+            message: "",
+            saving: false,
+            deleting: false,
+            can_edit: true,
+            can_delete: true,
+            lock_reason: "",
+            is_dirty: false,
+          };
+          setExistingRows((prev) =>
+            sortExistingSpreadsheetRows([
+              ...prev.filter((row) => row.game_id !== createdGameId),
+              newExistingRow,
+            ])
+          );
+        }
+        successCount += 1;
+      } catch (error) {
+        const message = getErrorMessage(error, "Failed to upload row.");
+        failures.push(`Draft row ${item.row.id}: ${message}`);
+        setRows((prev) =>
+          prev.map((row) =>
+            row.id === item.row.id
+              ? {
+                  ...row,
+                  uploading: false,
+                  status: "ERROR",
+                  message,
+                }
+              : row
+          )
+        );
+      }
+    }
+
+    if (successCount > 0) {
       onUploaded?.();
-    } catch (error) {
-      setExistingRows((prev) =>
-        prev.map((item) =>
-          item.game_id === gameId
-            ? {
-                ...item,
-                saving: false,
-                status: "ERROR",
-                message: getErrorMessage(error, "Failed to save row."),
-              }
-            : item
-        )
+      setPageSuccess(
+        `Saved ${successCount} row${successCount === 1 ? "" : "s"} successfully.`
       );
     }
+
+    if (failures.length > 0) {
+      const preview = failures.slice(0, 3).join(" | ");
+      setPageError(
+        failures.length > 3
+          ? `${preview} | +${failures.length - 3} more error(s).`
+          : preview
+      );
+    }
+
+    if (successCount === 0 && failures.length === 0) {
+      setPageSuccess("No edited rows to save.");
+    }
+
+    setSavingAllChanges(false);
   };
 
   const handleDeleteExistingRow = async (gameId: number) => {
@@ -1215,7 +1331,29 @@ export default function BulkGameUpload({
               ))}
             </select>
           </label>
-          <button type="button" onClick={addRow}>
+          <button
+            type="button"
+            className="upload-all-btn"
+            disabled={
+              savingAllChanges ||
+              loadingOptions ||
+              !user?.uploads_approved ||
+              pendingSaveCount === 0
+            }
+            onClick={handleSaveAllRows}
+          >
+            <span className="button-with-icon">
+              <AppIcon name="upload" />
+              <span>
+                {savingAllChanges
+                  ? "Saving..."
+                  : pendingSaveCount > 0
+                    ? `Save All (${pendingSaveCount})`
+                    : "Save All"}
+              </span>
+            </span>
+          </button>
+          <button type="button" onClick={addRow} disabled={savingAllChanges}>
             <span className="button-with-icon">
               <AppIcon name="plus" />
               <span>Add Row</span>
@@ -1238,7 +1376,6 @@ export default function BulkGameUpload({
                   <th>Away Team</th>
                   <th>Crew Chief</th>
                   <th>Umpire 1</th>
-                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -1250,7 +1387,9 @@ export default function BulkGameUpload({
                         <input
                           type="date"
                           value={row.date}
-                          disabled={!row.can_edit || row.saving || row.deleting}
+                          disabled={
+                            savingAllChanges || !row.can_edit || row.saving || row.deleting
+                          }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "date", event.target.value)
                           }
@@ -1260,7 +1399,11 @@ export default function BulkGameUpload({
                         <select
                           value={normalizeTimeValue(row.time)}
                           disabled={
-                            !row.can_edit || row.saving || row.deleting || !row.date
+                            savingAllChanges ||
+                            !row.can_edit ||
+                            row.saving ||
+                            row.deleting ||
+                            !row.date
                           }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "time", event.target.value)
@@ -1277,7 +1420,9 @@ export default function BulkGameUpload({
                       <td>
                         <select
                           value={row.venue}
-                          disabled={!row.can_edit || row.saving || row.deleting}
+                          disabled={
+                            savingAllChanges || !row.can_edit || row.saving || row.deleting
+                          }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "venue", event.target.value)
                           }
@@ -1293,7 +1438,9 @@ export default function BulkGameUpload({
                       <td>
                         <select
                           value={row.division}
-                          disabled={!row.can_edit || row.saving || row.deleting}
+                          disabled={
+                            savingAllChanges || !row.can_edit || row.saving || row.deleting
+                          }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "division", event.target.value)
                           }
@@ -1310,7 +1457,11 @@ export default function BulkGameUpload({
                         <select
                           value={row.home_team}
                           disabled={
-                            !row.can_edit || row.saving || row.deleting || !row.division
+                            savingAllChanges ||
+                            !row.can_edit ||
+                            row.saving ||
+                            row.deleting ||
+                            !row.division
                           }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "home_team", event.target.value)
@@ -1328,7 +1479,11 @@ export default function BulkGameUpload({
                         <select
                           value={row.away_team}
                           disabled={
-                            !row.can_edit || row.saving || row.deleting || !row.division
+                            savingAllChanges ||
+                            !row.can_edit ||
+                            row.saving ||
+                            row.deleting ||
+                            !row.division
                           }
                           onChange={(event) =>
                             handleExistingRowChange(row.game_id, "away_team", event.target.value)
@@ -1346,6 +1501,7 @@ export default function BulkGameUpload({
                         <select
                           value={row.crew_chief}
                           disabled={
+                            savingAllChanges ||
                             !row.can_edit ||
                             row.saving ||
                             row.deleting ||
@@ -1371,6 +1527,7 @@ export default function BulkGameUpload({
                         <select
                           value={row.umpire_1}
                           disabled={
+                            savingAllChanges ||
                             !row.can_edit ||
                             row.saving ||
                             row.deleting ||
@@ -1393,29 +1550,15 @@ export default function BulkGameUpload({
                         </select>
                       </td>
                       <td>
-                        <div className="bulk-upload-row-status">
-                          <span className={`status-pill ${row.status.toLowerCase()}`}>
-                            {row.status}
-                          </span>
-                          {row.message && <p>{row.message}</p>}
-                          {!row.message && row.lock_reason && <p>{row.lock_reason}</p>}
-                        </div>
-                      </td>
-                      <td>
                         <div className="bulk-upload-row-actions">
                           <button
                             type="button"
                             className="row-remove-btn"
-                            disabled={!row.can_edit || row.saving || row.deleting}
-                            onClick={() => handleSaveExistingRow(row.game_id)}
-                          >
-                            {row.saving ? "Saving..." : "Save"}
-                          </button>
-                          <button
-                            type="button"
-                            className="row-remove-btn"
-                            disabled={!row.can_delete || row.saving || row.deleting}
+                            disabled={
+                              !row.can_delete || row.saving || row.deleting || savingAllChanges
+                            }
                             onClick={() => handleDeleteExistingRow(row.game_id)}
+                            title={!row.can_delete ? row.lock_reason || "Cannot delete row." : ""}
                           >
                             {row.deleting ? "Deleting..." : "Delete"}
                           </button>
@@ -1430,7 +1573,7 @@ export default function BulkGameUpload({
                       <input
                         type="date"
                         value={row.date}
-                        disabled={row.uploading}
+                        disabled={row.uploading || savingAllChanges}
                         onChange={(event) =>
                           handleRowChange(row.id, "date", event.target.value)
                         }
@@ -1439,7 +1582,7 @@ export default function BulkGameUpload({
                     <td>
                       <select
                         value={normalizeTimeValue(row.time)}
-                        disabled={row.uploading || !row.date}
+                        disabled={row.uploading || savingAllChanges || !row.date}
                         onChange={(event) =>
                           handleRowChange(row.id, "time", event.target.value)
                         }
@@ -1455,7 +1598,7 @@ export default function BulkGameUpload({
                     <td>
                       <select
                         value={row.venue}
-                        disabled={row.uploading}
+                        disabled={row.uploading || savingAllChanges}
                         onChange={(event) =>
                           handleRowChange(row.id, "venue", event.target.value)
                         }
@@ -1471,7 +1614,7 @@ export default function BulkGameUpload({
                     <td>
                       <select
                         value={row.division}
-                        disabled={row.uploading}
+                        disabled={row.uploading || savingAllChanges}
                         onChange={(event) =>
                           handleRowChange(row.id, "division", event.target.value)
                         }
@@ -1487,7 +1630,7 @@ export default function BulkGameUpload({
                     <td>
                       <select
                         value={row.home_team}
-                        disabled={row.uploading || !row.division}
+                        disabled={row.uploading || savingAllChanges || !row.division}
                         onChange={(event) =>
                           handleRowChange(row.id, "home_team", event.target.value)
                         }
@@ -1503,7 +1646,7 @@ export default function BulkGameUpload({
                     <td>
                       <select
                         value={row.away_team}
-                        disabled={row.uploading || !row.division}
+                        disabled={row.uploading || savingAllChanges || !row.division}
                         onChange={(event) =>
                           handleRowChange(row.id, "away_team", event.target.value)
                         }
@@ -1521,6 +1664,7 @@ export default function BulkGameUpload({
                         value={row.crew_chief}
                         disabled={
                           row.uploading ||
+                          savingAllChanges ||
                           !row.date ||
                           !row.time ||
                           isLoadingRefereesForRow(row)
@@ -1544,6 +1688,7 @@ export default function BulkGameUpload({
                         value={row.umpire_1}
                         disabled={
                           row.uploading ||
+                          savingAllChanges ||
                           !row.date ||
                           !row.time ||
                           isLoadingRefereesForRow(row)
@@ -1563,18 +1708,10 @@ export default function BulkGameUpload({
                       </select>
                     </td>
                     <td>
-                      <div className="bulk-upload-row-status">
-                        <span className={`status-pill ${row.status.toLowerCase()}`}>
-                          {row.status}
-                        </span>
-                        {row.message && <p>{row.message}</p>}
-                      </div>
-                    </td>
-                    <td>
                       <button
                         type="button"
                         className="row-remove-btn"
-                        disabled={row.uploading}
+                        disabled={row.uploading || savingAllChanges}
                         onClick={() => removeRow(row.id)}
                       >
                         Remove
@@ -1586,7 +1723,7 @@ export default function BulkGameUpload({
                   filteredExistingRows.length === 0 &&
                   filteredDraftRows.length === 0 && (
                     <tr>
-                      <td colSpan={10}>
+                      <td colSpan={9}>
                         <p className="bulk-upload-empty-inline">
                           No uploaded or draft games for this month.
                         </p>

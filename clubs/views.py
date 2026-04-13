@@ -205,7 +205,7 @@ class ConfigureDivisionsAPIView(APIView):
         valid_genders = {choice[0] for choice in Division.GENDER_CHOICES}
         if gender not in valid_genders:
             return Response(
-                {"detail": "Division gender must be M, F, or MIXED."},
+                {"detail": "Division gender must be M or F."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -259,7 +259,7 @@ class ConfigureDivisionDetailAPIView(APIView):
         valid_genders = {choice[0] for choice in Division.GENDER_CHOICES}
         if gender not in valid_genders:
             return Response(
-                {"detail": "Division gender must be M, F, or MIXED."},
+                {"detail": "Division gender must be M or F."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

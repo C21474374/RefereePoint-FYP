@@ -8,7 +8,7 @@ export type ConfigureClub = {
 export type ConfigureDivision = {
   id: number;
   name: string;
-  gender: "M" | "F" | "MIXED";
+  gender: "M" | "F";
   requires_appointed_referees: boolean;
   display: string;
   is_active: boolean;
@@ -31,7 +31,7 @@ export type ConfigureBootstrapResponse = {
 
 export type CreateDivisionPayload = {
   name: string;
-  gender: "M" | "F" | "MIXED";
+  gender: "M" | "F";
   requires_appointed_referees: boolean;
 };
 

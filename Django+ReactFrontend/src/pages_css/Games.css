@@ -195,6 +195,13 @@
   font-size: 1.04rem;
 }
 
+.game-card-division {
+  margin: 0 0 7px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .game-card-title-button {
   border: none;
   background: transparent;

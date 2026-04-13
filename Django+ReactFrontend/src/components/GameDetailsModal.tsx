@@ -105,6 +105,31 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function hasUsefulVenueName(venueName: string | null | undefined) {
+  if (!venueName) {
+    return false;
+  }
+
+  const normalized = venueName.trim().toLowerCase();
+  return normalized.length > 0 && normalized !== "venue tbc";
+}
+
+function buildGoogleMapsDirectionsUrl(details: GameDetailsModalData) {
+  if (isFiniteNumber(details.latitude) && isFiniteNumber(details.longitude)) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+      `${details.latitude},${details.longitude}`
+    )}`;
+  }
+
+  if (hasUsefulVenueName(details.venueName)) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+      details.venueName!.trim()
+    )}`;
+  }
+
+  return null;
+}
+
 const GameDetailsModal = ({
   open,
   details,
@@ -146,6 +171,7 @@ const GameDetailsModal = ({
   const mapCenter: [number, number] = hasCoordinates
     ? [latitude, longitude]
     : DEFAULT_CENTER;
+  const directionsUrl = buildGoogleMapsDirectionsUrl(details);
 
   const tileLayerUrl =
     theme === "dark"
@@ -310,6 +336,23 @@ const GameDetailsModal = ({
             ) : (
               <p className="game-details-no-map">
                 Location coordinates are not available for this game.
+              </p>
+            )}
+            {directionsUrl ? (
+              <a
+                className="game-details-directions-link"
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="button-with-icon">
+                  <AppIcon name="home" />
+                  <span>Get Directions</span>
+                </span>
+              </a>
+            ) : (
+              <p className="game-details-directions-help">
+                Add a venue to enable directions.
               </p>
             )}
           </div>

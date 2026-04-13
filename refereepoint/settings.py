@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     # Created apps
     'users',
     'clubs',
+    'schools',
+    'college',
     'venues',
     'games',
     'cover_requests',

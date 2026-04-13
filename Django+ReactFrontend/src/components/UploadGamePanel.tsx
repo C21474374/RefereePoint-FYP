@@ -9,6 +9,12 @@ type SimpleOption = {
   requires_appointed_referees?: boolean;
 };
 
+type TeamOption = {
+  id: number;
+  name: string;
+  division_id?: number;
+};
+
 type UploadGamePanelProps = {
   embedded?: boolean;
   onPosted?: () => void;
@@ -22,7 +28,7 @@ export default function UploadGamePanel({
 
   const [divisions, setDivisions] = useState<SimpleOption[]>([]);
   const [venues, setVenues] = useState<SimpleOption[]>([]);
-  const [teams, setTeams] = useState<SimpleOption[]>([]);
+  const [teams, setTeams] = useState<TeamOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -78,6 +84,7 @@ export default function UploadGamePanel({
           teamsData.map((team: any) => ({
             id: team.id,
             name: `${team.club_name} - ${team.division_name}`,
+            division_id: team.division_id,
           }))
         );
       } catch (error) {

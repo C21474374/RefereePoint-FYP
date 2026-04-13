@@ -106,6 +106,10 @@ const GameCard = ({
         ? "Intro referees cannot take Crew Chief."
         : null;
 
+  const divisionDisplay = opportunity.division_name
+    ? `${opportunity.division_name}${opportunity.division_gender ? ` ${opportunity.division_gender}` : ""}`
+    : null;
+
   const recommendationScore =
     typeof opportunity.recommendation_score === "number"
       ? Math.round(opportunity.recommendation_score)
@@ -113,10 +117,6 @@ const GameCard = ({
   const recommendationReasons = opportunity.recommendation_reasons || [];
 
   const modalDetails = useMemo<GameDetailsModalData>(() => {
-    const divisionDisplay = opportunity.division_name
-      ? `${opportunity.division_name}${opportunity.division_gender ? ` ${opportunity.division_gender}` : ""}`
-      : null;
-
     return {
       id: `${opportunity.type}-${opportunity.id}`,
       title: buildTitle(opportunity),
@@ -143,7 +143,7 @@ const GameCard = ({
       joinedRefereesCount: opportunity.joined_referees_count ?? null,
       slotsLeft: opportunity.slots_left ?? null,
     };
-  }, [isEvent, opportunity, typeLabel]);
+  }, [divisionDisplay, isEvent, opportunity, typeLabel]);
 
   return (
     <>
@@ -171,6 +171,7 @@ const GameCard = ({
         >
           <h3 className="game-card-title">{buildTitle(opportunity)}</h3>
         </button>
+        {divisionDisplay && <p className="game-card-division">{divisionDisplay}</p>}
 
         <div className="game-card-meta">
           {isEvent ? (

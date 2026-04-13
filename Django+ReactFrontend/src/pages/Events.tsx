@@ -510,6 +510,7 @@ export default function Events() {
                 key={editingEvent.id}
                 venues={venues}
                 initialEvent={editingEvent}
+                eventTypeLabel={editingEvent.event_type_display}
                 loading={editing}
                 onSubmit={handleUpdateEvent}
                 onCancelEdit={() => setEditingEvent(null)}

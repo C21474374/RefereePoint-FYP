@@ -92,9 +92,6 @@ type ManageForm = {
   venue: string;
   home_team: string;
   away_team: string;
-  notes: string;
-  original_post_text: string;
-  description: string;
   crew_chief: boolean;
   umpire_1: boolean;
 };
@@ -116,9 +113,6 @@ const emptyForm: ManageForm = {
   venue: "",
   home_team: "",
   away_team: "",
-  notes: "",
-  original_post_text: "",
-  description: "",
   crew_chief: false,
   umpire_1: false,
 };
@@ -157,8 +151,6 @@ function formFromGame(game: UploadedGame): ManageForm {
       : game.payment_type === "CLAIM"
         ? "CLAIM"
         : "CASH";
-  const description = game.uploaded_slots.find((slot) => slot.description)?.description || "";
-
   return {
     game_type: gameType,
     payment_type: paymentType,
@@ -168,9 +160,6 @@ function formFromGame(game: UploadedGame): ManageForm {
     venue: game.venue ? String(game.venue) : "",
     home_team: game.home_team ? String(game.home_team) : "",
     away_team: game.away_team ? String(game.away_team) : "",
-    notes: game.notes || "",
-    original_post_text: game.original_post_text || "",
-    description,
     crew_chief: roles.has("CREW_CHIEF"),
     umpire_1: roles.has("UMPIRE_1"),
   };
@@ -421,17 +410,15 @@ export default function Games() {
       venue: Number(editForm.venue),
       home_team: Number(editForm.home_team),
       away_team: Number(editForm.away_team),
-      notes: editForm.notes,
-      original_post_text: editForm.original_post_text,
     };
 
     if (isNonAppointedGameType) {
       const slots: NonNullable<ManageUploadedGamePayload["slots"]> = [];
       if (editForm.crew_chief) {
-        slots.push({ role: "CREW_CHIEF", description: editForm.description.trim() });
+        slots.push({ role: "CREW_CHIEF" });
       }
       if (editForm.umpire_1) {
-        slots.push({ role: "UMPIRE_1", description: editForm.description.trim() });
+        slots.push({ role: "UMPIRE_1" });
       }
       payload.slots = slots;
     }
@@ -817,7 +804,6 @@ export default function Games() {
                               : {
                                   crew_chief: false,
                                   umpire_1: false,
-                                  description: "",
                                 }),
                           }));
                         }}
@@ -954,44 +940,6 @@ export default function Games() {
                           setEditForm((prev) => ({ ...prev, time: event.target.value }))
                         }
                         required
-                      />
-                    </label>
-                    {isEditingNonAppointed && (
-                      <label className="games-manage-form-wide">
-                        <span>Slot Description</span>
-                        <textarea
-                          rows={3}
-                          value={editForm.description}
-                          onChange={(event) =>
-                            setEditForm((prev) => ({
-                              ...prev,
-                              description: event.target.value,
-                            }))
-                          }
-                        />
-                      </label>
-                    )}
-                    <label className="games-manage-form-wide">
-                      <span>Notes</span>
-                      <textarea
-                        rows={3}
-                        value={editForm.notes}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({ ...prev, notes: event.target.value }))
-                        }
-                      />
-                    </label>
-                    <label className="games-manage-form-wide">
-                      <span>Original Post Text</span>
-                      <textarea
-                        rows={4}
-                        value={editForm.original_post_text}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            original_post_text: event.target.value,
-                          }))
-                        }
                       />
                     </label>
                   </div>

@@ -11,6 +11,7 @@ type SimpleOption = {
 type TeamOption = {
   id: number;
   name: string;
+  division_id?: number;
 };
 
 type AvailabilityResponse = {
@@ -45,11 +46,8 @@ type FormState = {
   venue: string;
   home_team: string;
   away_team: string;
-  notes: string;
-  original_post_text: string;
   requesting_side: "" | "HOME" | "AWAY";
   second_ref_needed: boolean;
-  description: string;
 };
 
 const NON_APPOINTED_GAME_TYPES: GameUploadType[] = [
@@ -83,38 +81,28 @@ const initialForm: FormState = {
   venue: "",
   home_team: "",
   away_team: "",
-  notes: "",
-  original_post_text: "",
   requesting_side: "",
   second_ref_needed: false,
-  description: "",
 };
 
 
 
 function buildSlots(
   requestingSide: "" | "HOME" | "AWAY",
-  secondRefNeeded: boolean,
-  description: string
+  secondRefNeeded: boolean
 ) {
   if (!requestingSide) return [];
-
-  const baseSlot = {
-    description,
-  };
 
   if (requestingSide === "HOME") {
     const slots = [
       {
         role: "CREW_CHIEF",
-        ...baseSlot,
       },
     ];
 
     if (secondRefNeeded) {
       slots.push({
         role: "UMPIRE_1",
-        ...baseSlot,
       });
     }
 
@@ -124,18 +112,26 @@ function buildSlots(
   const slots = [
     {
       role: "UMPIRE_1",
-      ...baseSlot,
     },
   ];
 
   if (secondRefNeeded) {
     slots.push({
       role: "CREW_CHIEF",
-      ...baseSlot,
     });
   }
 
   return slots;
+}
+
+function roleLabelForSide(side: "" | "HOME" | "AWAY") {
+  if (side === "HOME") {
+    return "Crew Chief";
+  }
+  if (side === "AWAY") {
+    return "Umpire 1";
+  }
+  return "";
 }
 
 export default function UploadGameForm({
@@ -268,6 +264,60 @@ export default function UploadGameForm({
   const awayDisabled = availability ? !availability.away_available : false;
   const bothSidesBlocked = homeDisabled && awayDisabled;
   const isNonAppointedType = NON_APPOINTED_GAME_TYPES.includes(form.game_type);
+  const teamsForDivision = useMemo(() => {
+    const divisionId = Number(form.division);
+    if (!divisionId) {
+      return [];
+    }
+    return teams.filter((team) => team.division_id === divisionId);
+  }, [form.division, teams]);
+
+  const homeTeamOptions = useMemo(
+    () => teamsForDivision.filter((team) => String(team.id) !== form.away_team),
+    [form.away_team, teamsForDivision]
+  );
+
+  const awayTeamOptions = useMemo(
+    () => teamsForDivision.filter((team) => String(team.id) !== form.home_team),
+    [form.home_team, teamsForDivision]
+  );
+
+  const homeTeamName = useMemo(
+    () =>
+      teams.find((team) => String(team.id) === form.home_team)?.name || "Home Team",
+    [form.home_team, teams]
+  );
+
+  const awayTeamName = useMemo(
+    () =>
+      teams.find((team) => String(team.id) === form.away_team)?.name || "Away Team",
+    [form.away_team, teams]
+  );
+
+  const requestingTeamName = form.requesting_side === "HOME" ? homeTeamName : awayTeamName;
+  const oppositeTeamName = form.requesting_side === "HOME" ? awayTeamName : homeTeamName;
+  const primaryRoleLabel = roleLabelForSide(form.requesting_side);
+  const secondaryRoleLabel = roleLabelForSide(form.requesting_side === "HOME" ? "AWAY" : "HOME");
+  const selectedSideUnavailable =
+    availability?.exists && form.requesting_side === "HOME"
+      ? !availability.home_available
+      : availability?.exists && form.requesting_side === "AWAY"
+        ? !availability.away_available
+        : false;
+  const canRequestSecondRef =
+    Boolean(form.requesting_side) &&
+    (!availability?.exists ||
+      (form.requesting_side === "HOME"
+        ? Boolean(availability.away_available)
+        : Boolean(availability.home_available)));
+  const effectiveSecondRefNeeded = form.second_ref_needed && canRequestSecondRef;
+
+  useEffect(() => {
+    if (form.second_ref_needed && !canRequestSecondRef) {
+      setForm((prev) => ({ ...prev, second_ref_needed: false }));
+    }
+  }, [canRequestSecondRef, form.second_ref_needed]);
+
   const availableDivisions = useMemo(() => {
     const isAppointedType = APPOINTED_GAME_TYPES.includes(form.game_type);
     return divisions.filter((division) =>
@@ -312,6 +362,43 @@ export default function UploadGameForm({
         second_ref_needed: isNextAppointed ? false : prev.second_ref_needed,
       }));
       setAvailability(null);
+      setErrorMessage("");
+      setSuccessMessage("");
+      return;
+    }
+
+    if (name === "division") {
+      setForm((prev) => ({
+        ...prev,
+        division: value,
+        home_team: "",
+        away_team: "",
+        requesting_side: "",
+        second_ref_needed: false,
+      }));
+      setAvailability(null);
+      setErrorMessage("");
+      setSuccessMessage("");
+      return;
+    }
+
+    if (name === "home_team") {
+      setForm((prev) => ({
+        ...prev,
+        home_team: value,
+        ...(value !== "" && value === prev.away_team ? { away_team: "" } : {}),
+      }));
+      setErrorMessage("");
+      setSuccessMessage("");
+      return;
+    }
+
+    if (name === "away_team") {
+      setForm((prev) => ({
+        ...prev,
+        away_team: value,
+        ...(value !== "" && value === prev.home_team ? { home_team: "" } : {}),
+      }));
       setErrorMessage("");
       setSuccessMessage("");
       return;
@@ -370,13 +457,24 @@ export default function UploadGameForm({
         setErrorMessage("This game already has both referee requests recorded.");
         return;
       }
+
+      if (selectedSideUnavailable) {
+        setErrorMessage("That side already has an open referee request for this game.");
+        return;
+      }
+
+      if (form.second_ref_needed && !canRequestSecondRef) {
+        setErrorMessage(
+          "Only one referee can be requested because the opposite side is already filled."
+        );
+        return;
+      }
     }
 
     const slots = isNonAppointedType
       ? buildSlots(
           form.requesting_side,
-          form.second_ref_needed,
-          form.description
+          effectiveSecondRefNeeded
         )
       : [];
 
@@ -392,8 +490,6 @@ export default function UploadGameForm({
         venue: Number(form.venue),
         home_team: Number(form.home_team),
         away_team: Number(form.away_team),
-        notes: form.notes,
-        original_post_text: form.original_post_text,
         slots,
       };
 
@@ -523,9 +619,14 @@ if (!token) {
 
           <div className="form-field">
             <label>Home Team</label>
-            <select name="home_team" value={form.home_team} onChange={handleChange}>
-              <option value="">Select home team</option>
-              {teams.map((team) => (
+            <select
+              name="home_team"
+              value={form.home_team}
+              onChange={handleChange}
+              disabled={!form.division}
+            >
+              <option value="">{form.division ? "Select home team" : "Select division first"}</option>
+              {homeTeamOptions.map((team) => (
                 <option key={team.id} value={team.id}>
                   {team.name}
                 </option>
@@ -535,9 +636,14 @@ if (!token) {
 
           <div className="form-field">
             <label>Away Team</label>
-            <select name="away_team" value={form.away_team} onChange={handleChange}>
-              <option value="">Select away team</option>
-              {teams.map((team) => (
+            <select
+              name="away_team"
+              value={form.away_team}
+              onChange={handleChange}
+              disabled={!form.division}
+            >
+              <option value="">{form.division ? "Select away team" : "Select division first"}</option>
+              {awayTeamOptions.map((team) => (
                 <option key={team.id} value={team.id}>
                   {team.name}
                 </option>
@@ -560,9 +666,10 @@ if (!token) {
       {isNonAppointedType ? (
         <section className="upload-section">
           <h2>Referee Requirement</h2>
+          <p className="upload-step-caption">Step 1: choose which team is requesting.</p>
 
           <div className="radio-group">
-            <p className="radio-title">Which team needs a referee?</p>
+            <p className="radio-title">Which team needs the referee request?</p>
 
             {checkingAvailability && (
               <p className="availability-text">Checking if this game already exists...</p>
@@ -589,7 +696,7 @@ if (!token) {
                 onChange={handleChange}
                 disabled={homeDisabled}
               />
-              Home Team
+              {homeTeamName}
             </label>
 
             <label className={`radio-option ${awayDisabled ? "disabled" : ""}`}>
@@ -601,27 +708,55 @@ if (!token) {
                 onChange={handleChange}
                 disabled={awayDisabled}
               />
-              Away Team
+              {awayTeamName}
             </label>
           </div>
 
-          <label className="checkbox-option">
-            <input
-              type="checkbox"
-              name="second_ref_needed"
-              checked={form.second_ref_needed}
-              onChange={handleChange}
-            />
-            Second referee also needed
-          </label>
-
-          <div className="helper-box">
-            <strong>Slot logic:</strong>
-            <span>
-              Home team request creates a Crew Chief slot. Away team request creates an Umpire 1
-              slot. If second referee is ticked, both slots are created.
-            </span>
+          <p className="upload-step-caption">Step 2: choose how many referees are needed.</p>
+          <div className="upload-choice-grid">
+            <button
+              type="button"
+              className={`upload-choice-card ${!form.second_ref_needed ? "active" : ""}`}
+              onClick={() => setForm((prev) => ({ ...prev, second_ref_needed: false }))}
+              disabled={!form.requesting_side || selectedSideUnavailable}
+              aria-pressed={!form.second_ref_needed}
+            >
+              <strong>1 Referee</strong>
+              <span>Creates one role for the requesting side.</span>
+            </button>
+            <button
+              type="button"
+              className={`upload-choice-card ${form.second_ref_needed ? "active" : ""}`}
+              onClick={() => setForm((prev) => ({ ...prev, second_ref_needed: true }))}
+              disabled={!form.requesting_side || !canRequestSecondRef || selectedSideUnavailable}
+              aria-pressed={form.second_ref_needed}
+            >
+              <strong>2 Referees</strong>
+              <span>Creates both roles for this game.</span>
+            </button>
           </div>
+
+          {form.requesting_side && !canRequestSecondRef && availability?.exists && !selectedSideUnavailable && (
+            <p className="availability-text warning">
+              Only one referee can be requested here because the opposite side is already posted.
+            </p>
+          )}
+
+          {form.requesting_side && !selectedSideUnavailable && (
+            <div className="upload-requirement-summary">
+              <strong>This request will create:</strong>
+              <div className="upload-slot-preview">
+                <span className="upload-slot-pill">
+                  {primaryRoleLabel} for {requestingTeamName}
+                </span>
+                {effectiveSecondRefNeeded && (
+                  <span className="upload-slot-pill">
+                    {secondaryRoleLabel} for {oppositeTeamName}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </section>
       ) : (
         <section className="upload-section">
@@ -635,47 +770,6 @@ if (!token) {
           </div>
         </section>
       )}
-
-      <section className="upload-section">
-        <h2>Extra Details</h2>
-
-        <div className="form-field">
-          <label>{isNonAppointedType ? "Slot Description" : "Upload Description"}</label>
-          <textarea
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            rows={3}
-            placeholder={
-              isNonAppointedType
-                ? "Optional short description for the opportunity"
-                : "Optional short description for this appointed game upload"
-            }
-          />
-        </div>
-
-        <div className="form-field">
-          <label>Notes</label>
-          <textarea
-            name="notes"
-            value={form.notes}
-            onChange={handleChange}
-            rows={3}
-            placeholder="Optional notes about the game"
-          />
-        </div>
-
-        <div className="form-field">
-          <label>Original Post Text</label>
-          <textarea
-            name="original_post_text"
-            value={form.original_post_text}
-            onChange={handleChange}
-            rows={4}
-            placeholder="Optional copied message or original request text"
-          />
-        </div>
-      </section>
 
       <div className="upload-actions">
         <button

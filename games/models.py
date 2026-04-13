@@ -82,12 +82,6 @@ class Game(models.Model):
         blank=True,
         related_name="games_created",
     )
-    notes = models.TextField(blank=True, default="")
-    original_post_text = models.TextField(
-        blank=True,
-        default="",
-        help_text="Original WhatsApp-style message used to create the game.",
-    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -53,8 +53,6 @@ class GameSerializer(serializers.ModelSerializer):
             "home_team_name",
             "away_team",
             "away_team_name",
-            "notes",
-            "original_post_text",
             "created_by",
             "assigned_roles_count",
             "open_non_appointed_slots_count",
@@ -122,7 +120,6 @@ class UploadedGameSlotSerializer(serializers.ModelSerializer):
             "role_display",
             "status",
             "status_display",
-            "description",
             "is_active",
             "claimed_by_name",
             "claimed_by_phone",
@@ -230,7 +227,6 @@ class RefereeAssignmentSerializer(serializers.ModelSerializer):
 class NonAppointedSlotCreateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=NonAppointedSlot.Role.choices)
 
-    description = serializers.CharField(required=False, allow_blank=True, default="")
     expires_at = serializers.DateTimeField(required=False, allow_null=True)
 
 
@@ -270,8 +266,6 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
             "venue",
             "home_team",
             "away_team",
-            "notes",
-            "original_post_text",
             "slots",
             "appointed_assignments",
         ]

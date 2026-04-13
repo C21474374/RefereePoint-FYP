@@ -332,3 +332,89 @@ class AppointedUploadAvailabilityValidationTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("appointed_assignments", response.data)
+
+
+class SharedAppointedUploadsTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        self.doa_user_one = User.objects.create_user(
+            email="doa.one@test.com",
+            password="password123",
+            first_name="Doa",
+            last_name="One",
+            bipin_number="9101",
+            account_type=User.AccountType.DOA,
+            doa_approved=True,
+            bipin_verified=True,
+        )
+        self.doa_user_two = User.objects.create_user(
+            email="doa.two@test.com",
+            password="password123",
+            first_name="Doa",
+            last_name="Two",
+            bipin_number="9102",
+            account_type=User.AccountType.DOA,
+            doa_approved=True,
+            bipin_verified=True,
+        )
+
+        club_home = Club.objects.create(name="Shared Home Club")
+        club_away = Club.objects.create(name="Shared Away Club")
+        self.division = Division.objects.create(
+            name="U17",
+            gender="M",
+            requires_appointed_referees=True,
+        )
+        self.home_team = Team.objects.create(club=club_home, division=self.division)
+        self.away_team = Team.objects.create(club=club_away, division=self.division)
+        self.venue = Venue.objects.create(name="Shared Arena", club=club_home)
+
+        self.shared_game = Game.objects.create(
+            game_type=Game.GameType.DOA,
+            payment_type=Game.PaymentType.CLAIM,
+            division=self.division,
+            date=date(2026, 4, 11),
+            time=time(12, 0),
+            venue=self.venue,
+            home_team=self.home_team,
+            away_team=self.away_team,
+            created_by=self.doa_user_one,
+        )
+
+    def test_doa_accounts_see_shared_appointed_uploads(self):
+        self.client.force_authenticate(user=self.doa_user_two)
+        response = self.client.get(reverse("my-uploaded-games"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        uploaded_ids = [item["id"] for item in response.data]
+        self.assertIn(self.shared_game.id, uploaded_ids)
+
+    def test_doa_account_can_edit_and_delete_shared_appointed_upload(self):
+        self.client.force_authenticate(user=self.doa_user_two)
+        update_payload = {
+            "game_type": Game.GameType.DOA,
+            "payment_type": Game.PaymentType.CLAIM,
+            "division": self.division.id,
+            "date": "2026-04-11",
+            "time": "13:00",
+            "venue": self.venue.id,
+            "home_team": self.home_team.id,
+            "away_team": self.away_team.id,
+        }
+
+        update_response = self.client.patch(
+            reverse("my-uploaded-game-update", kwargs={"pk": self.shared_game.id}),
+            update_payload,
+            format="json",
+        )
+        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
+
+        self.shared_game.refresh_from_db()
+        self.assertEqual(self.shared_game.time, time(13, 0))
+
+        delete_response = self.client.delete(
+            reverse("my-uploaded-game-delete", kwargs={"pk": self.shared_game.id})
+        )
+        self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Game.objects.filter(pk=self.shared_game.id).exists())

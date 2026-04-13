@@ -91,9 +91,6 @@ const GamesMap = ({ opportunities, selectedVenueId, onVenueSelect }: GamesMapPro
           key={venue.venueId}
           position={[venue.lat, venue.lng]}
           icon={redIcon}
-          eventHandlers={{
-            click: () => onVenueSelect(venue.venueId),
-          }}
         >
           <Popup>
             <div className="venue-popup">
