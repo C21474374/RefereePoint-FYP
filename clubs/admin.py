@@ -11,15 +11,21 @@ class ClubAdmin(admin.ModelAdmin):
 
 @admin.register(Division)
 class DivisionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'gender', 'requires_appointed_referees')
-    list_filter = ('gender', 'requires_appointed_referees')
+    list_display = (
+        'id',
+        'name',
+        'gender',
+        'requires_appointed_referees',
+        'is_active',
+    )
+    list_filter = ('gender', 'requires_appointed_referees', 'is_active')
     search_fields = ('name',)
     ordering = ('name', 'gender')
 
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    list_display = ('id', 'club', 'division')
-    list_filter = ('division', 'club')
+    list_display = ('id', 'club', 'division', 'is_active')
+    list_filter = ('division', 'club', 'is_active')
     search_fields = ('club__name', 'division__name')
     raw_id_fields = ('club', 'division')

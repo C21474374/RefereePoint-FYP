@@ -332,6 +332,9 @@ const TopNavBar: React.FC = () => {
   const isRefereeUser = Boolean(user?.referee_profile);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const canConfigure = Boolean(
+    !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL")
+  );
   const canViewReports = Boolean(
     user?.can_approve_accounts ||
       user?.account_type === "DOA" ||
@@ -339,6 +342,15 @@ const TopNavBar: React.FC = () => {
   );
   const managerNavLinks: NavLinkItem[] = [
     ...managerBaseNavLinks.filter((link) => hasEventManagerScope || link.path !== "/events"),
+    ...(canConfigure
+      ? ([
+          {
+            name: "Configure",
+            path: "/configure",
+            icon: "settings" as AppIconName,
+          },
+        ] as NavLinkItem[])
+      : []),
     ...(canViewReports
       ? ([
           {

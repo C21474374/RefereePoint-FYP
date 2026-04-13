@@ -14,18 +14,19 @@ class Club(models.Model):
 
 
 class Division(models.Model):
-    """Different divisions/age groups (e.g., U12 Male, U16 Female, O40s Mixed)."""
+    """Different divisions (e.g., U12 Male, U16 Female, O40s Mixed)."""
     
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
         ('MIXED', 'Mixed'),
     ]
-    
+
     name = models.CharField(max_length=50)  # e.g., U12, U14, U16, O40s, Senior
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
     requires_appointed_referees = models.BooleanField(default=False)
-    
+    is_active = models.BooleanField(default=True)
+
     class Meta:
         db_table = 'clubs_division'
     
@@ -51,7 +52,8 @@ class Team(models.Model):
         on_delete=models.CASCADE,
         related_name='teams'
     )
-    
+    is_active = models.BooleanField(default=True)
+
     class Meta:
         db_table = 'clubs_team'
     

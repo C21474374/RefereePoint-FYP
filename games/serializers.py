@@ -8,7 +8,7 @@ from users.appointed_availability import (
     is_game_time_within_allowed_window,
     is_referee_available_for_game,
 )
-from clubs.models import Division
+from clubs.models import Division, Team
 
 class GameSerializer(serializers.ModelSerializer):
     venue_name = serializers.CharField(source="venue.name", read_only=True)
@@ -332,6 +332,10 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
             game_type = attrs["game_type"]
 
         division = attrs.get("division")
+        if division and not division.is_active:
+            raise serializers.ValidationError(
+                {"division": "Selected division is inactive."}
+            )
         appointed_divisions_configured = Division.objects.filter(
             requires_appointed_referees=True
         ).exists()
@@ -362,6 +366,28 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
                             "Choose an appointed division for DOA/NL uploads."
                         )
                     }
+                )
+
+        home_team = attrs.get("home_team")
+        away_team = attrs.get("away_team")
+        if home_team and isinstance(home_team, Team):
+            if not home_team.is_active:
+                raise serializers.ValidationError(
+                    {"home_team": "Selected home team is inactive."}
+                )
+            if home_team.division_id != getattr(division, "id", None):
+                raise serializers.ValidationError(
+                    {"home_team": "Home team must belong to the selected division."}
+                )
+
+        if away_team and isinstance(away_team, Team):
+            if not away_team.is_active:
+                raise serializers.ValidationError(
+                    {"away_team": "Selected away team is inactive."}
+                )
+            if away_team.division_id != getattr(division, "id", None):
+                raise serializers.ValidationError(
+                    {"away_team": "Away team must belong to the selected division."}
                 )
 
         if game_type in self.APPOINTED_GAME_TYPES:

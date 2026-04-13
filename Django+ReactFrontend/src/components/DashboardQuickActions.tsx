@@ -57,6 +57,9 @@ export default function DashboardQuickActions() {
   const isRefereeUser = Boolean(user?.referee_profile);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const canConfigure = Boolean(
+    !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL")
+  );
   const canViewReports = Boolean(
     user?.can_approve_accounts ||
       user?.account_type === "DOA" ||
@@ -73,6 +76,16 @@ export default function DashboardQuickActions() {
             path: "/reports",
             icon: "reports" as AppIconName,
             description: "Review reports submitted by referees.",
+          },
+        ]
+      : []),
+    ...(canConfigure
+      ? [
+          {
+            name: "Configure",
+            path: "/configure",
+            icon: "settings" as AppIconName,
+            description: "Manage divisions and teams for appointed workflows.",
           },
         ]
       : []),

@@ -240,7 +240,7 @@ function formatAgeGroupWithGender(
   ageGroup: string | null | undefined,
   gender: string | null | undefined
 ) {
-  const safeAgeGroup = ageGroup || "Age Group TBC";
+  const safeAgeGroup = ageGroup || "Division TBC";
   if (!gender) {
     return safeAgeGroup;
   }
