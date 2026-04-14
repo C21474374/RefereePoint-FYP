@@ -128,6 +128,8 @@ type CalendarItem = {
   venueName: string | null;
   isTaken: boolean;
   refereeStatusText?: string | null;
+  cancelClaimSlotId?: number | null;
+  cancelDeadlineTimestamp?: number | null;
   details: GameDetailsModalData;
 };
 
@@ -339,6 +341,8 @@ export default function RefereeDashboard() {
 
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
+  const [dashboardReloadKey, setDashboardReloadKey] = useState(0);
+  const [cancellingCalendarItemId, setCancellingCalendarItemId] = useState<string | null>(null);
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
@@ -523,7 +527,7 @@ export default function RefereeDashboard() {
     }
 
     loadDashboardData();
-  }, [canApproveAccounts, hasEventManagerScope, isRefereeUser]);
+  }, [canApproveAccounts, dashboardReloadKey, hasEventManagerScope, isRefereeUser]);
 
   const fullName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
@@ -649,6 +653,8 @@ export default function RefereeDashboard() {
         const homeTeam = claimedGame.game_details?.home_team_name || "Home Team";
         const awayTeam = claimedGame.game_details?.away_team_name || "Away Team";
 
+        const cancelDeadlineTimestamp = parsedDate.getTime() - 3 * 60 * 60 * 1000;
+
         items.push({
           id: `my-claimed-${claimedGame.id}`,
           date: dateValue,
@@ -659,6 +665,8 @@ export default function RefereeDashboard() {
           badge: "Taken Game",
           venueName: claimedGame.game_details?.venue_name || null,
           isTaken: true,
+          cancelClaimSlotId: claimedGame.id,
+          cancelDeadlineTimestamp,
           details: {
             id: `my-claimed-${claimedGame.id}`,
             title: `${homeTeam} vs ${awayTeam}`,
@@ -905,10 +913,6 @@ export default function RefereeDashboard() {
           label: "This Month Claim",
           value: `EUR ${monthlyEarnings?.total_claim_amount ?? "0.00"}`,
         },
-        {
-          label: "Mileage This Month",
-          value: `${monthlyEarnings?.mileage_km_total ?? "0.00"} km`,
-        },
       ];
     }
 
@@ -1012,6 +1016,72 @@ export default function RefereeDashboard() {
 
   const selectedDayItems = selectedDateKey ? (calendarItemsByDate[selectedDateKey] || []) : [];
 
+  const canCancelClaimedCalendarItem = (item: CalendarItem) =>
+    typeof item.cancelClaimSlotId === "number" &&
+    typeof item.cancelDeadlineTimestamp === "number" &&
+    Date.now() < item.cancelDeadlineTimestamp;
+
+  const handleCancelClaimedCalendarItem = async (item: CalendarItem) => {
+    if (typeof item.cancelClaimSlotId !== "number") {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Cancel this taken game? This will reopen it in Opportunities for other referees to claim."
+      )
+    ) {
+      return;
+    }
+
+    const token = getAccessToken();
+    if (!token) {
+      setDashboardError("You must be logged in to cancel a claimed game.");
+      return;
+    }
+
+    try {
+      setCancellingCalendarItemId(item.id);
+      setDashboardError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/games/non-appointed-slots/${item.cancelClaimSlotId}/cancel-claim/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      let payload: unknown = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          getResponseErrorMessage(payload, "Failed to cancel claimed opportunity.")
+        );
+      }
+
+      setSelectedCalendarItem((current) => (current?.id === item.id ? null : current));
+      setMyClaimedGames((prev) =>
+        prev.filter((claimedGame) => claimedGame.id !== item.cancelClaimSlotId)
+      );
+      setDashboardReloadKey((prev) => prev + 1);
+      window.dispatchEvent(new Event("refereepoint:data-refresh"));
+    } catch (error) {
+      setDashboardError(
+        error instanceof Error ? error.message : "Failed to cancel claimed opportunity."
+      );
+    } finally {
+      setCancellingCalendarItemId(null);
+    }
+  };
+
   const calendarDays = useMemo(() => {
     const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
     const gridStart = new Date(monthStart);
@@ -1111,7 +1181,9 @@ export default function RefereeDashboard() {
         </section>
       )}
 
-      {!isAdminDashboard && <DashboardStats stats={stats} />}
+      {!isAdminDashboard && (
+        <DashboardStats stats={stats} highlightLabels={isRefereeUser} />
+      )}
 
       <section className="dashboard-notifications-section">
         <div className="dashboard-notifications-header">
@@ -1317,6 +1389,26 @@ export default function RefereeDashboard() {
                         </p>
                       )}
                       <div className="dashboard-day-item-actions">
+                        {typeof item.cancelClaimSlotId === "number" && (
+                          <button
+                            type="button"
+                            className="dashboard-day-cancel-btn"
+                            onClick={() => {
+                              void handleCancelClaimedCalendarItem(item);
+                            }}
+                            disabled={
+                              cancellingCalendarItemId === item.id ||
+                              !canCancelClaimedCalendarItem(item)
+                            }
+                            title="Cancellation is only allowed more than 3 hours before game start."
+                          >
+                            {cancellingCalendarItemId === item.id
+                              ? "Cancelling..."
+                              : canCancelClaimedCalendarItem(item)
+                                ? "Cancel"
+                                : "Cancel Closed"}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="dashboard-day-view-btn"
@@ -1331,7 +1423,7 @@ export default function RefereeDashboard() {
                     </article>
                   ))}
                 </div>
-              ) : (
+              ) : upcomingCalendarItems.length > 0 ? (
                 <div className="dashboard-no-games-message">
                   <p>
                     {selectedDateKey
@@ -1339,7 +1431,7 @@ export default function RefereeDashboard() {
                       : "Select a date to view schedule items."}
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
           </>
         )}

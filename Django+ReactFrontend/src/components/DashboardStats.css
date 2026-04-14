@@ -5,6 +5,10 @@
   margin-top: 20px;
 }
 
+.dashboard-stats-two {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+}
+
 .dashboard-stat-card {
   padding: 18px 16px;
   border-radius: 14px;
@@ -25,6 +29,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.dashboard-stat-label-highlight {
+  color: var(--color-accent);
 }
 
 .dashboard-stat-value {

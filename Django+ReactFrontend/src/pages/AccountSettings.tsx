@@ -475,11 +475,6 @@ export default function AccountSettings() {
         <p className="account-settings-testing-copy">
           Keep your contact details up to date so other users and admins can reach you.
         </p>
-        {!isEditingProfile && (
-          <p className="account-settings-availability-copy">
-            Click Edit Details to unlock fields.
-          </p>
-        )}
         {profileError && <p className="account-settings-testing-error">{profileError}</p>}
         {profileSuccess && <p className="account-settings-testing-success">{profileSuccess}</p>}
         <div className="account-settings-profile-form-grid">
@@ -595,14 +590,6 @@ export default function AccountSettings() {
             <p>{roleLabel}</p>
           </article>
           <article>
-            <span>Approval Status</span>
-            <p>{user?.doa_approved ? "Approved" : "Pending Approval"}</p>
-          </article>
-          <article>
-            <span>Upload Access</span>
-            <p>{user?.uploads_approved ? "Enabled" : "Pending Verification"}</p>
-          </article>
-          <article>
             <span>{isRefereeUser ? "Grade" : "Manager Scope"}</span>
             <p>{isRefereeUser ? grade : user?.manager_scope_display || "None"}</p>
           </article>
@@ -623,10 +610,6 @@ export default function AccountSettings() {
             <AppIcon name="home" className="section-title-icon" />
             <span>Home Location</span>
           </h2>
-          <p className="account-settings-availability-copy">
-            Mileage is calculated from this address/location. Save with address/postcode to geocode
-            automatically, or use current location.
-          </p>
           {(homeLat === null || homeLon === null) && (
             <p className="account-settings-testing-error">
               Home coordinates are missing, so mileage cannot be calculated yet.
@@ -680,9 +663,6 @@ export default function AccountSettings() {
               </span>
             </button>
           </div>
-          <p className="account-settings-availability-copy">
-            Tolls, taxis, and parking are excluded.
-          </p>
         </section>
       )}
 
@@ -693,7 +673,6 @@ export default function AccountSettings() {
             <span>Appointed Games Availability</span>
           </h2>
           <p className="account-settings-availability-copy">
-            Monday-Friday availability window is 19:00-22:00. Saturday-Sunday is 10:00-22:00.
             Changes saved here become active on the first day of next month, unless you use Save and Apply Now.
           </p>
           {availabilityPendingFrom && (

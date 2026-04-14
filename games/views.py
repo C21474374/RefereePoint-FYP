@@ -17,10 +17,13 @@ from .serializers import (
 from users.models import RefereeProfile
 from cover_requests.models import CoverRequest
 from events.models import Event
-from notifications.services import notify_non_appointed_slot_claimed
+from notifications.services import (
+    notify_non_appointed_slot_claimed,
+    notify_non_appointed_slot_reopened,
+)
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
-from datetime import datetime, time as dt_time
+from datetime import datetime, time as dt_time, timedelta
 
 MANAGEABLE_UPLOAD_GAME_TYPES = [
     Game.GameType.CLUB,
@@ -294,6 +297,78 @@ class ClaimNonAppointedSlotAPIView(APIView):
 
         serializer = NonAppointedSlotSerializer(slot)
 
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CancelClaimedNonAppointedSlotAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            slot = NonAppointedSlot.objects.select_related(
+                "game",
+                "posted_by",
+                "claimed_by__user",
+            ).get(pk=pk, is_active=True)
+        except NonAppointedSlot.DoesNotExist:
+            return Response(
+                {"detail": "Claimed slot not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if slot.status != NonAppointedSlot.Status.CLAIMED or not slot.claimed_by_id:
+            return Response(
+                {"detail": "Only claimed slots can be cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            referee = RefereeProfile.objects.get(user=request.user)
+        except RefereeProfile.DoesNotExist:
+            return Response(
+                {"detail": "Only referees can cancel claimed opportunities."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if slot.claimed_by_id != referee.id:
+            return Response(
+                {"detail": "You can only cancel games you claimed."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        game = slot.game
+        if not game.date or not game.time:
+            return Response(
+                {"detail": "Game start time is not set for this slot."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        game_start = timezone.make_aware(
+            datetime.combine(game.date, game.time),
+            timezone.get_current_timezone(),
+        )
+        cancellation_deadline = game_start - timedelta(hours=3)
+        if timezone.now() >= cancellation_deadline:
+            return Response(
+                {
+                    "detail": (
+                        "You can only cancel this claimed game more than 3 hours "
+                        "before the game starts."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        slot.claimed_by = None
+        slot.status = NonAppointedSlot.Status.OPEN
+        slot.claimed_at = None
+        slot.save(update_fields=["claimed_by", "status", "claimed_at", "updated_at"])
+        try:
+            notify_non_appointed_slot_reopened(slot, actor_user=request.user)
+        except Exception:
+            pass
+
+        serializer = NonAppointedSlotSerializer(slot)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

@@ -39,7 +39,6 @@ const Gameslist = ({
               <AppIcon name="opportunities" className="section-title-icon" />
               <span>Recommended For You</span>
             </h3>
-            <p>Top opportunities ranked by fit, distance, and urgency.</p>
           </div>
           {recommended.map((opportunity) => (
             <GameCard
@@ -60,7 +59,6 @@ const Gameslist = ({
             <AppIcon name="games" className="section-title-icon" />
             <span>More Opportunities</span>
           </h3>
-          <p>Additional matches and requests available to you.</p>
         </div>
       )}
 

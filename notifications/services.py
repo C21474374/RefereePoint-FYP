@@ -296,6 +296,35 @@ def notify_non_appointed_slot_claimed(slot: NonAppointedSlot, actor_user: User |
     )
 
 
+def notify_non_appointed_slot_reopened(slot: NonAppointedSlot, actor_user: User | None = None):
+    recipient = slot.posted_by
+    if not recipient or recipient.account_type not in MANAGER_NOTIFICATION_ROLES:
+        return None
+
+    actor_name = _display_user_name(actor_user)
+    game_label = _display_game_label(slot.game)
+    message = (
+        f"{actor_name} cancelled {slot.get_role_display()} for "
+        f"{game_label} ({slot.game.date} {_display_game_time(slot.game)}). "
+        "The slot is open again."
+    )
+
+    return create_user_notification(
+        recipient=recipient,
+        notification_type=UserNotification.NotificationType.GAME_ASSIGNMENT_ACTIVITY,
+        title="Referee cancelled claimed slot",
+        message=message,
+        link_path="/games",
+        actor=actor_user,
+        metadata={
+            "slot_id": slot.id,
+            "game_id": slot.game_id,
+            "role": slot.role,
+            "status": slot.status,
+        },
+    )
+
+
 def notify_event_joined(event: Event, referee_user: User | None = None):
     recipient = event.created_by
     if not recipient or recipient.account_type not in MANAGER_NOTIFICATION_ROLES:

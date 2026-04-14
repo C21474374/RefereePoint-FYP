@@ -7,6 +7,7 @@ from .views import (
     NonAppointedSlotListAPIView,
     NonAppointedSlotDetailAPIView,
     ClaimNonAppointedSlotAPIView,
+    CancelClaimedNonAppointedSlotAPIView,
     NonAppointedGameUploadAPIView,
     MyUploadedGamesAPIView,
     MyUploadedGameUpdateAPIView,
@@ -46,6 +47,11 @@ urlpatterns = [
         "non-appointed-slots/<int:pk>/claim/",
         ClaimNonAppointedSlotAPIView.as_view(),
         name="non-appointed-slot-claim",
+    ),
+    path(
+        "non-appointed-slots/<int:pk>/cancel-claim/",
+        CancelClaimedNonAppointedSlotAPIView.as_view(),
+        name="non-appointed-slot-cancel-claim",
     ),
 
     path(

@@ -95,9 +95,19 @@
   font-weight: 600;
 }
 
+.row-remove-btn {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
 .bulk-upload-actions-top button:hover,
 .row-remove-btn:hover {
   border-color: var(--color-accent);
+}
+
+.row-remove-btn:hover:not(:disabled) {
+  filter: brightness(1.05);
 }
 
 .bulk-upload-actions-top .upload-all-btn {
@@ -137,7 +147,7 @@
   top: 0;
   z-index: 2;
   background: var(--color-bg-secondary);
-  color: var(--color-text-muted);
+  color: var(--color-accent);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;

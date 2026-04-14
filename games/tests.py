@@ -1,8 +1,10 @@
-from datetime import date, time
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -13,6 +15,118 @@ from users.models import RefereeAvailability, User
 from venues.models import Venue
 
 from .models import Game, NonAppointedSlot, RefereeAssignment
+
+
+class CancelClaimedNonAppointedSlotTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        self.ref_user = User.objects.create_user(
+            email="claimer@test.com",
+            password="password123",
+            first_name="Claiming",
+            last_name="Referee",
+            bipin_number="3001",
+        )
+        self.ref_profile = self.ref_user.referee_profile
+        self.ref_profile.grade = "GRADE_2"
+        self.ref_profile.save(update_fields=["grade"])
+
+        self.other_ref_user = User.objects.create_user(
+            email="other.ref@test.com",
+            password="password123",
+            first_name="Other",
+            last_name="Referee",
+            bipin_number="3002",
+        )
+
+        self.poster = User.objects.create_user(
+            email="club.poster@test.com",
+            password="password123",
+            first_name="Club",
+            last_name="Poster",
+            bipin_number="3003",
+            account_type=User.AccountType.CLUB,
+            doa_approved=True,
+            bipin_verified=True,
+        )
+
+        club_home = Club.objects.create(name="Templeogue")
+        club_away = Club.objects.create(name="Eanna")
+        division = Division.objects.create(name="U16", gender="M")
+        home_team = Team.objects.create(club=club_home, division=division)
+        away_team = Team.objects.create(club=club_away, division=division)
+        venue = Venue.objects.create(name="Castleknock Community College", club=club_home)
+
+        self.game = Game.objects.create(
+            game_type=Game.GameType.CLUB,
+            payment_type=Game.PaymentType.CASH,
+            division=division,
+            date=timezone.localdate() + timedelta(days=2),
+            time=time(20, 0),
+            venue=venue,
+            home_team=home_team,
+            away_team=away_team,
+            created_by=self.poster,
+        )
+
+        self.slot = NonAppointedSlot.objects.create(
+            game=self.game,
+            role=NonAppointedSlot.Role.UMPIRE_1,
+            posted_by=self.poster,
+            claimed_by=self.ref_profile,
+            status=NonAppointedSlot.Status.CLAIMED,
+            is_active=True,
+            claimed_at=timezone.now(),
+        )
+
+    def _game_start(self):
+        return timezone.make_aware(
+            datetime.combine(self.game.date, self.game.time),
+            timezone.get_current_timezone(),
+        )
+
+    def test_referee_can_cancel_more_than_three_hours_before_start(self):
+        self.client.force_authenticate(user=self.ref_user)
+        mocked_now = self._game_start() - timedelta(hours=4)
+
+        with patch("games.views.timezone.now", return_value=mocked_now):
+            response = self.client.post(
+                reverse("non-appointed-slot-cancel-claim", kwargs={"pk": self.slot.id})
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.status, NonAppointedSlot.Status.OPEN)
+        self.assertIsNone(self.slot.claimed_by)
+        self.assertIsNone(self.slot.claimed_at)
+
+    def test_referee_cannot_cancel_inside_three_hour_window(self):
+        self.client.force_authenticate(user=self.ref_user)
+        mocked_now = self._game_start() - timedelta(hours=2)
+
+        with patch("games.views.timezone.now", return_value=mocked_now):
+            response = self.client.post(
+                reverse("non-appointed-slot-cancel-claim", kwargs={"pk": self.slot.id})
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.status, NonAppointedSlot.Status.CLAIMED)
+        self.assertEqual(self.slot.claimed_by_id, self.ref_profile.id)
+
+    def test_other_referee_cannot_cancel_someone_elses_claim(self):
+        self.client.force_authenticate(user=self.other_ref_user)
+        mocked_now = self._game_start() - timedelta(hours=4)
+
+        with patch("games.views.timezone.now", return_value=mocked_now):
+            response = self.client.post(
+                reverse("non-appointed-slot-cancel-claim", kwargs={"pk": self.slot.id})
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.status, NonAppointedSlot.Status.CLAIMED)
 
 
 class OpportunityFeedTests(TestCase):

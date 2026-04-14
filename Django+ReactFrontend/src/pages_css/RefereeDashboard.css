@@ -366,7 +366,27 @@
 .dashboard-day-item-actions {
   margin-top: 10px;
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
+}
+
+.dashboard-day-cancel-btn {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  padding: 8px 11px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.dashboard-day-cancel-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.dashboard-day-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .dashboard-day-view-btn {

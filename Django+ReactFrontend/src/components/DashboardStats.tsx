@@ -9,6 +9,7 @@ type StatItem = {
 
 type DashboardStatsProps = {
   stats: StatItem[];
+  highlightLabels?: boolean;
 };
 
 function iconForStatLabel(label: string): AppIconName {
@@ -34,12 +35,22 @@ function iconForStatLabel(label: string): AppIconName {
   return "dashboard";
 }
 
-export default function DashboardStats({ stats }: DashboardStatsProps) {
+export default function DashboardStats({
+  stats,
+  highlightLabels = false,
+}: DashboardStatsProps) {
+  const statsClassName =
+    stats.length === 2 ? "dashboard-stats dashboard-stats-two" : "dashboard-stats";
+
   return (
-    <section className="dashboard-stats">
+    <section className={statsClassName}>
       {stats.map((stat) => (
         <div key={stat.label} className="dashboard-stat-card">
-          <p className="dashboard-stat-label inline-icon-label">
+          <p
+            className={`dashboard-stat-label inline-icon-label ${
+              highlightLabels ? "dashboard-stat-label-highlight" : ""
+            }`}
+          >
             <AppIcon name={iconForStatLabel(stat.label)} />
             <span>{stat.label}</span>
           </p>

@@ -85,7 +85,7 @@ export default function Earnings() {
           <AppIcon name="earnings" className="page-title-icon" />
           <span>Earnings</span>
         </h1>
-        <p>View monthly appointed claims by type. DOA and NL are tracked separately.</p>
+        <p>View monthly appointed claims by type. DOA(Dublin Officials Association) and NL(National League) are tracked separately.</p>
       </div>
 
       <div className="earnings-controls">
@@ -161,10 +161,9 @@ export default function Earnings() {
                 <h3>EUR {report.totals.total_claim_amount}</h3>
               </div>
             </div>
-            <p className="earnings-note">
-              Missing distance games: {report.totals.missing_distance_games}{" "}
-              {report.selected_month?.is_finalized ? "| Month finalized and saved." : ""}
-            </p>
+            {report.selected_month?.is_finalized && (
+              <p className="earnings-note">Month finalized and saved.</p>
+            )}
           </section>
 
           <section className="earnings-section">
