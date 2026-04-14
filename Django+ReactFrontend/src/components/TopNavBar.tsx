@@ -11,6 +11,11 @@ import {
 import AppIcon, { type AppIconName } from "./AppIcon";
 import UploadGamePanel from "./UploadGamePanel";
 import UploadEventPanel from "./UploadEventPanel";
+import {
+  canAccessConfigurePage,
+  canAccessReportsPage,
+  hasRefereeAccess,
+} from "../utils/access";
 
 type UploadModalType = "game" | "event" | null;
 type NavLinkItem = { name: string; path: string; icon: AppIconName };
@@ -329,17 +334,11 @@ const TopNavBar: React.FC = () => {
   const userDisplayName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || user?.email || "Referee";
   const userInitials = buildUserInitials(user?.first_name, user?.last_name, user?.email);
-  const isRefereeUser = Boolean(user?.referee_profile);
+  const isRefereeUser = hasRefereeAccess(user);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
-  const canConfigure = Boolean(
-    !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL")
-  );
-  const canViewReports = Boolean(
-    user?.can_approve_accounts ||
-      user?.account_type === "DOA" ||
-      user?.account_type === "NL"
-  );
+  const canConfigure = canAccessConfigurePage(user);
+  const canViewReports = canAccessReportsPage(user);
   const managerNavLinks: NavLinkItem[] = [
     ...managerBaseNavLinks.filter((link) => hasEventManagerScope || link.path !== "/events"),
     ...(canConfigure

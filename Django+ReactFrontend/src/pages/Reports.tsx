@@ -10,6 +10,7 @@ import {
   type GameReport,
   type ReportableGame,
 } from "../services/reports";
+import { canAccessReportsPage, hasRefereeAccess } from "../utils/access";
 import "../pages_css/Reports.css";
 
 type AdminStatusFilter = "ALL" | "PENDING" | "REVIEWED" | "RESOLVED";
@@ -141,11 +142,8 @@ function gameTitle(gameDetails: GameDetails | undefined) {
 
 export default function Reports() {
   const { user } = useAuth();
-  const isRefereeMode = user?.account_type === "REFEREE";
-  const isAdminReportsMode =
-    user?.account_type === "DOA" ||
-    user?.account_type === "NL" ||
-    Boolean(user?.can_approve_accounts);
+  const isRefereeMode = hasRefereeAccess(user);
+  const isAdminReportsMode = canAccessReportsPage(user) && !isRefereeMode;
 
   const [reportableGames, setReportableGames] = useState<ReportableGame[]>([]);
   const [reports, setReports] = useState<GameReport[]>([]);

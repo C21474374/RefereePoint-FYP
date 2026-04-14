@@ -14,6 +14,10 @@
   min-height: 0;
 }
 
+.bulk-upload-page.bulk-upload-page-embedded .bulk-upload-card {
+  margin-top: 0;
+}
+
 .bulk-upload-header h1 {
   margin: 0;
   font-size: 2rem;

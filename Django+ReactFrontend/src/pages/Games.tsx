@@ -15,6 +15,7 @@ import {
   type TeamOption,
   type UploadedGame,
 } from "../services/games";
+import { hasGameUploadAccess, hasRefereeAccess } from "../utils/access";
 import "../pages_css/Games.css";
 
 export type Opportunity = {
@@ -167,9 +168,10 @@ function formFromGame(game: UploadedGame): ManageForm {
 
 export default function Games() {
   const { user } = useAuth();
-  const isRefereeUser = Boolean(user?.referee_profile);
+  const isRefereeUser = hasRefereeAccess(user);
+  const canManageUploadedGames = hasGameUploadAccess(user);
   const isDoaOrNlUploader =
-    !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL");
+    canManageUploadedGames && (user?.account_type === "DOA" || user?.account_type === "NL");
 
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [uploadedGames, setUploadedGames] = useState<UploadedGame[]>([]);
@@ -212,7 +214,7 @@ export default function Games() {
       const token = getAccessToken();
       const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
       const uploadsPromise =
-        token && !isRefereeUser ? getMyUploadedGames() : Promise.resolve([]);
+        token && canManageUploadedGames ? getMyUploadedGames() : Promise.resolve([]);
 
       const uploads = await uploadsPromise;
 
@@ -255,7 +257,7 @@ export default function Games() {
     } finally {
       setLoading(false);
     }
-  }, [isRefereeUser]);
+  }, [canManageUploadedGames, isRefereeUser]);
 
   useEffect(() => {
     loadPageData();
@@ -567,6 +569,9 @@ export default function Games() {
               : isDoaOrNlUploader
                 ? "Upload and manage games in one spreadsheet."
                 : "Upload and manage the games your organisation has posted."}
+            {isRefereeUser && canManageUploadedGames && !isDoaOrNlUploader
+              ? " You can also manage your uploaded games below."
+              : ""}
           </p>
         </div>
         {isRefereeUser && (
@@ -595,7 +600,11 @@ export default function Games() {
         )}
       </div>
 
-      {loading && <p className="games-info-message">Loading opportunities...</p>}
+      {loading && (
+        <p className="games-info-message">
+          {isRefereeUser ? "Loading opportunities..." : "Loading games..."}
+        </p>
+      )}
       {error && <p className="games-error-message">{error}</p>}
 
       {!loading && !error && isRefereeUser && (
@@ -626,7 +635,7 @@ export default function Games() {
         </section>
       )}
 
-      {!isRefereeUser && !isDoaOrNlUploader && (
+      {canManageUploadedGames && !isDoaOrNlUploader && (
         <section
           className={`games-manage-section ${
             expandedSections.manageUploadedGames ? "expanded" : "collapsed"
@@ -767,7 +776,7 @@ export default function Games() {
         </section>
       )}
 
-      {!isRefereeUser && !isDoaOrNlUploader && editingGame && (
+      {canManageUploadedGames && !isDoaOrNlUploader && editingGame && (
         <div className="upload-modal-overlay" onClick={closeEditModal}>
           <div className="upload-modal manage-game-modal" onClick={(event) => event.stopPropagation()}>
             <div className="upload-modal-header">

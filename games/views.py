@@ -15,6 +15,7 @@ from .serializers import (
     OpportunityFeedItemSerializer,
 )
 from users.models import RefereeProfile
+from users.access import has_referee_role
 from cover_requests.models import CoverRequest
 from events.models import Event
 from notifications.services import (
@@ -81,6 +82,7 @@ class CsrfCookieAPIView(APIView):
 
 class GameListAPIView(generics.ListAPIView):
     serializer_class = GameSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = (
@@ -144,10 +146,12 @@ class GameDetailAPIView(generics.RetrieveAPIView):
         .all()
     )
     serializer_class = GameSerializer
+    permission_classes = [IsAuthenticated]
 
 
 class RefereeAssignmentListAPIView(generics.ListAPIView):
     serializer_class = RefereeAssignmentSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = (
@@ -181,6 +185,7 @@ class RefereeAssignmentListAPIView(generics.ListAPIView):
 
 class NonAppointedSlotListAPIView(generics.ListAPIView):
     serializer_class = NonAppointedSlotSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = (
@@ -248,6 +253,7 @@ class NonAppointedSlotDetailAPIView(generics.RetrieveAPIView):
         .all()
     )
     serializer_class = NonAppointedSlotSerializer
+    permission_classes = [IsAuthenticated]
 
 class ClaimNonAppointedSlotAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -484,7 +490,15 @@ class OpportunityFeedAPIView(APIView):
     - Cover requests
     """
 
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
+        if not has_referee_role(request.user):
+            return Response(
+                {"detail": "Only referee-role accounts can access opportunities."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         non_appointed_slots = (
             NonAppointedSlot.objects.select_related(
                 "game",
@@ -764,6 +778,8 @@ class UploadGameAvailabilityView(APIView):
     Matching game rule:
     same home_team + away_team + venue + date + time
     """
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         home_team = request.query_params.get("home_team")

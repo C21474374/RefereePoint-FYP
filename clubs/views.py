@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from games.models import Game
 from users.models import User
+from users.access import has_admin_approval_scope
 
 from .models import Club, Division, Team
 
@@ -27,14 +28,7 @@ def _to_bool(value: object, default: bool = False) -> bool:
 
 
 def _is_configure_admin(user: User) -> bool:
-    if not user or not user.is_authenticated:
-        return False
-    if user.is_staff:
-        return True
-    return (
-        user.account_type in {User.AccountType.DOA, User.AccountType.NL}
-        and user.doa_approved
-    )
+    return has_admin_approval_scope(user)
 
 
 def _club_to_dict(club: Club) -> dict:

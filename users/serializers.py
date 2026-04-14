@@ -3,6 +3,7 @@ from .models import User, RefereeProfile
 from django.db import transaction
 import json
 
+from .access import get_effective_account_roles, has_admin_approval_scope
 from .appointed_availability import (
     set_current_appointed_availability,
     validate_appointed_availability_payload,
@@ -31,6 +32,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
     verification_id_photo = serializers.FileField(read_only=True)
     uploads_approved = serializers.SerializerMethodField()
     can_approve_accounts = serializers.SerializerMethodField()
+    effective_roles = serializers.SerializerMethodField()
 
     def get_allowed_upload_game_types(self, obj: User):
         return sorted(obj.get_allowed_upload_game_types())
@@ -42,12 +44,10 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         return obj.is_approved_for_uploads()
 
     def get_can_approve_accounts(self, obj: User):
-        if obj.is_staff:
-            return True
-        return (
-            obj.account_type in {User.AccountType.DOA, User.AccountType.NL}
-            and obj.doa_approved
-        )
+        return has_admin_approval_scope(obj)
+
+    def get_effective_roles(self, obj: User):
+        return sorted(get_effective_account_roles(obj))
 
     def get_managed_team_name(self, obj: User):
         return str(obj.managed_team) if obj.managed_team else None
@@ -73,6 +73,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'doa_approved',
             'uploads_approved',
             'can_approve_accounts',
+            'effective_roles',
             'allowed_upload_game_types',
             'allowed_upload_event_types',
             'verification_id_number',

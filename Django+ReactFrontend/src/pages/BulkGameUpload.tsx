@@ -1287,22 +1287,17 @@ export default function BulkGameUpload({
 
   return (
     <div className={`bulk-upload-page ${embedded ? "bulk-upload-page-embedded" : ""}`.trim()}>
-      <div className="bulk-upload-header">
-        {embedded ? (
-          <h2 className="section-title-with-icon">
-            <AppIcon name="upload" className="section-title-icon" />
-            <span>Upload Games</span>
-          </h2>
-        ) : (
+      {!embedded && (
+        <div className="bulk-upload-header">
           <h1 className="page-title-with-icon">
             <AppIcon name="upload" className="page-title-icon" />
             <span>Upload Games</span>
           </h1>
-        )}
-        <p>
-          Add multiple {gameType === "NL" ? "NL" : "DOA"} games in one go. Each row is one game.
-        </p>
-      </div>
+          <p>
+            Add multiple {gameType === "NL" ? "NL" : "DOA"} games in one go. Each row is one game.
+          </p>
+        </div>
+      )}
 
       {!user?.uploads_approved && (
         <p className="bulk-upload-message bulk-upload-error">

@@ -150,6 +150,7 @@ class OpportunityFeedTests(TestCase):
         self.home_team = Team.objects.create(club=self.club_home, division=self.division)
         self.away_team = Team.objects.create(club=self.club_away, division=self.division)
         self.venue = Venue.objects.create(name="Tallaght Arena", club=self.club_home)
+        self.client.force_authenticate(user=self.requesting_user)
 
     def test_opportunity_feed_includes_cover_request_without_custom_fee(self):
         appointed_game = Game.objects.create(
@@ -342,7 +343,15 @@ class RefereeEarningsAPITests(TestCase):
     def test_earnings_api_calculates_back_to_back_same_venue_mileage_once(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.get(reverse("referee-earnings"), {"period": "all"})
+        response = self.client.get(
+            reverse("referee-earnings"),
+            {
+                "period": "month",
+                "year": 2026,
+                "month": 3,
+                "game_type": "DOA",
+            },
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["totals"]["games_count"], 2)

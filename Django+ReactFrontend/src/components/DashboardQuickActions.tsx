@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AppIcon, { type AppIconName } from "./AppIcon";
+import {
+  canAccessConfigurePage,
+  canAccessReportsPage,
+  hasRefereeAccess,
+} from "../utils/access";
 import "./DashboardQuickActions.css";
 
 const refereeActions = [
@@ -54,17 +59,11 @@ const managerBaseActions = [
 export default function DashboardQuickActions() {
   const { user } = useAuth();
 
-  const isRefereeUser = Boolean(user?.referee_profile);
+  const isRefereeUser = hasRefereeAccess(user);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
-  const canConfigure = Boolean(
-    !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL")
-  );
-  const canViewReports = Boolean(
-    user?.can_approve_accounts ||
-      user?.account_type === "DOA" ||
-      user?.account_type === "NL"
-  );
+  const canConfigure = canAccessConfigurePage(user);
+  const canViewReports = canAccessReportsPage(user);
   const managerActions = [
     ...managerBaseActions.filter(
       (action) => hasEventManagerScope || action.path !== "/events"

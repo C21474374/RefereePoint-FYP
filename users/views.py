@@ -24,6 +24,7 @@ from .appointed_availability import (
     validate_appointed_availability_payload,
 )
 from notifications.services import notify_account_pending_for_admins
+from .access import get_effective_account_roles, has_admin_approval_scope
 
 
 def _json_error(message: str, status: int) -> JsonResponse:
@@ -54,6 +55,7 @@ def _user_to_dict(user: User) -> dict:
         "uploads_approved": user.is_approved_for_uploads(),
         "allowed_upload_game_types": sorted(user.get_allowed_upload_game_types()),
         "allowed_upload_event_types": sorted(user.get_allowed_upload_event_types()),
+        "effective_roles": sorted(get_effective_account_roles(user)),
         "home_address": user.home_address,
         "home_lat": user.home_lat,
         "home_lon": user.home_lon,
@@ -63,14 +65,7 @@ def _user_to_dict(user: User) -> dict:
 
 
 def _can_approve_accounts(user: User) -> bool:
-    if not user.is_authenticated:
-        return False
-    if user.is_staff:
-        return True
-    return (
-        user.account_type in {User.AccountType.DOA, User.AccountType.NL}
-        and user.doa_approved
-    )
+    return has_admin_approval_scope(user)
 
 
 def _parse_bool(value, default=None):

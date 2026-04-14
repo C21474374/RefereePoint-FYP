@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppIcon from "../components/AppIcon";
 import { useAuth } from "../context/AuthContext";
+import { canAccessConfigurePage } from "../utils/access";
 import {
   createDivision,
   createTeam,
@@ -51,7 +52,7 @@ function sortTeams(items: ConfigureTeam[]) {
 
 export default function ConfigurePage() {
   const { user } = useAuth();
-  const canConfigure = user?.account_type === "DOA" || user?.account_type === "NL";
+  const canConfigure = canAccessConfigurePage(user);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -77,30 +78,20 @@ export default function ConfigurePage() {
   const [newDivisionAppointed, setNewDivisionAppointed] = useState(true);
   const [newTeamClubId, setNewTeamClubId] = useState("");
   const [newTeamDivisionId, setNewTeamDivisionId] = useState("");
+  const [showDivisionFilters, setShowDivisionFilters] = useState(false);
+  const [showTeamFilters, setShowTeamFilters] = useState(false);
+  const [editingDivisionId, setEditingDivisionId] = useState<number | null>(null);
+  const [editDivisionName, setEditDivisionName] = useState("");
+  const [editDivisionGender, setEditDivisionGender] = useState<"M" | "F">("M");
+  const [editDivisionAppointed, setEditDivisionAppointed] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
+  const [editTeamClubId, setEditTeamClubId] = useState("");
+  const [editTeamDivisionId, setEditTeamDivisionId] = useState("");
 
   const activeDivisions = useMemo(
     () => sortDivisions(divisions.filter((item) => item.is_active)),
     [divisions]
   );
-
-  const divisionCounts = useMemo(() => {
-    const active = divisions.filter((item) => item.is_active).length;
-    const appointed = divisions.filter((item) => item.requires_appointed_referees).length;
-    return {
-      total: divisions.length,
-      active,
-      appointed,
-    };
-  }, [divisions]);
-
-  const teamCounts = useMemo(() => {
-    const active = teams.filter((item) => item.is_active).length;
-    return {
-      total: teams.length,
-      active,
-      clubs: clubs.length,
-    };
-  }, [clubs.length, teams]);
 
   const filteredDivisions = useMemo(() => {
     const query = divisionQuery.trim().toLowerCase();
@@ -167,18 +158,6 @@ export default function ConfigurePage() {
     setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const jumpToSection = (key: SectionKey) => {
-    setExpanded({
-      division: key === "division",
-      team: key === "team",
-    });
-
-    requestAnimationFrame(() => {
-      const target = document.getElementById(`configure-${key}`);
-      target?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
-
   const resetAlerts = () => {
     setError("");
     setSuccess("");
@@ -210,35 +189,41 @@ export default function ConfigurePage() {
     }
   };
 
-  const renameDivision = async (item: ConfigureDivision) => {
-    const nextName = window.prompt("Division name", item.name)?.trim();
-    if (!nextName || nextName === item.name) {
+  const startDivisionEdit = (item: ConfigureDivision) => {
+    setEditingDivisionId(item.id);
+    setEditDivisionName(item.name);
+    setEditDivisionGender(item.gender);
+    setEditDivisionAppointed(item.requires_appointed_referees);
+    resetAlerts();
+  };
+
+  const cancelDivisionEdit = () => {
+    setEditingDivisionId(null);
+    setEditDivisionName("");
+    setEditDivisionGender("M");
+    setEditDivisionAppointed(false);
+    resetAlerts();
+  };
+
+  const saveDivisionEdit = async (item: ConfigureDivision) => {
+    const nextName = editDivisionName.trim();
+    if (!nextName) {
+      setError("Division name is required.");
       return;
     }
     try {
-      setActionKey(`division-rename-${item.id}`);
-      resetAlerts();
-      await updateDivision(item.id, { name: nextName });
-      await loadData();
-      setSuccess("Division updated.");
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to update division."));
-    } finally {
-      setActionKey(null);
-    }
-  };
-
-  const toggleDivisionAppointed = async (item: ConfigureDivision) => {
-    try {
-      setActionKey(`division-appointed-${item.id}`);
+      setActionKey(`division-save-${item.id}`);
       resetAlerts();
       await updateDivision(item.id, {
-        requires_appointed_referees: !item.requires_appointed_referees,
+        name: nextName,
+        gender: editDivisionGender,
+        requires_appointed_referees: editDivisionAppointed,
       });
       await loadData();
-      setSuccess("Division rules updated.");
+      setSuccess("Division updated.");
+      setEditingDivisionId(null);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to update division rules."));
+      setError(getErrorMessage(err, "Failed to update division."));
     } finally {
       setActionKey(null);
     }
@@ -281,27 +266,35 @@ export default function ConfigurePage() {
     }
   };
 
-  const editTeam = async (item: ConfigureTeam) => {
-    const clubIdText = window.prompt("Club ID", String(item.club_id));
-    const divisionIdText = window.prompt("Division ID", String(item.division_id));
-    if (!clubIdText || !divisionIdText) {
-      return;
-    }
-    const clubId = Number(clubIdText);
-    const divisionId = Number(divisionIdText);
-    if (!Number.isFinite(clubId) || !Number.isFinite(divisionId)) {
-      setError("Club ID and Division ID must be numbers.");
+  const startTeamEdit = (item: ConfigureTeam) => {
+    setEditingTeamId(item.id);
+    setEditTeamClubId(String(item.club_id));
+    setEditTeamDivisionId(String(item.division_id));
+    resetAlerts();
+  };
+
+  const cancelTeamEdit = () => {
+    setEditingTeamId(null);
+    setEditTeamClubId("");
+    setEditTeamDivisionId("");
+    resetAlerts();
+  };
+
+  const saveTeamEdit = async (item: ConfigureTeam) => {
+    if (!editTeamClubId || !editTeamDivisionId) {
+      setError("Select both club and division before saving.");
       return;
     }
     try {
-      setActionKey(`team-edit-${item.id}`);
+      setActionKey(`team-save-${item.id}`);
       resetAlerts();
       await updateTeam(item.id, {
-        club_id: clubId,
-        division_id: divisionId,
+        club_id: Number(editTeamClubId),
+        division_id: Number(editTeamDivisionId),
       });
       await loadData();
       setSuccess("Team updated.");
+      setEditingTeamId(null);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to update team."));
     } finally {
@@ -353,41 +346,6 @@ export default function ConfigurePage() {
 
       {!loading && (
         <>
-          <div className="configure-overview-grid">
-            <article className="configure-overview-card">
-              <h3>Divisions</h3>
-              <p className="configure-overview-value">
-                {divisionCounts.active}/{divisionCounts.total}
-              </p>
-              <p className="configure-overview-copy">
-                Active divisions, {divisionCounts.appointed} appointed.
-              </p>
-              <button
-                type="button"
-                className="configure-overview-btn"
-                onClick={() => jumpToSection("division")}
-              >
-                Open Divisions
-              </button>
-            </article>
-            <article className="configure-overview-card">
-              <h3>Teams</h3>
-              <p className="configure-overview-value">
-                {teamCounts.active}/{teamCounts.total}
-              </p>
-              <p className="configure-overview-copy">
-                Active teams across {teamCounts.clubs} clubs.
-              </p>
-              <button
-                type="button"
-                className="configure-overview-btn"
-                onClick={() => jumpToSection("team")}
-              >
-                Open Teams
-              </button>
-            </article>
-          </div>
-
           <section
             id="configure-division"
             className={`configure-section ${expanded.division ? "expanded" : "collapsed"}`}
@@ -433,40 +391,52 @@ export default function ConfigurePage() {
                     Add Division
                   </button>
                 </div>
-                <div className="configure-toolbar">
-                  <label>
-                    <span>Search</span>
-                    <input
-                      type="text"
-                      value={divisionQuery}
-                      onChange={(event) => setDivisionQuery(event.target.value)}
-                      placeholder="Search division..."
-                    />
-                  </label>
-                  <label>
-                    <span>Status</span>
-                    <select
-                      value={divisionStatusFilter}
-                      onChange={(event) =>
-                        setDivisionStatusFilter(event.target.value as StatusFilter)
-                      }
-                    >
-                      <option value="ALL">All</option>
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Inactive</option>
-                    </select>
-                  </label>
+                <div className="configure-toolbar-header">
+                  <h3>Filters</h3>
                   <button
                     type="button"
                     className="configure-clear-btn"
-                    onClick={() => {
-                      setDivisionQuery("");
-                      setDivisionStatusFilter("ALL");
-                    }}
+                    onClick={() => setShowDivisionFilters((prev) => !prev)}
                   >
-                    Clear Filters
+                    {showDivisionFilters ? "Hide Filters" : "Show Filters"}
                   </button>
                 </div>
+                {showDivisionFilters && (
+                  <div className="configure-toolbar">
+                    <label>
+                      <span>Search</span>
+                      <input
+                        type="text"
+                        value={divisionQuery}
+                        onChange={(event) => setDivisionQuery(event.target.value)}
+                        placeholder="Search division..."
+                      />
+                    </label>
+                    <label>
+                      <span>Status</span>
+                      <select
+                        value={divisionStatusFilter}
+                        onChange={(event) =>
+                          setDivisionStatusFilter(event.target.value as StatusFilter)
+                        }
+                      >
+                        <option value="ALL">All</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="configure-clear-btn"
+                      onClick={() => {
+                        setDivisionQuery("");
+                        setDivisionStatusFilter("ALL");
+                      }}
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                )}
                 {divisions.length === 0 ? (
                   <p className="configure-empty">No divisions configured.</p>
                 ) : filteredDivisions.length === 0 ? (
@@ -483,28 +453,74 @@ export default function ConfigurePage() {
                             </div>
                             <span className="configure-status">{item.is_active ? "Active" : "Inactive"}</span>
                           </div>
+                          {editingDivisionId === item.id && (
+                            <div className="configure-inline-edit-grid">
+                              <label>
+                                <span>Name</span>
+                                <input
+                                  type="text"
+                                  value={editDivisionName}
+                                  onChange={(event) => setEditDivisionName(event.target.value)}
+                                  placeholder="Division name"
+                                />
+                              </label>
+                              <label>
+                                <span>Gender</span>
+                                <select
+                                  value={editDivisionGender}
+                                  onChange={(event) =>
+                                    setEditDivisionGender(event.target.value as "M" | "F")
+                                  }
+                                >
+                                  <option value="M">Male</option>
+                                  <option value="F">Female</option>
+                                </select>
+                              </label>
+                              <label className="configure-checkbox">
+                                <input
+                                  type="checkbox"
+                                  checked={editDivisionAppointed}
+                                  onChange={(event) =>
+                                    setEditDivisionAppointed(event.target.checked)
+                                  }
+                                />
+                                <span>Requires appointed referees</span>
+                              </label>
+                            </div>
+                          )}
                           <div className="configure-item-actions">
-                            <button
-                              type="button"
-                              onClick={() => renameDivision(item)}
-                              disabled={actionKey === `division-rename-${item.id}`}
-                            >
-                              Edit Name
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => toggleDivisionAppointed(item)}
-                              disabled={actionKey === `division-appointed-${item.id}`}
-                            >
-                              Toggle Appointed
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => toggleDivision(item)}
-                              disabled={actionKey === `division-toggle-${item.id}`}
-                            >
-                              {item.is_active ? "Deactivate" : "Reactivate"}
-                            </button>
+                            {editingDivisionId === item.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="configure-save-btn"
+                                  onClick={() => saveDivisionEdit(item)}
+                                  disabled={actionKey === `division-save-${item.id}`}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelDivisionEdit}
+                                  disabled={actionKey === `division-save-${item.id}`}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button type="button" onClick={() => startDivisionEdit(item)}>
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleDivision(item)}
+                                  disabled={actionKey === `division-toggle-${item.id}`}
+                                >
+                                  {item.is_active ? "Deactivate" : "Reactivate"}
+                                </button>
+                              </>
+                            )}
                           </div>
                         </article>
                       ))}
@@ -564,70 +580,82 @@ export default function ConfigurePage() {
                     Add Team
                   </button>
                 </div>
-                <div className="configure-toolbar">
-                  <label>
-                    <span>Search</span>
-                    <input
-                      type="text"
-                      value={teamQuery}
-                      onChange={(event) => setTeamQuery(event.target.value)}
-                      placeholder="Search club or division..."
-                    />
-                  </label>
-                  <label>
-                    <span>Status</span>
-                    <select
-                      value={teamStatusFilter}
-                      onChange={(event) =>
-                        setTeamStatusFilter(event.target.value as StatusFilter)
-                      }
-                    >
-                      <option value="ALL">All</option>
-                      <option value="ACTIVE">Active</option>
-                      <option value="INACTIVE">Inactive</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Club</span>
-                    <select
-                      value={teamClubFilter}
-                      onChange={(event) => setTeamClubFilter(event.target.value)}
-                    >
-                      <option value="ALL">All clubs</option>
-                      {clubs.map((club) => (
-                        <option key={club.id} value={club.id}>
-                          {club.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>Division</span>
-                    <select
-                      value={teamDivisionFilter}
-                      onChange={(event) => setTeamDivisionFilter(event.target.value)}
-                    >
-                      <option value="ALL">All divisions</option>
-                      {divisions.map((division) => (
-                        <option key={division.id} value={division.id}>
-                          {division.display}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div className="configure-toolbar-header">
+                  <h3>Filters</h3>
                   <button
                     type="button"
                     className="configure-clear-btn"
-                    onClick={() => {
-                      setTeamQuery("");
-                      setTeamStatusFilter("ALL");
-                      setTeamClubFilter("ALL");
-                      setTeamDivisionFilter("ALL");
-                    }}
+                    onClick={() => setShowTeamFilters((prev) => !prev)}
                   >
-                    Clear Filters
+                    {showTeamFilters ? "Hide Filters" : "Show Filters"}
                   </button>
                 </div>
+                {showTeamFilters && (
+                  <div className="configure-toolbar">
+                    <label>
+                      <span>Search</span>
+                      <input
+                        type="text"
+                        value={teamQuery}
+                        onChange={(event) => setTeamQuery(event.target.value)}
+                        placeholder="Search club or division..."
+                      />
+                    </label>
+                    <label>
+                      <span>Status</span>
+                      <select
+                        value={teamStatusFilter}
+                        onChange={(event) =>
+                          setTeamStatusFilter(event.target.value as StatusFilter)
+                        }
+                      >
+                        <option value="ALL">All</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="INACTIVE">Inactive</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Club</span>
+                      <select
+                        value={teamClubFilter}
+                        onChange={(event) => setTeamClubFilter(event.target.value)}
+                      >
+                        <option value="ALL">All clubs</option>
+                        {clubs.map((club) => (
+                          <option key={club.id} value={club.id}>
+                            {club.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Division</span>
+                      <select
+                        value={teamDivisionFilter}
+                        onChange={(event) => setTeamDivisionFilter(event.target.value)}
+                      >
+                        <option value="ALL">All divisions</option>
+                        {divisions.map((division) => (
+                          <option key={division.id} value={division.id}>
+                            {division.display}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      className="configure-clear-btn"
+                      onClick={() => {
+                        setTeamQuery("");
+                        setTeamStatusFilter("ALL");
+                        setTeamClubFilter("ALL");
+                        setTeamDivisionFilter("ALL");
+                      }}
+                    >
+                      Clear Filters
+                    </button>
+                  </div>
+                )}
                 {teams.length === 0 ? (
                   <p className="configure-empty">No teams configured.</p>
                 ) : filteredTeams.length === 0 ? (
@@ -644,13 +672,71 @@ export default function ConfigurePage() {
                             </div>
                             <span className="configure-status">{item.is_active ? "Active" : "Inactive"}</span>
                           </div>
+                          {editingTeamId === item.id && (
+                            <div className="configure-inline-edit-grid">
+                              <label>
+                                <span>Club</span>
+                                <select
+                                  value={editTeamClubId}
+                                  onChange={(event) => setEditTeamClubId(event.target.value)}
+                                >
+                                  <option value="">Select club</option>
+                                  {clubs.map((club) => (
+                                    <option key={club.id} value={club.id}>
+                                      {club.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label>
+                                <span>Division</span>
+                                <select
+                                  value={editTeamDivisionId}
+                                  onChange={(event) => setEditTeamDivisionId(event.target.value)}
+                                >
+                                  <option value="">Select division</option>
+                                  {activeDivisions.map((division) => (
+                                    <option key={division.id} value={division.id}>
+                                      {division.display}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
+                          )}
                           <div className="configure-item-actions">
-                            <button type="button" onClick={() => editTeam(item)} disabled={actionKey === `team-edit-${item.id}`}>
-                              Edit Mapping
-                            </button>
-                            <button type="button" onClick={() => toggleTeam(item)} disabled={actionKey === `team-toggle-${item.id}`}>
-                              {item.is_active ? "Deactivate" : "Reactivate"}
-                            </button>
+                            {editingTeamId === item.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="configure-save-btn"
+                                  onClick={() => saveTeamEdit(item)}
+                                  disabled={actionKey === `team-save-${item.id}`}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelTeamEdit}
+                                  disabled={actionKey === `team-save-${item.id}`}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button type="button" onClick={() => startTeamEdit(item)}>
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTeam(item)}
+                                  disabled={actionKey === `team-toggle-${item.id}`}
+                                >
+                                  {item.is_active ? "Deactivate" : "Reactivate"}
+                                </button>
+                              </>
+                            )}
                           </div>
                         </article>
                       ))}

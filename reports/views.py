@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from games.models import Game, NonAppointedSlot, RefereeAssignment
 from games.serializers import GameSerializer
 from users.models import RefereeProfile, User
+from users.access import has_admin_approval_scope
 from notifications.services import notify_report_created_for_admins
 
 from .models import GameReport
@@ -31,11 +32,7 @@ def _get_referee_profile_or_403(request):
 
 
 def _can_review_reports(user: User) -> bool:
-    if not user.is_authenticated:
-        return False
-    if user.is_staff:
-        return True
-    return user.account_type in {User.AccountType.DOA, User.AccountType.NL} and user.doa_approved
+    return has_admin_approval_scope(user)
 
 
 class ReportableGamesAPIView(APIView):

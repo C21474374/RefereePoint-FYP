@@ -40,6 +40,7 @@ export interface CurrentUser {
   doa_approved: boolean;
   uploads_approved: boolean;
   can_approve_accounts: boolean;
+  effective_roles?: AccountType[];
   allowed_upload_game_types: string[];
   allowed_upload_event_types: string[];
   home_address: string;

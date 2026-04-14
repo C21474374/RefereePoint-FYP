@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from games.models import RefereeAssignment
 from games.serializers import GameSerializer
 from users.models import RefereeProfile
+from users.access import has_admin_approval_scope, has_referee_role
 from notifications.services import (
     notify_cover_request_approved,
     notify_cover_request_claimed,
@@ -35,8 +36,21 @@ def _expire_stale_cover_requests():
     )
 
 
+def _referee_role_required_response():
+    return Response(
+        {"detail": "Only referee-role accounts can access cover request pages."},
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
 class CoverRequestListAPIView(generics.ListAPIView):
     serializer_class = CoverRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        if not has_referee_role(request.user) and not has_admin_approval_scope(request.user):
+            return _referee_role_required_response()
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         _expire_stale_cover_requests()
@@ -89,11 +103,22 @@ class CoverRequestDetailAPIView(generics.RetrieveAPIView):
         .all()
     )
     serializer_class = CoverRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def retrieve(self, request, *args, **kwargs):
+        if not has_referee_role(request.user) and not has_admin_approval_scope(request.user):
+            return _referee_role_required_response()
+        return super().retrieve(request, *args, **kwargs)
 
 
 class MyCoverRequestListAPIView(generics.ListAPIView):
     serializer_class = CoverRequestSerializer
     permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        if not has_referee_role(request.user):
+            return _referee_role_required_response()
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         _expire_stale_cover_requests()
@@ -125,6 +150,11 @@ class MyCoverRequestListAPIView(generics.ListAPIView):
 class PendingCoverRequestListAPIView(generics.ListAPIView):
     serializer_class = CoverRequestSerializer
     permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        if not has_referee_role(request.user):
+            return _referee_role_required_response()
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         _expire_stale_cover_requests()
@@ -159,6 +189,11 @@ class CreateCoverRequestAPIView(generics.CreateAPIView):
     serializer_class = CoverRequestCreateSerializer
     permission_classes = [IsAuthenticated]
 
+    def create(self, request, *args, **kwargs):
+        if not has_referee_role(request.user):
+            return _referee_role_required_response()
+        return super().create(request, *args, **kwargs)
+
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["request"] = self.request
@@ -180,6 +215,9 @@ class CancelCoverRequestAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
+        if not has_referee_role(request.user):
+            return _referee_role_required_response()
+
         try:
             cover_request = CoverRequest.objects.select_related(
                 "requested_by",
@@ -210,6 +248,9 @@ class OfferCoverAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        if not has_referee_role(request.user):
+            return _referee_role_required_response()
+
         try:
             cover_request = CoverRequest.objects.select_related(
                 "game",
@@ -296,6 +337,9 @@ class WithdrawCoverClaimAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        if not has_referee_role(request.user):
+            return _referee_role_required_response()
+
         try:
             cover_request = CoverRequest.objects.select_related(
                 "replaced_by",
@@ -341,6 +385,9 @@ class MyUpcomingAssignmentsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        if not has_referee_role(request.user):
+            return _referee_role_required_response()
+
         try:
             referee_profile = RefereeProfile.objects.get(user=request.user)
         except RefereeProfile.DoesNotExist:
@@ -432,7 +479,7 @@ class ApproveCoverRequestAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not request.user.is_staff:
+        if not (request.user.is_staff or has_admin_approval_scope(request.user)):
             return Response(
                 {"detail": "Only admins can approve cover requests."},
                 status=status.HTTP_403_FORBIDDEN,
