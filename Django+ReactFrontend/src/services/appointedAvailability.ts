@@ -35,7 +35,10 @@ export const getAppointedAvailability = async () => {
 };
 
 export const updateAppointedAvailability = async (
-  availabilities: AppointedAvailabilityDay[]
+  availabilities: AppointedAvailabilityDay[],
+  options?: {
+    applyNow?: boolean;
+  }
 ) => {
   const response = await axiosInstance.put<AppointedAvailabilityResponse>(
     "/users/me/appointed-availability/",
@@ -46,6 +49,7 @@ export const updateAppointedAvailability = async (
         start_time: item.start_time,
         end_time: item.end_time,
       })),
+      apply_now: Boolean(options?.applyNow),
     }
   );
   return response.data;

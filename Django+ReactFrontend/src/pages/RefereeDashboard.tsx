@@ -1067,7 +1067,51 @@ export default function RefereeDashboard() {
         subtitle={heroSubtitle}
       />
 
-      <DashboardStats stats={stats} />
+      {isAdminDashboard && (
+        <section className="dashboard-role-overview">
+          <div className="dashboard-role-overview-header">
+            <h2 className="section-title-with-icon">
+              <AppIcon name="approvals" className="section-title-icon" />
+              <span>{roleOverviewTitle}</span>
+            </h2>
+            <p>{roleOverviewCopy}</p>
+          </div>
+
+          <div className="dashboard-role-overview-grid">
+            <article className="dashboard-role-overview-card">
+              <h3>Approval Queue</h3>
+              <p className="dashboard-role-overview-value">{pendingApprovalCount ?? 0}</p>
+              <p className="dashboard-role-overview-detail">
+                Pending accounts waiting on admin approval.
+              </p>
+              <Link className="dashboard-role-overview-link" to="/account-approvals">
+                <span className="inline-icon-label">
+                  <AppIcon name="approvals" />
+                  <span>Review Approvals</span>
+                </span>
+              </Link>
+            </article>
+            <article className="dashboard-role-overview-card">
+              <h3>Coverage Risk</h3>
+              <p className="dashboard-role-overview-value">
+                {gamesNeedingAssignmentsCount}
+              </p>
+              <p className="dashboard-role-overview-detail">
+                Appointed games still missing crew chief or umpire.
+              </p>
+            </article>
+            <article className="dashboard-role-overview-card">
+              <h3>Next 7 Days</h3>
+              <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
+              <p className="dashboard-role-overview-detail">
+                Uploaded games scheduled in the coming week.
+              </p>
+            </article>
+          </div>
+        </section>
+      )}
+
+      {!isAdminDashboard && <DashboardStats stats={stats} />}
 
       <section className="dashboard-notifications-section">
         <div className="dashboard-notifications-header">
@@ -1122,79 +1166,40 @@ export default function RefereeDashboard() {
         )}
       </section>
 
-      {!isRefereeUser && (
+      {!isRefereeUser && !isAdminDashboard && (
         <section className="dashboard-role-overview">
           <div className="dashboard-role-overview-header">
             <h2 className="section-title-with-icon">
-              <AppIcon
-                name={isAdminDashboard ? "approvals" : "dashboard"}
-                className="section-title-icon"
-              />
+              <AppIcon name="dashboard" className="section-title-icon" />
               <span>{roleOverviewTitle}</span>
             </h2>
             <p>{roleOverviewCopy}</p>
           </div>
 
           <div className="dashboard-role-overview-grid">
-            {isAdminDashboard ? (
-              <>
-                <article className="dashboard-role-overview-card">
-                  <h3>Approval Queue</h3>
-                  <p className="dashboard-role-overview-value">{pendingApprovalCount ?? 0}</p>
-                  <p className="dashboard-role-overview-detail">
-                    Pending accounts waiting on admin approval.
-                  </p>
-                  <Link className="dashboard-role-overview-link" to="/account-approvals">
-                    <span className="inline-icon-label">
-                      <AppIcon name="approvals" />
-                      <span>Review Approvals</span>
-                    </span>
-                  </Link>
-                </article>
-                <article className="dashboard-role-overview-card">
-                  <h3>Coverage Risk</h3>
-                  <p className="dashboard-role-overview-value">
-                    {gamesNeedingAssignmentsCount}
-                  </p>
-                  <p className="dashboard-role-overview-detail">
-                    Appointed games still missing crew chief or umpire.
-                  </p>
-                </article>
-                <article className="dashboard-role-overview-card">
-                  <h3>Next 7 Days</h3>
-                  <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
-                  <p className="dashboard-role-overview-detail">
-                    Uploaded games scheduled in the coming week.
-                  </p>
-                </article>
-              </>
-            ) : (
-              <>
-                <article className="dashboard-role-overview-card">
-                  <h3>Account Role</h3>
-                  <p className="dashboard-role-overview-value">
-                    {user?.account_type_display || accountType || "Manager"}
-                  </p>
-                  <p className="dashboard-role-overview-detail">
-                    This dashboard is tailored to your uploader account.
-                  </p>
-                </article>
-                <article className="dashboard-role-overview-card">
-                  <h3>Managed Events</h3>
-                  <p className="dashboard-role-overview-value">{myManagedEvents.length}</p>
-                  <p className="dashboard-role-overview-detail">
-                    Active upcoming events your account can manage.
-                  </p>
-                </article>
-                <article className="dashboard-role-overview-card">
-                  <h3>Next 7 Days</h3>
-                  <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
-                  <p className="dashboard-role-overview-detail">
-                    Uploaded games scheduled in the coming week.
-                  </p>
-                </article>
-              </>
-            )}
+            <article className="dashboard-role-overview-card">
+              <h3>Account Role</h3>
+              <p className="dashboard-role-overview-value">
+                {user?.account_type_display || accountType || "Manager"}
+              </p>
+              <p className="dashboard-role-overview-detail">
+                This dashboard is tailored to your uploader account.
+              </p>
+            </article>
+            <article className="dashboard-role-overview-card">
+              <h3>Managed Events</h3>
+              <p className="dashboard-role-overview-value">{myManagedEvents.length}</p>
+              <p className="dashboard-role-overview-detail">
+                Active upcoming events your account can manage.
+              </p>
+            </article>
+            <article className="dashboard-role-overview-card">
+              <h3>Next 7 Days</h3>
+              <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
+              <p className="dashboard-role-overview-detail">
+                Uploaded games scheduled in the coming week.
+              </p>
+            </article>
           </div>
         </section>
       )}

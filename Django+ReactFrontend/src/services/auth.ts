@@ -48,6 +48,14 @@ export interface CurrentUser {
   referee_profile: RefereeProfile | null;
 }
 
+export interface UpdateCurrentUserProfilePayload {
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string | null;
+  organization_name?: string;
+  institution_head_phone?: string;
+}
+
 function extractApiErrorMessage(data: unknown, fallback: string): string {
   if (!data || typeof data !== "object") {
     return fallback;
@@ -146,6 +154,37 @@ export async function switchTestingRole(accountType: AccountType): Promise<Curre
 
   if (!response.ok) {
     throw new Error(extractApiErrorMessage(data, "Failed to change role."));
+  }
+
+  return data as CurrentUser;
+}
+
+export async function updateCurrentUserProfile(
+  payload: UpdateCurrentUserProfilePayload
+): Promise<CurrentUser> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error("You must be logged in to update account details.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/users/me/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  let data: unknown = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(extractApiErrorMessage(data, "Failed to update account details."));
   }
 
   return data as CurrentUser;

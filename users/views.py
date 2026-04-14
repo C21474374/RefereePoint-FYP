@@ -7,7 +7,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
-from .serializers import CurrentUserSerializer, RegisterUserSerializer
+from .serializers import (
+    CurrentUserSerializer,
+    RegisterUserSerializer,
+    UpdateCurrentUserProfileSerializer,
+)
 from .geocoding import geocode_address
 from .appointed_availability import (
     apply_pending_appointed_availability_if_due,
@@ -16,6 +20,7 @@ from .appointed_availability import (
     next_month_start_iso,
     pending_appointed_availability,
     queue_next_month_appointed_availability,
+    set_current_appointed_availability,
     validate_appointed_availability_payload,
 )
 from notifications.services import notify_account_pending_for_admins
@@ -136,7 +141,10 @@ def list_referees(request):
     if (game_date and not game_time) or (game_time and not game_date):
         return _json_error("game_date and game_time must be provided together.", 400)
 
-    profiles = RefereeProfile.objects.select_related("user").all()
+    profiles = RefereeProfile.objects.select_related("user").filter(
+        user__account_type=User.AccountType.REFEREE,
+        user__is_active=True,
+    )
 
     if game_date and game_time:
         profiles = [
@@ -183,6 +191,20 @@ class CurrentUserView(APIView):
             apply_pending_appointed_availability_if_due(profile)
         serializer = CurrentUserSerializer(request.user, context={"request": request})
         return Response(serializer.data)
+
+    def patch(self, request):
+        serializer = UpdateCurrentUserProfileSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        response_serializer = CurrentUserSerializer(
+            request.user,
+            context={"request": request},
+        )
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 
 class RegisterUserView(APIView):
@@ -386,13 +408,37 @@ class AppointedAvailabilityView(APIView):
             )
 
         incoming_payload = request.data
+        apply_now = False
         if isinstance(request.data, dict) and "availabilities" in request.data:
             incoming_payload = request.data.get("availabilities")
+        if isinstance(request.data, dict):
+            try:
+                apply_now = _parse_bool(request.data.get("apply_now"), default=False)
+            except ValueError:
+                return Response(
+                    {"detail": "Invalid apply_now flag. Use true/false."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         try:
             normalized = validate_appointed_availability_payload(incoming_payload)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        if apply_now:
+            set_current_appointed_availability(profile, normalized)
+            profile.appointed_availability_pending = []
+            profile.appointed_availability_effective_from = None
+            profile.save(
+                update_fields=[
+                    "appointed_availability_pending",
+                    "appointed_availability_effective_from",
+                ]
+            )
+            profile.refresh_from_db()
+            payload = self._response_payload(profile)
+            payload["detail"] = "Appointed availability updated and applied immediately."
+            return Response(payload, status=status.HTTP_200_OK)
 
         effective_from = queue_next_month_appointed_availability(profile, normalized)
         profile.refresh_from_db()

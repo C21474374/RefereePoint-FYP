@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import AppIcon from "../components/AppIcon";
 import { useAuth } from "../context/AuthContext";
-import { switchTestingRole, type AccountType } from "../services/auth";
+import {
+  switchTestingRole,
+  updateCurrentUserProfile,
+  type AccountType,
+} from "../services/auth";
 import { updateHomeLocation } from "../services/earnings";
 import {
   getAppointedAvailability,
@@ -57,9 +61,28 @@ function buildTimeOptions(windowStart: string, windowEnd: string) {
   return options;
 }
 
+type ProfileFormState = {
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  organization_name: string;
+  institution_head_phone: string;
+};
+
 export default function AccountSettings() {
   const { user, refreshUser } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
+  const [profileForm, setProfileForm] = useState<ProfileFormState>({
+    first_name: "",
+    last_name: "",
+    phone_number: "",
+    organization_name: "",
+    institution_head_phone: "",
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState("");
   const [selectedRole, setSelectedRole] = useState<AccountType>("REFEREE");
   const [switchingRole, setSwitchingRole] = useState(false);
   const [roleError, setRoleError] = useState("");
@@ -85,6 +108,25 @@ export default function AccountSettings() {
       setSelectedRole(user.account_type);
     }
   }, [user?.account_type]);
+
+  useEffect(() => {
+    setProfileForm({
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      phone_number: user?.phone_number || "",
+      organization_name: user?.organization_name || "",
+      institution_head_phone: user?.institution_head_phone || "",
+    });
+    setIsEditingProfile(false);
+    setProfileError("");
+    setProfileSuccess("");
+  }, [
+    user?.first_name,
+    user?.last_name,
+    user?.phone_number,
+    user?.organization_name,
+    user?.institution_head_phone,
+  ]);
 
   useEffect(() => {
     setHomeAddress(user?.home_address || "");
@@ -124,6 +166,113 @@ export default function AccountSettings() {
   const grade = user?.referee_profile?.grade?.replaceAll("_", " ") || "N/A";
   const roleLabel = user?.account_type_display || "Not set";
   const initials = getInitials(user?.first_name, user?.last_name, user?.email);
+  const currentAccountType = user?.account_type || "REFEREE";
+  const showOrganizationField = ["CLUB", "SCHOOL", "COLLEGE"].includes(currentAccountType);
+  const showInstitutionHeadPhoneField = ["SCHOOL", "COLLEGE"].includes(currentAccountType);
+  const organizationLabel =
+    currentAccountType === "SCHOOL"
+      ? "School Name"
+      : currentAccountType === "COLLEGE"
+        ? "College Name"
+        : "Club Name";
+
+  const normalizedCurrent = {
+    first_name: (user?.first_name || "").trim(),
+    last_name: (user?.last_name || "").trim(),
+    phone_number: (user?.phone_number || "").trim(),
+    organization_name: (user?.organization_name || "").trim(),
+    institution_head_phone: (user?.institution_head_phone || "").trim(),
+  };
+  const normalizedDraft = {
+    first_name: profileForm.first_name.trim(),
+    last_name: profileForm.last_name.trim(),
+    phone_number: profileForm.phone_number.trim(),
+    organization_name: profileForm.organization_name.trim(),
+    institution_head_phone: profileForm.institution_head_phone.trim(),
+  };
+  const hasProfileChanges =
+    normalizedCurrent.first_name !== normalizedDraft.first_name ||
+    normalizedCurrent.last_name !== normalizedDraft.last_name ||
+    normalizedCurrent.phone_number !== normalizedDraft.phone_number ||
+    normalizedCurrent.organization_name !== normalizedDraft.organization_name ||
+    normalizedCurrent.institution_head_phone !== normalizedDraft.institution_head_phone;
+
+  const handleProfileInputChange = (
+    field: keyof ProfileFormState,
+    value: string
+  ) => {
+    setProfileForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setProfileError("");
+    setProfileSuccess("");
+  };
+
+  const handleSaveProfileDetails = async () => {
+    if (!normalizedDraft.first_name) {
+      setProfileError("First name is required.");
+      return;
+    }
+    if (!normalizedDraft.last_name) {
+      setProfileError("Last name is required.");
+      return;
+    }
+    if (showOrganizationField && !normalizedDraft.organization_name) {
+      setProfileError(`${organizationLabel} is required.`);
+      return;
+    }
+    if (showInstitutionHeadPhoneField && !normalizedDraft.institution_head_phone) {
+      setProfileError("Principal/Head contact number is required.");
+      return;
+    }
+
+    try {
+      setProfileSaving(true);
+      setProfileError("");
+      setProfileSuccess("");
+
+      const payload = {
+        first_name: normalizedDraft.first_name,
+        last_name: normalizedDraft.last_name,
+        phone_number: normalizedDraft.phone_number || null,
+        organization_name: showOrganizationField ? normalizedDraft.organization_name : "",
+        institution_head_phone: showInstitutionHeadPhoneField
+          ? normalizedDraft.institution_head_phone
+          : "",
+      };
+
+      await updateCurrentUserProfile(payload);
+      await refreshUser();
+      setIsEditingProfile(false);
+      setProfileSuccess("Personal details updated.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update personal details.";
+      setProfileError(message);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleStartEditingProfile = () => {
+    setIsEditingProfile(true);
+    setProfileError("");
+    setProfileSuccess("");
+  };
+
+  const handleCancelEditingProfile = () => {
+    setProfileForm({
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      phone_number: user?.phone_number || "",
+      organization_name: user?.organization_name || "",
+      institution_head_phone: user?.institution_head_phone || "",
+    });
+    setIsEditingProfile(false);
+    setProfileError("");
+    setProfileSuccess("");
+  };
 
   const handleRoleSwitch = async () => {
     try {
@@ -190,16 +339,21 @@ export default function AccountSettings() {
     setAvailabilitySuccess("");
   };
 
-  const handleSaveAvailability = async () => {
+  const handleSaveAvailability = async (applyNow = false) => {
     try {
       setAvailabilitySaving(true);
       setAvailabilityError("");
       setAvailabilitySuccess("");
-      const response = await updateAppointedAvailability(availabilityDraft);
+      const response = await updateAppointedAvailability(availabilityDraft, {
+        applyNow,
+      });
       setAvailabilityDraft(response.pending || response.current);
       setAvailabilityPendingFrom(response.pending_effective_from);
       setAvailabilitySuccess(
-        response.detail || "Availability update saved for the next month."
+        response.detail ||
+          (applyNow
+            ? "Availability updated and applied immediately."
+            : "Availability update saved for the next month.")
       );
     } catch (error) {
       const message =
@@ -316,24 +470,149 @@ export default function AccountSettings() {
       <section className="account-settings-card">
         <h2 className="section-title-with-icon">
           <AppIcon name="user" className="section-title-icon" />
-          <span>Profile Details</span>
+          <span>Personal Details</span>
+        </h2>
+        <p className="account-settings-testing-copy">
+          Keep your contact details up to date so other users and admins can reach you.
+        </p>
+        {!isEditingProfile && (
+          <p className="account-settings-availability-copy">
+            Click Edit Details to unlock fields.
+          </p>
+        )}
+        {profileError && <p className="account-settings-testing-error">{profileError}</p>}
+        {profileSuccess && <p className="account-settings-testing-success">{profileSuccess}</p>}
+        <div className="account-settings-profile-form-grid">
+          <label>
+            <span>First Name</span>
+            <input
+              type="text"
+              value={profileForm.first_name}
+              disabled={!isEditingProfile || profileSaving}
+              onChange={(event) => handleProfileInputChange("first_name", event.target.value)}
+              placeholder="First name"
+            />
+          </label>
+          <label>
+            <span>Last Name</span>
+            <input
+              type="text"
+              value={profileForm.last_name}
+              disabled={!isEditingProfile || profileSaving}
+              onChange={(event) => handleProfileInputChange("last_name", event.target.value)}
+              placeholder="Last name"
+            />
+          </label>
+          <label>
+            <span>Phone Number</span>
+            <input
+              type="text"
+              value={profileForm.phone_number}
+              disabled={!isEditingProfile || profileSaving}
+              onChange={(event) => handleProfileInputChange("phone_number", event.target.value)}
+              placeholder="Phone number"
+            />
+          </label>
+          <label>
+            <span>Email (Read-only)</span>
+            <input type="text" value={user?.email || ""} disabled />
+          </label>
+          {showOrganizationField && (
+            <label>
+              <span>{organizationLabel}</span>
+              <input
+                type="text"
+                value={profileForm.organization_name}
+                disabled={!isEditingProfile || profileSaving}
+                onChange={(event) =>
+                  handleProfileInputChange("organization_name", event.target.value)
+                }
+                placeholder={organizationLabel}
+              />
+            </label>
+          )}
+          {showInstitutionHeadPhoneField && (
+            <label>
+              <span>Principal/Head Contact Number</span>
+              <input
+                type="text"
+                value={profileForm.institution_head_phone}
+                disabled={!isEditingProfile || profileSaving}
+                onChange={(event) =>
+                  handleProfileInputChange("institution_head_phone", event.target.value)
+                }
+                placeholder="Principal/Head contact"
+              />
+            </label>
+          )}
+        </div>
+        <div className="account-settings-profile-form-actions">
+          {!isEditingProfile ? (
+            <button
+              type="button"
+              className="account-settings-profile-edit-btn"
+              onClick={handleStartEditingProfile}
+            >
+              <span className="button-with-icon">
+                <AppIcon name="user" />
+                <span>Edit Details</span>
+              </span>
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="account-settings-profile-save-btn"
+                onClick={handleSaveProfileDetails}
+                disabled={profileSaving || !hasProfileChanges}
+              >
+                <span className="button-with-icon">
+                  <AppIcon name="settings" />
+                  <span>{profileSaving ? "Saving..." : "Save Details"}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="account-settings-profile-cancel-btn"
+                onClick={handleCancelEditingProfile}
+                disabled={profileSaving}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
+      <section className="account-settings-card">
+        <h2 className="section-title-with-icon">
+          <AppIcon name="approvals" className="section-title-icon" />
+          <span>Account Overview</span>
         </h2>
         <div className="account-settings-grid">
           <article>
-            <span>{isRefereeUser ? "Grade" : "Role"}</span>
-            <p>{isRefereeUser ? grade : roleLabel}</p>
+            <span>Role</span>
+            <p>{roleLabel}</p>
           </article>
           <article>
-            <span>Phone Number</span>
-            <p>{user?.phone_number || "Not set"}</p>
+            <span>Approval Status</span>
+            <p>{user?.doa_approved ? "Approved" : "Pending Approval"}</p>
+          </article>
+          <article>
+            <span>Upload Access</span>
+            <p>{user?.uploads_approved ? "Enabled" : "Pending Verification"}</p>
+          </article>
+          <article>
+            <span>{isRefereeUser ? "Grade" : "Manager Scope"}</span>
+            <p>{isRefereeUser ? grade : user?.manager_scope_display || "None"}</p>
           </article>
           <article>
             <span>BIPIN Number</span>
             <p>{user?.bipin_number || "Not set"}</p>
           </article>
           <article>
-            <span>Home Address</span>
-            <p>{user?.home_address || "Not set"}</p>
+            <span>Managed Team</span>
+            <p>{user?.managed_team_name || "Not assigned"}</p>
           </article>
         </div>
       </section>
@@ -415,7 +694,7 @@ export default function AccountSettings() {
           </h2>
           <p className="account-settings-availability-copy">
             Monday-Friday availability window is 19:00-22:00. Saturday-Sunday is 10:00-22:00.
-            Changes saved here become active on the first day of next month.
+            Changes saved here become active on the first day of next month, unless you use Save and Apply Now.
           </p>
           {availabilityPendingFrom && (
             <p className="account-settings-availability-pending">
@@ -496,12 +775,23 @@ export default function AccountSettings() {
           <div className="account-settings-availability-actions">
             <button
               type="button"
-              onClick={handleSaveAvailability}
+              onClick={() => handleSaveAvailability(false)}
               disabled={availabilitySaving || availabilityLoading}
             >
               <span className="button-with-icon">
                 <AppIcon name="settings" />
                 <span>{availabilitySaving ? "Saving..." : "Save Availability Changes"}</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="account-settings-availability-apply-now-btn"
+              onClick={() => handleSaveAvailability(true)}
+              disabled={availabilitySaving || availabilityLoading}
+            >
+              <span className="button-with-icon">
+                <AppIcon name="calendar" />
+                <span>{availabilitySaving ? "Saving..." : "Save and Apply Now"}</span>
               </span>
             </button>
           </div>

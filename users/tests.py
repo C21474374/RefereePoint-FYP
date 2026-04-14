@@ -6,7 +6,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import RefereeAvailability, User
+from .models import RefereeAvailability, RefereeProfile, User
 
 
 class UpdateHomeLocationViewTests(TestCase):
@@ -147,3 +147,93 @@ class ListRefereesAvailabilityFilterTests(TestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_list_referees_excludes_non_referee_accounts_with_legacy_profiles(self):
+        doa_user = User.objects.create_user(
+            email="doa-legacy@test.com",
+            password="password123",
+            first_name="Legacy",
+            last_name="Doa",
+            bipin_number="8010",
+            account_type=User.AccountType.DOA,
+        )
+        RefereeProfile.objects.create(user=doa_user, grade="GRADE_1")
+
+        response = self.client.get(reverse("list_referees"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {item["user_id"] for item in response.json()}
+        self.assertNotIn(doa_user.id, returned_ids)
+
+
+class AppointedAvailabilityViewTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="availability@test.com",
+            password="password123",
+            first_name="Availability",
+            last_name="Tester",
+            bipin_number="9001",
+        )
+        self.profile = self.user.referee_profile
+        self.client.force_authenticate(user=self.user)
+
+    def _payload(self):
+        return {
+            "availabilities": [
+                {
+                    "day_of_week": "MON",
+                    "available": True,
+                    "start_time": "19:00",
+                    "end_time": "21:00",
+                }
+            ]
+        }
+
+    def test_put_queues_next_month_by_default(self):
+        response = self.client.put(
+            reverse("appointed-availability"),
+            self._payload(),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data.get("pending_effective_from"))
+        self.assertIsNotNone(response.data.get("pending"))
+        self.assertIn("will take effect", str(response.data.get("detail", "")).lower())
+
+    def test_put_apply_now_updates_current_and_clears_pending(self):
+        response = self.client.put(
+            reverse("appointed-availability"),
+            {
+                **self._payload(),
+                "apply_now": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data.get("pending_effective_from"))
+        self.assertIsNone(response.data.get("pending"))
+        self.assertIn("applied immediately", str(response.data.get("detail", "")).lower())
+
+        monday = next(
+            item for item in response.data["current"] if item["day_of_week"] == "MON"
+        )
+        self.assertTrue(monday["available"])
+        self.assertEqual(monday["start_time"], "19:00")
+        self.assertEqual(monday["end_time"], "21:00")
+
+    def test_apply_now_rejects_invalid_flag(self):
+        response = self.client.put(
+            reverse("appointed-availability"),
+            {
+                **self._payload(),
+                "apply_now": "not-a-bool",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("apply_now", str(response.data.get("detail", "")).lower())

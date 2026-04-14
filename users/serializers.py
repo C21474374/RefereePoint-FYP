@@ -85,6 +85,95 @@ class CurrentUserSerializer(serializers.ModelSerializer):
         ]
 
 
+class UpdateCurrentUserProfileSerializer(serializers.ModelSerializer):
+    phone_number = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        max_length=20,
+    )
+    organization_name = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=200,
+    )
+    institution_head_phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=30,
+    )
+
+    class Meta:
+        model = User
+        fields = [
+            "first_name",
+            "last_name",
+            "phone_number",
+            "organization_name",
+            "institution_head_phone",
+        ]
+
+    def validate_first_name(self, value):
+        cleaned = str(value).strip()
+        if not cleaned:
+            raise serializers.ValidationError("First name cannot be empty.")
+        return cleaned
+
+    def validate_last_name(self, value):
+        cleaned = str(value).strip()
+        if not cleaned:
+            raise serializers.ValidationError("Last name cannot be empty.")
+        return cleaned
+
+    def validate_phone_number(self, value):
+        if value in (None, ""):
+            return None
+        cleaned = str(value).strip()
+        return cleaned or None
+
+    def validate_organization_name(self, value):
+        return str(value).strip()
+
+    def validate_institution_head_phone(self, value):
+        return str(value).strip()
+
+    def validate(self, attrs):
+        user: User = self.instance
+        next_organization_name = attrs.get("organization_name", user.organization_name).strip()
+        next_institution_head_phone = attrs.get(
+            "institution_head_phone",
+            user.institution_head_phone,
+        ).strip()
+
+        if user.account_type in {User.AccountType.SCHOOL, User.AccountType.COLLEGE}:
+            if not next_organization_name:
+                raise serializers.ValidationError(
+                    {"organization_name": "School/College name is required."}
+                )
+            if not next_institution_head_phone:
+                raise serializers.ValidationError(
+                    {
+                        "institution_head_phone": (
+                            "Principal/Head contact number is required."
+                        )
+                    }
+                )
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        update_fields = []
+        for field in self.Meta.fields:
+            if field not in validated_data:
+                continue
+            setattr(instance, field, validated_data[field])
+            update_fields.append(field)
+
+        if update_fields:
+            instance.save(update_fields=update_fields)
+        return instance
+
+
 class RegisterUserSerializer(serializers.Serializer):
     ACCOUNT_TYPE_CHOICES = User.AccountType.choices
 

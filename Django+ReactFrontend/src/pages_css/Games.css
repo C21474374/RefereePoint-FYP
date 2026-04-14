@@ -156,25 +156,26 @@
   font-weight: 700;
 }
 
+.game-card-type,
 .game-card-type.non-appointed,
-.game-card-role,
+.game-card-type.cover-request,
+.game-card-type.event,
+.game-card-role {
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-text);
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 5px 11px;
+}
+
 .game-tag {
   background: var(--color-bg-secondary);
   color: var(--color-text-muted);
   border: 1px solid var(--color-border);
-}
-
-.game-card-type.cover-request {
-  border: 1px solid var(--color-error-border);
-  background: var(--color-error-bg);
-  color: var(--color-text);
-}
-
-.game-card-type.event {
-  border: 1px dashed var(--color-border-hover);
-  background: var(--color-bg-panel-2);
-  color: var(--color-text);
-  letter-spacing: 0.03em;
 }
 
 .game-tag-primary,
@@ -284,16 +285,16 @@
 }
 
 .game-card-view-btn {
-  border: 1px solid var(--color-border);
+  border: none;
   border-radius: 10px;
-  background: var(--color-bg-panel);
-  color: var(--color-text);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   padding: 8px 12px;
   font-weight: 700;
 }
 
 .game-card-view-btn:hover {
-  border-color: var(--color-accent);
+  opacity: 0.95;
 }
 
 .take-game-btn {

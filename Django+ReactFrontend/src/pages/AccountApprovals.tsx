@@ -155,7 +155,7 @@ export default function AccountApprovals() {
             <AppIcon name="user" className="section-title-icon" />
             <span>Pending Accounts</span>
           </h2>
-          <span>{pendingAccounts.length}</span>
+          <span className="account-approvals-count">{pendingAccounts.length}</span>
         </div>
         <p className="account-approvals-section-copy">
           Expand this section to review and process pending registrations.

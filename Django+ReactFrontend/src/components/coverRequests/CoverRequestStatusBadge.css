@@ -5,20 +5,21 @@
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-secondary);
-  color: var(--color-text-muted);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .cover-status-pending {
-  border-color: var(--color-error-border);
-  background: var(--color-error-bg);
-  color: var(--color-text);
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .cover-status-claimed {
   border-color: var(--color-accent);
-  color: var(--color-text);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .cover-status-approved {
@@ -28,7 +29,7 @@
 }
 
 .cover-status-rejected {
-  border-color: var(--color-error-border);
-  background: var(--color-bg-secondary);
-  color: var(--color-text-secondary);
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }

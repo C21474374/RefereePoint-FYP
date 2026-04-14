@@ -9,7 +9,7 @@
 
 .account-approvals-header h1 {
   margin: 0;
-  font-size: clamp(2.05rem, 3.1vw, 2.8rem);
+  font-size: 2rem;
 }
 
 .account-approvals-header p {
@@ -52,30 +52,35 @@
 
 .account-approvals-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
 
 .account-approvals-top h2 {
   margin: 0;
+  font-size: 1.18rem;
+  line-height: 1.2;
+  min-width: 0;
+  flex: 1;
 }
 
-.account-approvals-top span {
-  min-width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-bg-panel);
-  font-weight: 700;
+.account-approvals-top h2.section-title-with-icon {
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .account-approvals-empty {
   margin-top: 14px;
   color: var(--color-text-muted);
+}
+
+.account-approvals-count {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--color-text-muted);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .account-approvals-section-copy {

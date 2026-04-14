@@ -52,6 +52,76 @@
   gap: 8px;
 }
 
+/* Keep all solid accent CTA buttons feeling consistent across pages. */
+body :is(
+  .auth-submit,
+  .upload-cover-actions button,
+  .cover-request-create-btn,
+  .cover-request-button:not(.cover-request-button-cancel),
+  .my-assignment-button,
+  .game-details-primary,
+  .game-details-close-btn,
+  .upload-actions button,
+  .upload-all-btn,
+  .game-card-view-btn,
+  .dashboard-day-view-btn,
+  .take-game-btn,
+  .venue-popup-btn,
+  .games-manage-form-actions button[type="submit"],
+  .events-form-submit,
+  .event-action-button:not(.event-action-button-leave):not(.event-action-button-danger):not(.event-action-button-manage),
+  .reports-action-button,
+  .reports-form-actions button[type="submit"],
+  .account-settings-profile-edit-btn,
+  .account-settings-profile-save-btn,
+  .account-settings-home-save-btn,
+  .account-settings-availability-actions button:not(.account-settings-availability-apply-now-btn),
+  .account-settings-testing-controls button,
+  .account-approvals-actions button:not(.account-approvals-disapprove),
+  .earnings-save-home,
+  .earnings-type-btn.active,
+  .app-footer-back-to-top
+) {
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease,
+    opacity 0.18s ease,
+    box-shadow 0.18s ease;
+  transform-origin: center;
+}
+
+body :is(
+  .auth-submit,
+  .upload-cover-actions button,
+  .cover-request-create-btn,
+  .cover-request-button:not(.cover-request-button-cancel),
+  .my-assignment-button,
+  .game-details-primary,
+  .game-details-close-btn,
+  .upload-actions button,
+  .upload-all-btn,
+  .game-card-view-btn,
+  .dashboard-day-view-btn,
+  .take-game-btn,
+  .venue-popup-btn,
+  .games-manage-form-actions button[type="submit"],
+  .events-form-submit,
+  .event-action-button:not(.event-action-button-leave):not(.event-action-button-danger):not(.event-action-button-manage),
+  .reports-action-button,
+  .reports-form-actions button[type="submit"],
+  .account-settings-profile-edit-btn,
+  .account-settings-profile-save-btn,
+  .account-settings-home-save-btn,
+  .account-settings-availability-actions button:not(.account-settings-availability-apply-now-btn),
+  .account-settings-testing-controls button,
+  .account-approvals-actions button:not(.account-approvals-disapprove),
+  .earnings-save-home,
+  .earnings-type-btn.active,
+  .app-footer-back-to-top
+):hover:not(:disabled) {
+  transform: scale(1.03);
+}
+
 .nav-left,
 .nav-right {
   display: flex;
@@ -69,7 +139,7 @@
 .nav-title {
   font-weight: 700;
   font-size: 1.1rem;
-  color: var(--color-text);
+  color: var(--color-accent);
 }
 
 .nav-user {
@@ -769,6 +839,29 @@
   color: var(--color-text-muted-2);
 }
 
+.app-footer-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.app-footer-back-to-top {
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.app-footer-back-to-top:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
 .mobile-drawer-overlay {
   display: none;
 }
@@ -1039,6 +1132,12 @@
     padding: 12px 16px;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .app-footer-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
   }
 
   .app-footer-meta {

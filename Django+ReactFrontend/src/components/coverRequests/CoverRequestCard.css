@@ -47,17 +47,17 @@
   padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid var(--color-accent);
-  background: var(--color-accent-soft);
-  color: var(--color-text);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 
 .cover-request-card-tag-claimed {
-  background: var(--color-accent-soft);
+  background: var(--color-accent);
   border-color: var(--color-accent);
-  color: var(--color-text);
+  color: var(--color-text-inverse);
 }
 
 .cover-request-meta-grid {

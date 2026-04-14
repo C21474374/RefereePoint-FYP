@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { CircleMarker, MapContainer, Popup, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import L from "leaflet";
 import { useTheme } from "../context/ThemeContext";
 import AppIcon from "./AppIcon";
 import "leaflet/dist/leaflet.css";
@@ -51,6 +52,14 @@ type GameDetailsModalProps = {
 };
 
 const DEFAULT_CENTER: [number, number] = [53.3498, -6.2603];
+const detailsMapMarkerIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 function formatDateRange(dateValue: string, endDateValue?: string | null) {
   const start = new Date(`${dateValue}T00:00:00`);
@@ -191,7 +200,6 @@ const GameDetailsModal = ({
     ["Game Type", details.gameTypeDisplay],
     ["Division", details.divisionDisplay],
     ["Payment", details.paymentTypeDisplay],
-    ["Status", details.statusDisplay],
     ["Posted By", details.postedByName],
     ["Requested By", details.requestedByName],
     ["Original Ref", details.originalRefereeName],
@@ -230,20 +238,9 @@ const GameDetailsModal = ({
               <span>{details.typeLabel || "Game Opportunity"}</span>
             </p>
           </div>
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
         </div>
 
         <div className="game-details-modal-body">
-          <div className="game-details-chip-row">
-            {details.badge && <span className="game-details-chip">{details.badge}</span>}
-            {details.typeLabel && <span className="game-details-chip">{details.typeLabel}</span>}
-            {details.statusDisplay && (
-              <span className="game-details-chip">{details.statusDisplay}</span>
-            )}
-          </div>
-
           <div className="game-details-grid">
             {detailFields
               .filter(([, value]) => Boolean(value))
@@ -320,37 +317,16 @@ const GameDetailsModal = ({
                 className="game-details-map"
               >
                 <TileLayer attribution={attribution} url={tileLayerUrl} />
-                <CircleMarker
-                  center={mapCenter}
-                  radius={8}
-                  pathOptions={{
-                    color: "#d2232a",
-                    fillColor: "#d2232a",
-                    fillOpacity: 0.85,
-                    weight: 2,
-                  }}
-                >
+                <Marker position={mapCenter} icon={detailsMapMarkerIcon}>
                   <Popup>{details.venueName || "Venue location"}</Popup>
-                </CircleMarker>
+                </Marker>
               </MapContainer>
             ) : (
               <p className="game-details-no-map">
                 Location coordinates are not available for this game.
               </p>
             )}
-            {directionsUrl ? (
-              <a
-                className="game-details-directions-link"
-                href={directionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <span className="button-with-icon">
-                  <AppIcon name="home" />
-                  <span>Get Directions</span>
-                </span>
-              </a>
-            ) : (
+            {!directionsUrl && (
               <p className="game-details-directions-help">
                 Add a venue to enable directions.
               </p>
@@ -372,7 +348,20 @@ const GameDetailsModal = ({
               </span>
             </button>
           )}
-          <button type="button" className="game-details-secondary" onClick={onClose}>
+          {directionsUrl && (
+            <a
+              className="game-details-directions-link"
+              href={directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span className="button-with-icon">
+                <AppIcon name="home" />
+                <span>Get Directions</span>
+              </span>
+            </a>
+          )}
+          <button type="button" className="game-details-close-btn" onClick={onClose}>
             <span className="button-with-icon">
               <AppIcon name="filter" />
               <span>Close</span>

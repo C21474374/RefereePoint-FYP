@@ -370,17 +370,17 @@
 }
 
 .dashboard-day-view-btn {
-  border: 1px solid var(--color-border);
+  border: none;
   border-radius: 10px;
-  background: var(--color-bg-secondary);
-  color: var(--color-text);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   padding: 8px 11px;
   font-size: 0.82rem;
   font-weight: 700;
 }
 
 .dashboard-day-view-btn:hover {
-  border-color: var(--color-accent);
+  opacity: 0.95;
 }
 
 .dashboard-day-item-meta {

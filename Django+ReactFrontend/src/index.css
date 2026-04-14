@@ -36,7 +36,7 @@
   --color-warning: #d2232a;
   --color-error: #d2232a;
 
-  --color-nav-bg: rgba(0, 0, 0, 0.92);
+  --color-nav-bg: #000000;
   --color-nav-divider: rgba(255, 255, 255, 0.08);
 
   --color-link: #ffffff;
@@ -71,7 +71,7 @@
   --color-warning: #d2232a;
   --color-error: #d2232a;
 
-  --color-nav-bg: rgba(239, 239, 239, 0.96);
+  --color-nav-bg: #efefef;
   --color-nav-divider: rgba(0, 0, 0, 0.08);
 
   --color-link: #1f1b20;
