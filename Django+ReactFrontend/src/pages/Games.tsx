@@ -18,7 +18,7 @@ import {
 } from "../services/games";
 import { hasGameUploadAccess, hasRefereeAccess } from "../utils/access";
 import { useToast } from "../context/ToastContext";
-import "../pages_css/Games.css";
+import "./Games.css";
 
 export type Opportunity = {
   id: number;
@@ -106,6 +106,7 @@ type FormOptions = {
 };
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
+// Persisted per-user UI state so filters/collapsed sections restore on revisit.
 const GAMES_PREFS_KEY_PREFIX = "refereepoint.games.prefs";
 
 const emptyForm: ManageForm = {
@@ -288,6 +289,7 @@ export default function Games() {
       const uploads = await uploadsPromise;
 
       if (isRefereeUser) {
+        // Use recommendation feed when available, then gracefully fall back.
         let opportunitiesLoaded = false;
         try {
           const recommendedResponse = await fetch(

@@ -16,7 +16,7 @@ import {
   type EventVenueOption,
   updateEvent,
 } from "../services/events";
-import "../pages_css/Events.css";
+import "./Events.css";
 
 type EventSectionKey = "manageEvents" | "myEvents" | "openEvents" | "fullEvents";
 

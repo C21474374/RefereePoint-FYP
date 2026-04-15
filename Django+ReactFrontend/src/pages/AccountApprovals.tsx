@@ -9,7 +9,7 @@ import {
   type PendingApprovalAccount,
 } from "../services/approvals";
 import { useToast } from "../context/ToastContext";
-import "../pages_css/AccountApprovals.css";
+import "./AccountApprovals.css";
 
 const API_HOST = "http://localhost:8000";
 

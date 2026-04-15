@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AppIcon from "../components/AppIcon";
-import "../pages_css/Auth.css";
+import "./Auth.css";
 
 export default function LoginPage() {
   const { login } = useAuth();

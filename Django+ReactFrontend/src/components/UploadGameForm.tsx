@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import "../pages_css/UploadGame.css";
+import "./UploadGameForm.css";
 import { getAccessToken } from "../services/auth";
 
 type SimpleOption = {

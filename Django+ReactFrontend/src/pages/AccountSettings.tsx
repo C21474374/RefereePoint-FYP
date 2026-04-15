@@ -12,7 +12,7 @@ import {
   updateAppointedAvailability,
   type AppointedAvailabilityDay,
 } from "../services/appointedAvailability";
-import "../pages_css/AccountSettings.css";
+import "./AccountSettings.css";
 
 const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
   { value: "REFEREE", label: "Referee" },
@@ -22,6 +22,7 @@ const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
   { value: "DOA", label: "DOA" },
   { value: "NL", label: "National League" },
 ];
+// Local browser override for quickly enabling test-only role switching in UI.
 const TESTING_ROLE_SWITCH_STORAGE_KEY = "refereepoint.testing-role-switch.enabled";
 
 function getInitials(
@@ -184,6 +185,7 @@ export default function AccountSettings() {
   const currentAccountType = user?.account_type || "REFEREE";
   const testingRoleSwitchEnabledByEnv =
     String(import.meta.env.VITE_ENABLE_TESTING_ROLE_SWITCH || "").toLowerCase() === "true";
+  // Env flag is the hard override; localStorage provides a per-browser toggle for dev convenience.
   const showTestingRoleSwitch =
     testingRoleSwitchEnabledByEnv || testingRoleSwitchEnabled;
   const showOrganizationField = ["CLUB", "SCHOOL", "COLLEGE"].includes(currentAccountType);

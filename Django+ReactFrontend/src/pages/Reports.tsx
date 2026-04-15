@@ -12,10 +12,11 @@ import {
 } from "../services/reports";
 import { canAccessReportsPage, hasRefereeAccess } from "../utils/access";
 import { useToast } from "../context/ToastContext";
-import "../pages_css/Reports.css";
+import "./Reports.css";
 
 type AdminStatusFilter = "ALL" | "PENDING" | "REVIEWED" | "RESOLVED";
 type ReportsSectionKey = "adminSubmittedReports";
+// Persisted report filters/section state per user.
 const REPORTS_PREFS_KEY_PREFIX = "refereepoint.reports.prefs";
 
 type ReportFormState = {

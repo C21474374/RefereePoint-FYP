@@ -375,6 +375,7 @@ const TopNavBar: React.FC = () => {
         (link) => !((isRefereeUser && !hasEventManagerScope) && link.path === "/events")
       )
     : managerNavLinks;
+  // Upload actions are role-driven and collapse into a single entry when only one is available.
   const canUploadGame =
     Boolean(user?.uploads_approved) &&
     Boolean(user?.allowed_upload_game_types?.length);

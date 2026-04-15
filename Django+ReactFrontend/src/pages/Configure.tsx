@@ -12,10 +12,11 @@ import {
   type ConfigureDivision,
   type ConfigureTeam,
 } from "../services/configure";
-import "../pages_css/Configure.css";
+import "./Configure.css";
 
 type SectionKey = "division" | "team";
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
+// Persisted page state keeps admin workflows stable between visits.
 const CONFIGURE_PREFS_KEY_PREFIX = "refereepoint.configure.prefs";
 
 function getErrorMessage(error: unknown, fallback: string) {

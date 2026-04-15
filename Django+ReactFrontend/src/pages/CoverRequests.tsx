@@ -16,12 +16,13 @@ import AppIcon from "../components/AppIcon";
 import UploadCoverRequestPanel from "../components/UploadCoverRequestPanel";
 import CoverRequestCard from "../components/coverRequests/CoverRequestCard";
 import { useToast } from "../context/ToastContext";
-import "../pages_css/CoverRequests.css";
+import "./CoverRequests.css";
 
 type CoverSectionKey =
   | "manageCoverRequests"
   | "availableCoverRequests";
 
+// Persisted expanded/collapsed section preferences per user.
 const COVER_REQUESTS_PREFS_KEY_PREFIX = "refereepoint.cover-requests.prefs";
 
 export default function CoverRequestsPage() {

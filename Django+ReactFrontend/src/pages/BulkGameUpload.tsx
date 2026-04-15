@@ -16,7 +16,7 @@ import {
   type TeamOption,
   type UploadedGame,
 } from "../services/games";
-import "../pages_css/BulkGameUpload.css";
+import "./BulkGameUpload.css";
 
 type BulkGameUploadProps = {
   embedded?: boolean;
@@ -606,6 +606,7 @@ export default function BulkGameUpload({
       return;
     }
 
+    // Restore unsaved spreadsheet edits per user/account for continuity across sessions.
     setDraftsHydrated(false);
     const storageKey = getDraftStorageKey(user.id, user.account_type);
     if (!storageKey) {
@@ -650,6 +651,7 @@ export default function BulkGameUpload({
       return;
     }
 
+    // Persist row drafts + selected month so monthly assignment workflows are resilient.
     const storageKey = getDraftStorageKey(user.id, user.account_type);
     if (!storageKey) {
       return;

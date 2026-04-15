@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppIcon from "../components/AppIcon";
-import "../pages_css/Auth.css";
+import "./Auth.css";
 
 type TeamOption = {
   id: number;

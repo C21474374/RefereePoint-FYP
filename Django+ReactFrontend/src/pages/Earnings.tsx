@@ -6,7 +6,7 @@ import {
   type EarningsResponse,
 } from "../services/earnings";
 import { useToast } from "../context/ToastContext";
-import "../pages_css/Earnings.css";
+import "./Earnings.css";
 
 function currentYearMonthValue() {
   const now = new Date();

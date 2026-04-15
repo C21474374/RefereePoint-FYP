@@ -12,7 +12,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import { getAccessToken } from "../services/auth";
 import { fetchPendingApprovalAccounts } from "../services/approvals";
 import { useToast } from "../context/ToastContext";
-import "../pages_css/RefereeDashboard.css";
+import "./RefereeDashboard.css";
 
 type GameDetails = {
   date?: string;
@@ -398,6 +398,7 @@ export default function RefereeDashboard() {
         });
 
         if (isRefereeUser) {
+          // Referee dashboard combines personal assignments, joined events, and earnings.
           const [
             claimedGamesResponse,
             upcomingAssignmentsResponse,
@@ -478,6 +479,7 @@ export default function RefereeDashboard() {
           return;
         }
 
+        // Manager/admin dashboard focuses on uploads, approvals, and notifications.
         const pendingApprovalsPromise = canApproveAccounts
           ? fetchPendingApprovalAccounts()
               .then((accounts) => accounts.length)
