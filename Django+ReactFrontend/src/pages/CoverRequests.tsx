@@ -15,13 +15,17 @@ import {
 import AppIcon from "../components/AppIcon";
 import UploadCoverRequestPanel from "../components/UploadCoverRequestPanel";
 import CoverRequestCard from "../components/coverRequests/CoverRequestCard";
+import { useToast } from "../context/ToastContext";
 import "../pages_css/CoverRequests.css";
 
 type CoverSectionKey =
   | "manageCoverRequests"
   | "availableCoverRequests";
 
+const COVER_REQUESTS_PREFS_KEY_PREFIX = "refereepoint.cover-requests.prefs";
+
 export default function CoverRequestsPage() {
+  const { showToast } = useToast();
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [myCoverRequests, setMyCoverRequests] = useState<CoverRequest[]>([]);
   const [availableCoverRequests, setAvailableCoverRequests] = useState<CoverRequest[]>([]);
@@ -33,6 +37,49 @@ export default function CoverRequestsPage() {
     manageCoverRequests: false,
     availableCoverRequests: false,
   });
+
+  useEffect(() => {
+    if (!currentUser?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${COVER_REQUESTS_PREFS_KEY_PREFIX}.${currentUser.id}`;
+    try {
+      const rawValue = window.localStorage.getItem(storageKey);
+      if (!rawValue) {
+        return;
+      }
+      const parsed = JSON.parse(rawValue) as {
+        expandedSections?: Partial<Record<CoverSectionKey, boolean>>;
+      };
+      if (parsed.expandedSections) {
+        setExpandedSections((prev) => ({
+          ...prev,
+          ...parsed.expandedSections,
+        }));
+      }
+    } catch {
+      // Ignore invalid persisted preferences.
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${COVER_REQUESTS_PREFS_KEY_PREFIX}.${currentUser.id}`;
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          expandedSections,
+        })
+      );
+    } catch {
+      // Ignore local storage failures.
+    }
+  }, [currentUser?.id, expandedSections]);
 
   const toggleSection = (key: CoverSectionKey) => {
     setExpandedSections((prev) => ({
@@ -54,8 +101,8 @@ export default function CoverRequestsPage() {
       setMyCoverRequests(myCoverRequestsData);
       setAvailableCoverRequests(availableCoverRequestsData);
     } catch (err) {
-      console.error(err);
       setError("Failed to load cover requests.");
+      showToast("Failed to load cover requests.", "error");
     } finally {
       setLoading(false);
     }
@@ -73,8 +120,8 @@ export default function CoverRequestsPage() {
 
         await fetchData();
       } catch (err) {
-        console.error(err);
         setError("Failed to load cover requests.");
+        showToast("Failed to load cover requests.", "error");
         setLoading(false);
       }
     };
@@ -89,8 +136,8 @@ export default function CoverRequestsPage() {
       await claimCoverRequest(id);
       await fetchData();
     } catch (err) {
-      console.error(err);
       setError("Failed to claim cover request.");
+      showToast("Failed to claim cover request.", "error");
     } finally {
       setActionLoadingId(null);
     }
@@ -103,8 +150,8 @@ export default function CoverRequestsPage() {
       await cancelCoverRequest(id);
       await fetchData();
     } catch (err) {
-      console.error(err);
       setError("Failed to cancel cover request.");
+      showToast("Failed to cancel cover request.", "error");
     } finally {
       setActionLoadingId(null);
     }
@@ -117,8 +164,8 @@ export default function CoverRequestsPage() {
       await withdrawCoverClaim(id);
       await fetchData();
     } catch (err) {
-      console.error(err);
       setError("Failed to cancel cover claim.");
+      showToast("Failed to cancel cover claim.", "error");
     } finally {
       setActionLoadingId(null);
     }

@@ -8,8 +8,10 @@ import DashboardQuickActions from "../components/DashboardQuickActions";
 import GameDetailsModal, {
   type GameDetailsModalData,
 } from "../components/GameDetailsModal";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { getAccessToken } from "../services/auth";
 import { fetchPendingApprovalAccounts } from "../services/approvals";
+import { useToast } from "../context/ToastContext";
 import "../pages_css/RefereeDashboard.css";
 
 type GameDetails = {
@@ -147,6 +149,15 @@ type RecentNotification = {
 type RecentNotificationsResponse = {
   items?: RecentNotification[];
   unread_count?: number;
+};
+
+type AdminReportListItem = {
+  status?: string | null;
+};
+
+type AdminReportCounts = {
+  unread: number;
+  unresolved: number;
 };
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
@@ -323,6 +334,7 @@ function getResponseErrorMessage(data: unknown, fallback: string) {
 }
 
 export default function RefereeDashboard() {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
@@ -338,6 +350,8 @@ export default function RefereeDashboard() {
   const [pendingApprovalCount, setPendingApprovalCount] = useState<number | null>(null);
   const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([]);
   const [recentNotificationUnreadCount, setRecentNotificationUnreadCount] = useState(0);
+  const [adminUnreadReportsCount, setAdminUnreadReportsCount] = useState(0);
+  const [adminUnresolvedReportsCount, setAdminUnresolvedReportsCount] = useState(0);
 
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
@@ -350,6 +364,9 @@ export default function RefereeDashboard() {
   });
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [selectedCalendarItem, setSelectedCalendarItem] = useState<CalendarItem | null>(null);
+  const [pendingCancelCalendarItem, setPendingCancelCalendarItem] = useState<CalendarItem | null>(
+    null
+  );
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -368,6 +385,8 @@ export default function RefereeDashboard() {
           setPendingApprovalCount(null);
           setRecentNotifications([]);
           setRecentNotificationUnreadCount(0);
+          setAdminUnreadReportsCount(0);
+          setAdminUnresolvedReportsCount(0);
           return;
         }
 
@@ -454,6 +473,8 @@ export default function RefereeDashboard() {
           setMyUploadedGames([]);
           setMyManagedEvents([]);
           setPendingApprovalCount(null);
+          setAdminUnreadReportsCount(0);
+          setAdminUnresolvedReportsCount(0);
           return;
         }
 
@@ -462,19 +483,56 @@ export default function RefereeDashboard() {
               .then((accounts) => accounts.length)
               .catch(() => null)
           : Promise.resolve<number | null>(null);
+        const adminReportCountsPromise = canApproveAccounts
+          ? fetch(`${API_BASE_URL}/reports/admin/`, {
+              headers: authHeaders,
+            })
+              .then(async (response): Promise<AdminReportCounts> => {
+                if (!response.ok) {
+                  return { unread: 0, unresolved: 0 };
+                }
+
+                const reports = (await response.json()) as AdminReportListItem[];
+                const counts: AdminReportCounts = { unread: 0, unresolved: 0 };
+
+                reports.forEach((report) => {
+                  const statusValue = String(report.status || "").trim().toUpperCase();
+                  if (!statusValue) {
+                    return;
+                  }
+
+                  if (statusValue === "PENDING") {
+                    counts.unread += 1;
+                  }
+                  if (statusValue !== "RESOLVED") {
+                    counts.unresolved += 1;
+                  }
+                });
+
+                return counts;
+              })
+              .catch(() => ({ unread: 0, unresolved: 0 }))
+          : Promise.resolve<AdminReportCounts>({ unread: 0, unresolved: 0 });
         const eventsPromise = hasEventManagerScope
           ? fetch(`${API_BASE_URL}/events/?upcoming=true`, {
               headers: authHeaders,
             })
           : Promise.resolve<Response | null>(null);
 
-        const [uploadedGamesResponse, eventsResponse, pendingApprovals, notificationsResponse] = await Promise.all([
+        const [
+          uploadedGamesResponse,
+          eventsResponse,
+          pendingApprovals,
+          notificationsResponse,
+          adminReportCounts,
+        ] = await Promise.all([
           fetch(`${API_BASE_URL}/games/my-uploads/`, {
             headers: authHeaders,
           }),
           eventsPromise,
           pendingApprovalsPromise,
           notificationsPromise,
+          adminReportCountsPromise,
         ]);
 
         const uploadedGamesData = await uploadedGamesResponse.json();
@@ -501,6 +559,8 @@ export default function RefereeDashboard() {
         }
 
         setPendingApprovalCount(pendingApprovals);
+        setAdminUnreadReportsCount(adminReportCounts.unread);
+        setAdminUnresolvedReportsCount(adminReportCounts.unresolved);
         if (notificationsResponse.ok) {
           const notificationsData =
             (await notificationsResponse.json()) as RecentNotificationsResponse;
@@ -1026,17 +1086,10 @@ export default function RefereeDashboard() {
       return;
     }
 
-    if (
-      !window.confirm(
-        "Cancel this taken game? This will reopen it in Opportunities for other referees to claim."
-      )
-    ) {
-      return;
-    }
-
     const token = getAccessToken();
     if (!token) {
       setDashboardError("You must be logged in to cancel a claimed game.");
+      showToast("You must be logged in to cancel a claimed game.", "error");
       return;
     }
 
@@ -1073,10 +1126,13 @@ export default function RefereeDashboard() {
       );
       setDashboardReloadKey((prev) => prev + 1);
       window.dispatchEvent(new Event("refereepoint:data-refresh"));
+      setPendingCancelCalendarItem(null);
+      showToast("Taken game cancelled and reopened in opportunities.", "success");
     } catch (error) {
-      setDashboardError(
-        error instanceof Error ? error.message : "Failed to cancel claimed opportunity."
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to cancel claimed opportunity.";
+      setDashboardError(message);
+      showToast(message, "error");
     } finally {
       setCancellingCalendarItemId(null);
     }
@@ -1133,6 +1189,7 @@ export default function RefereeDashboard() {
       <DashboardHero
         name={fullName}
         badgeLabel={heroBadgeLabel}
+        badgeType={isRefereeUser ? "grade" : "role"}
         email={user?.email || ""}
         subtitle={heroSubtitle}
       />
@@ -1171,11 +1228,17 @@ export default function RefereeDashboard() {
               </p>
             </article>
             <article className="dashboard-role-overview-card">
-              <h3>Next 7 Days</h3>
-              <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
+              <h3>Unread Reports</h3>
+              <p className="dashboard-role-overview-value">{adminUnreadReportsCount}</p>
               <p className="dashboard-role-overview-detail">
-                Uploaded games scheduled in the coming week.
+                Unresolved reports: {adminUnresolvedReportsCount}
               </p>
+              <Link className="dashboard-role-overview-link" to="/reports">
+                <span className="inline-icon-label">
+                  <AppIcon name="reports" />
+                  <span>Open Reports</span>
+                </span>
+              </Link>
             </article>
           </div>
         </section>
@@ -1394,7 +1457,7 @@ export default function RefereeDashboard() {
                             type="button"
                             className="dashboard-day-cancel-btn"
                             onClick={() => {
-                              void handleCancelClaimedCalendarItem(item);
+                              setPendingCancelCalendarItem(item);
                             }}
                             disabled={
                               cancellingCalendarItemId === item.id ||
@@ -1441,6 +1504,22 @@ export default function RefereeDashboard() {
         open={Boolean(selectedCalendarItem)}
         details={selectedCalendarItem?.details || null}
         onClose={() => setSelectedCalendarItem(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingCancelCalendarItem)}
+        title="Cancel Claimed Game"
+        message="Cancel this taken game? It will be reopened in Opportunities for other referees to claim."
+        confirmLabel="Cancel Game"
+        cancelLabel="Keep Claimed"
+        confirmTone="danger"
+        busy={cancellingCalendarItemId === pendingCancelCalendarItem?.id}
+        onCancel={() => setPendingCancelCalendarItem(null)}
+        onConfirm={() => {
+          if (pendingCancelCalendarItem) {
+            void handleCancelClaimedCalendarItem(pendingCancelCalendarItem);
+          }
+        }}
       />
 
       <DashboardQuickActions />

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppIcon from "../components/AppIcon";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   deleteUploadedGame,
   getMyUploadedGames,
@@ -378,6 +380,7 @@ export default function BulkGameUpload({
   embedded = false,
   onUploaded,
 }: BulkGameUploadProps) {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const isDoaOrNl = user?.account_type === "DOA" || user?.account_type === "NL";
   const gameType = user?.account_type === "NL" ? "NL" : "DOA";
@@ -402,6 +405,7 @@ export default function BulkGameUpload({
   const [savingAllChanges, setSavingAllChanges] = useState(false);
   const [monthFilter, setMonthFilter] = useState(getCurrentMonthKey());
   const [draftsHydrated, setDraftsHydrated] = useState(false);
+  const [pendingDeleteExistingGameId, setPendingDeleteExistingGameId] = useState<number | null>(null);
 
   const appointedDivisionIds = useMemo(
     () =>
@@ -550,6 +554,10 @@ export default function BulkGameUpload({
     [rows]
   );
   const pendingSaveCount = dirtyExistingRows.length + dirtyDraftRows.length;
+  const pendingDeleteExistingRow =
+    pendingDeleteExistingGameId === null
+      ? null
+      : existingRows.find((row) => row.game_id === pendingDeleteExistingGameId) || null;
 
   useEffect(() => {
     async function loadInitialData() {
@@ -578,9 +586,12 @@ export default function BulkGameUpload({
         setReferees(refereeOptions);
         setExistingRows(sortedUploadedGames(uploads).map(buildExistingRowFromGame));
       } catch (error) {
-        setPageError(
-          getErrorMessage(error, "Failed to load upload options. Please try again.")
+        const message = getErrorMessage(
+          error,
+          "Failed to load upload options. Please try again."
         );
+        setPageError(message);
+        showToast(message, "error");
       } finally {
         setLoadingOptions(false);
         setLoadingExisting(false);
@@ -588,7 +599,7 @@ export default function BulkGameUpload({
     }
 
     loadInitialData();
-  }, [isDoaOrNl, sortedUploadedGames]);
+  }, [isDoaOrNl, showToast, sortedUploadedGames]);
 
   useEffect(() => {
     if (!isDoaOrNl || !user?.id || typeof window === "undefined") {
@@ -1192,6 +1203,10 @@ export default function BulkGameUpload({
       setPageSuccess(
         `Saved ${successCount} row${successCount === 1 ? "" : "s"} successfully.`
       );
+      showToast(
+        `Saved ${successCount} row${successCount === 1 ? "" : "s"} successfully.`,
+        "success"
+      );
     }
 
     if (failures.length > 0) {
@@ -1201,6 +1216,7 @@ export default function BulkGameUpload({
           ? `${preview} | +${failures.length - 3} more error(s).`
           : preview
       );
+      showToast("Some rows failed to save. Check row messages.", "error");
     }
 
     if (successCount === 0 && failures.length === 0) {
@@ -1231,9 +1247,14 @@ export default function BulkGameUpload({
       return;
     }
 
-    if (!window.confirm("Delete this uploaded game?")) {
+    setPendingDeleteExistingGameId(gameId);
+  };
+
+  const confirmDeleteExistingRow = async () => {
+    if (pendingDeleteExistingGameId === null) {
       return;
     }
+    const gameId = pendingDeleteExistingGameId;
 
     setExistingRows((prev) =>
       prev.map((item) =>
@@ -1251,8 +1272,11 @@ export default function BulkGameUpload({
       await deleteUploadedGame(gameId);
       setExistingRows((prev) => prev.filter((item) => item.game_id !== gameId));
       setPageSuccess("Uploaded game deleted.");
+      showToast("Uploaded game deleted.", "success");
+      setPendingDeleteExistingGameId(null);
       onUploaded?.();
     } catch (error) {
+      const message = getErrorMessage(error, "Failed to delete row.");
       setExistingRows((prev) =>
         prev.map((item) =>
           item.game_id === gameId
@@ -1260,11 +1284,12 @@ export default function BulkGameUpload({
                 ...item,
                 deleting: false,
                 status: "ERROR",
-                message: getErrorMessage(error, "Failed to delete row."),
+                message,
               }
             : item
         )
       );
+      showToast(message, "error");
     }
   };
 
@@ -1731,6 +1756,31 @@ export default function BulkGameUpload({
         )}
 
       </section>
+
+      <ConfirmDialog
+        open={pendingDeleteExistingGameId !== null}
+        title="Delete Uploaded Game"
+        message={
+          pendingDeleteExistingRow
+            ? `Delete ${pendingDeleteExistingRow.date} ${normalizeTimeValue(
+                pendingDeleteExistingRow.time
+              )} game entry? This action cannot be undone.`
+            : "Delete this uploaded game row? This action cannot be undone."
+        }
+        confirmLabel="Delete Row"
+        cancelLabel="Keep Row"
+        confirmTone="danger"
+        busy={
+          pendingDeleteExistingGameId !== null &&
+          existingRows.some(
+            (row) => row.game_id === pendingDeleteExistingGameId && row.deleting
+          )
+        }
+        onCancel={() => setPendingDeleteExistingGameId(null)}
+        onConfirm={() => {
+          void confirmDeleteExistingRow();
+        }}
+      />
     </div>
   );
 }

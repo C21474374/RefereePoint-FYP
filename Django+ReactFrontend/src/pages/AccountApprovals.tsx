@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import AppIcon from "../components/AppIcon";
+import ConfirmDialog from "../components/ConfirmDialog";
 import {
   approvePendingAccount,
   disapprovePendingAccount,
   fetchPendingApprovalAccounts,
   type PendingApprovalAccount,
 } from "../services/approvals";
+import { useToast } from "../context/ToastContext";
 import "../pages_css/AccountApprovals.css";
 
 const API_HOST = "http://localhost:8000";
@@ -42,6 +44,7 @@ function normalizeFileUrl(url: string) {
 }
 
 export default function AccountApprovals() {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
 
@@ -51,6 +54,8 @@ export default function AccountApprovals() {
   const [success, setSuccess] = useState("");
   const [actionUserId, setActionUserId] = useState<number | null>(null);
   const [pendingSectionExpanded, setPendingSectionExpanded] = useState(false);
+  const [pendingDisapproveAccount, setPendingDisapproveAccount] =
+    useState<PendingApprovalAccount | null>(null);
 
   const loadPendingAccounts = useCallback(async () => {
     if (!canApproveAccounts) {
@@ -64,11 +69,13 @@ export default function AccountApprovals() {
       const accounts = await fetchPendingApprovalAccounts();
       setPendingAccounts(accounts);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to load pending approvals."));
+      const message = getErrorMessage(err, "Failed to load pending approvals.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [canApproveAccounts]);
+  }, [canApproveAccounts, showToast]);
 
   useEffect(() => {
     loadPendingAccounts();
@@ -82,22 +89,25 @@ export default function AccountApprovals() {
       await approvePendingAccount(account.id);
       setPendingAccounts((prev) => prev.filter((item) => item.id !== account.id));
       setSuccess(`Approved ${getAccountName(account)} successfully.`);
+      showToast(`Approved ${getAccountName(account)}.`, "success");
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to approve account."));
+      const message = getErrorMessage(err, "Failed to approve account.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionUserId(null);
     }
   };
 
   const handleDisapprove = async (account: PendingApprovalAccount) => {
-    if (
-      !window.confirm(
-        `Disapprove ${getAccountName(account)}? This will delete their registration details.`
-      )
-    ) {
+    setPendingDisapproveAccount(account);
+  };
+
+  const confirmDisapprove = async () => {
+    if (!pendingDisapproveAccount) {
       return;
     }
-
+    const account = pendingDisapproveAccount;
     try {
       setActionUserId(account.id);
       setError("");
@@ -105,8 +115,12 @@ export default function AccountApprovals() {
       await disapprovePendingAccount(account.id);
       setPendingAccounts((prev) => prev.filter((item) => item.id !== account.id));
       setSuccess(`Disapproved ${getAccountName(account)} and removed the request.`);
+      showToast(`Disapproved ${getAccountName(account)}.`, "success");
+      setPendingDisapproveAccount(null);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to disapprove account."));
+      const message = getErrorMessage(err, "Failed to disapprove account.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionUserId(null);
     }
@@ -281,6 +295,29 @@ export default function AccountApprovals() {
           </span>
         </button>
       </section>
+
+      <ConfirmDialog
+        open={Boolean(pendingDisapproveAccount)}
+        title="Disapprove Account"
+        message={
+          pendingDisapproveAccount
+            ? `Disapprove ${getAccountName(
+                pendingDisapproveAccount
+              )}? This will delete their registration details.`
+            : ""
+        }
+        confirmLabel="Disapprove Request"
+        cancelLabel="Keep Request"
+        confirmTone="danger"
+        busy={
+          Boolean(pendingDisapproveAccount) &&
+          actionUserId === pendingDisapproveAccount?.id
+        }
+        onCancel={() => setPendingDisapproveAccount(null)}
+        onConfirm={() => {
+          void confirmDisapprove();
+        }}
+      />
     </div>
   );
 }

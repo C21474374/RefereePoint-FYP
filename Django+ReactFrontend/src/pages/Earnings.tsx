@@ -5,6 +5,7 @@ import {
   type EarningsGameType,
   type EarningsResponse,
 } from "../services/earnings";
+import { useToast } from "../context/ToastContext";
 import "../pages_css/Earnings.css";
 
 function currentYearMonthValue() {
@@ -27,6 +28,7 @@ function parseYearMonth(value: string) {
 }
 
 export default function Earnings() {
+  const { showToast } = useToast();
   const [gameType, setGameType] = useState<EarningsGameType>("DOA");
   const [selectedMonthValue, setSelectedMonthValue] = useState(currentYearMonthValue());
   const [monthOptions, setMonthOptions] = useState<
@@ -67,8 +69,8 @@ export default function Earnings() {
         setSelectedMonthValue(data.selected_month.value);
       }
     } catch (err) {
-      console.error(err);
       setError("Failed to load earnings.");
+      showToast("Failed to load earnings.", "error");
     } finally {
       setLoading(false);
     }

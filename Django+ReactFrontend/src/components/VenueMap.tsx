@@ -157,8 +157,11 @@ export default function VenueMap() {
           setError(null);
         },
         (err) => {
-          console.error('Geolocation error:', err);
-          setError('Could not get your location');
+          const locationMessage =
+            typeof err?.message === 'string' && err.message.trim()
+              ? err.message
+              : 'Could not get your location';
+          setError(locationMessage);
         }
       );
     } else {

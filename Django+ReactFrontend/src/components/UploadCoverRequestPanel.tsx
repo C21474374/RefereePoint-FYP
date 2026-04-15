@@ -4,6 +4,7 @@ import {
   getMyUpcomingAssignments,
   type UpcomingAssignment,
 } from "../services/coverRequests";
+import { useToast } from "../context/ToastContext";
 
 type UploadCoverRequestPanelProps = {
   onUploaded?: () => void;
@@ -12,6 +13,7 @@ type UploadCoverRequestPanelProps = {
 export default function UploadCoverRequestPanel({
   onUploaded,
 }: UploadCoverRequestPanelProps) {
+  const { showToast } = useToast();
   const [assignments, setAssignments] = useState<UpcomingAssignment[]>([]);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
   const [reason, setReason] = useState("");
@@ -27,8 +29,8 @@ export default function UploadCoverRequestPanel({
         const data = await getMyUpcomingAssignments();
         setAssignments(data);
       } catch (error) {
-        console.error(error);
         setErrorMessage("Failed to load your games.");
+        showToast("Failed to load your games.", "error");
       } finally {
         setLoading(false);
       }
@@ -64,8 +66,8 @@ export default function UploadCoverRequestPanel({
       });
       onUploaded?.();
     } catch (error) {
-      console.error(error);
       setErrorMessage("Failed to upload cover request.");
+      showToast("Failed to upload cover request.", "error");
     } finally {
       setSubmitting(false);
     }

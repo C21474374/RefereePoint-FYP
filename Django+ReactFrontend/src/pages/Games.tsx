@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import GamesMap from "../components/GamesMap";
 import Gameslist from "../components/Gameslist";
 import AppIcon from "../components/AppIcon";
+import ConfirmDialog from "../components/ConfirmDialog";
 import BulkGameUpload from "./BulkGameUpload";
 import { getAccessToken } from "../services/auth";
 import { useAuth } from "../context/AuthContext";
@@ -16,6 +17,7 @@ import {
   type UploadedGame,
 } from "../services/games";
 import { hasGameUploadAccess, hasRefereeAccess } from "../utils/access";
+import { useToast } from "../context/ToastContext";
 import "../pages_css/Games.css";
 
 export type Opportunity = {
@@ -104,6 +106,7 @@ type FormOptions = {
 };
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
+const GAMES_PREFS_KEY_PREFIX = "refereepoint.games.prefs";
 
 const emptyForm: ManageForm = {
   game_type: "CLUB",
@@ -167,6 +170,7 @@ function formFromGame(game: UploadedGame): ManageForm {
 }
 
 export default function Games() {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const isRefereeUser = hasRefereeAccess(user);
   const canManageUploadedGames = hasGameUploadAccess(user);
@@ -182,6 +186,7 @@ export default function Games() {
   const [claimingKey, setClaimingKey] = useState<string | null>(null);
   const [manageError, setManageError] = useState("");
   const [manageActionId, setManageActionId] = useState<number | null>(null);
+  const [pendingDeleteGameId, setPendingDeleteGameId] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<GamesSectionKey, boolean>>({
     manageUploadedGames: false,
   });
@@ -196,6 +201,7 @@ export default function Games() {
     venues: [],
     teams: [],
   });
+  const [manageMonthFilter, setManageMonthFilter] = useState("ALL");
 
   const toggleSection = (key: GamesSectionKey) => {
     setExpandedSections((prev) => ({
@@ -203,6 +209,69 @@ export default function Games() {
       [key]: !prev[key],
     }));
   };
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${GAMES_PREFS_KEY_PREFIX}.${user.id}`;
+    try {
+      const rawValue = window.localStorage.getItem(storageKey);
+      if (!rawValue) {
+        return;
+      }
+
+      const parsed = JSON.parse(rawValue) as {
+        selectedType?: string;
+        selectedVenueId?: number | null;
+        manageMonthFilter?: string;
+        expandedSections?: Partial<Record<GamesSectionKey, boolean>>;
+      };
+
+      if (typeof parsed.selectedType === "string") {
+        setSelectedType(parsed.selectedType);
+      }
+      if (
+        parsed.selectedVenueId === null ||
+        typeof parsed.selectedVenueId === "number"
+      ) {
+        setSelectedVenueId(parsed.selectedVenueId ?? null);
+      }
+      if (typeof parsed.manageMonthFilter === "string") {
+        setManageMonthFilter(parsed.manageMonthFilter);
+      }
+      if (parsed.expandedSections) {
+        setExpandedSections((prev) => ({
+          ...prev,
+          ...parsed.expandedSections,
+        }));
+      }
+    } catch {
+      // Ignore invalid persisted preferences.
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${GAMES_PREFS_KEY_PREFIX}.${user.id}`;
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          selectedType,
+          selectedVenueId,
+          manageMonthFilter,
+          expandedSections,
+        })
+      );
+    } catch {
+      // Ignore local storage failures.
+    }
+  }, [expandedSections, manageMonthFilter, selectedType, selectedVenueId, user?.id]);
 
   const getOpportunityKey = (type: Opportunity["type"], id: number) => `${type}-${id}`;
 
@@ -253,11 +322,13 @@ export default function Games() {
 
       setUploadedGames(uploads);
     } catch (err) {
-      setError(getErrorMessage(err, "Something went wrong."));
+      const message = getErrorMessage(err, "Something went wrong.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [canManageUploadedGames, isRefereeUser]);
+  }, [canManageUploadedGames, isRefereeUser, showToast]);
 
   useEffect(() => {
     loadPageData();
@@ -300,7 +371,9 @@ export default function Games() {
       }
       await loadPageData();
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to claim slot."));
+      const message = getErrorMessage(err, "Failed to claim slot.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setClaimingKey(null);
     }
@@ -324,7 +397,9 @@ export default function Games() {
       }
       await loadPageData();
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to offer cover."));
+      const message = getErrorMessage(err, "Failed to offer cover.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setClaimingKey(null);
     }
@@ -348,7 +423,9 @@ export default function Games() {
       }
       await loadPageData();
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to join event."));
+      const message = getErrorMessage(err, "Failed to join event.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setClaimingKey(null);
     }
@@ -431,26 +508,39 @@ export default function Games() {
       await updateUploadedGame(editingGame.id, payload);
       setEditingGame(null);
       setEditForm(emptyForm);
+      showToast("Uploaded game updated.", "success");
       await loadPageData();
     } catch (err) {
-      setManageError(getErrorMessage(err, "Failed to update uploaded game."));
+      const message = getErrorMessage(err, "Failed to update uploaded game.");
+      setManageError(message);
+      showToast(message, "error");
     } finally {
       setEditSubmitting(false);
       setManageActionId(null);
     }
   };
 
-  const handleDeleteUploaded = async (gameId: number) => {
-    if (!window.confirm("Delete this uploaded game?")) {
+  const handleDeleteUploaded = (gameId: number) => {
+    setPendingDeleteGameId(gameId);
+  };
+
+  const confirmDeleteUploaded = async () => {
+    if (pendingDeleteGameId === null) {
       return;
     }
+
+    const gameId = pendingDeleteGameId;
     try {
       setManageError("");
       setManageActionId(gameId);
       await deleteUploadedGame(gameId);
+      setPendingDeleteGameId(null);
+      showToast("Uploaded game deleted.", "success");
       await loadPageData();
     } catch (err) {
-      setManageError(getErrorMessage(err, "Failed to delete uploaded game."));
+      const message = getErrorMessage(err, "Failed to delete uploaded game.");
+      setManageError(message);
+      showToast(message, "error");
     } finally {
       setManageActionId(null);
     }
@@ -466,8 +556,6 @@ export default function Games() {
     }
     return filtered;
   }, [opportunities, selectedVenueId, selectedType]);
-
-  const [manageMonthFilter, setManageMonthFilter] = useState("ALL");
 
   const manageableUploadedGames = useMemo(() => uploadedGames, [uploadedGames]);
 
@@ -500,6 +588,10 @@ export default function Games() {
           ),
     [manageableUploadedGames, manageMonthFilter]
   );
+  const pendingDeleteGame =
+    pendingDeleteGameId === null
+      ? null
+      : uploadedGames.find((game) => game.id === pendingDeleteGameId) || null;
 
   const editableDivisionOptions = useMemo(() => {
     const appointedDivisions = formOptions.divisions.filter((division) =>
@@ -996,6 +1088,26 @@ export default function Games() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteGameId !== null}
+        title="Delete Uploaded Game"
+        message={
+          pendingDeleteGame
+            ? `Delete ${pendingDeleteGame.home_team_name || "Home Team"} vs ${
+                pendingDeleteGame.away_team_name || "Away Team"
+              }? This action cannot be undone.`
+            : "Delete this uploaded game? This action cannot be undone."
+        }
+        confirmLabel="Delete Game"
+        cancelLabel="Keep Game"
+        confirmTone="danger"
+        busy={manageActionId === pendingDeleteGameId}
+        onCancel={() => setPendingDeleteGameId(null)}
+        onConfirm={() => {
+          void confirmDeleteUploaded();
+        }}
+      />
     </div>
   );
 }

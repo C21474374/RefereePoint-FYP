@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppIcon from "../components/AppIcon";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { canAccessConfigurePage } from "../utils/access";
 import {
   createDivision,
@@ -15,6 +16,7 @@ import "../pages_css/Configure.css";
 
 type SectionKey = "division" | "team";
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE";
+const CONFIGURE_PREFS_KEY_PREFIX = "refereepoint.configure.prefs";
 
 function getErrorMessage(error: unknown, fallback: string) {
   const maybe = error as {
@@ -51,6 +53,7 @@ function sortTeams(items: ConfigureTeam[]) {
 }
 
 export default function ConfigurePage() {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const canConfigure = canAccessConfigurePage(user);
 
@@ -87,6 +90,104 @@ export default function ConfigurePage() {
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
   const [editTeamClubId, setEditTeamClubId] = useState("");
   const [editTeamDivisionId, setEditTeamDivisionId] = useState("");
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${CONFIGURE_PREFS_KEY_PREFIX}.${user.id}`;
+    try {
+      const rawValue = window.localStorage.getItem(storageKey);
+      if (!rawValue) {
+        return;
+      }
+      const parsed = JSON.parse(rawValue) as {
+        expanded?: Partial<Record<SectionKey, boolean>>;
+        divisionQuery?: string;
+        divisionStatusFilter?: StatusFilter;
+        teamQuery?: string;
+        teamStatusFilter?: StatusFilter;
+        teamClubFilter?: string;
+        teamDivisionFilter?: string;
+        showDivisionFilters?: boolean;
+        showTeamFilters?: boolean;
+      };
+
+      if (parsed.expanded) {
+        setExpanded((prev) => ({ ...prev, ...parsed.expanded }));
+      }
+      if (typeof parsed.divisionQuery === "string") {
+        setDivisionQuery(parsed.divisionQuery);
+      }
+      if (
+        parsed.divisionStatusFilter &&
+        ["ALL", "ACTIVE", "INACTIVE"].includes(parsed.divisionStatusFilter)
+      ) {
+        setDivisionStatusFilter(parsed.divisionStatusFilter);
+      }
+      if (typeof parsed.teamQuery === "string") {
+        setTeamQuery(parsed.teamQuery);
+      }
+      if (
+        parsed.teamStatusFilter &&
+        ["ALL", "ACTIVE", "INACTIVE"].includes(parsed.teamStatusFilter)
+      ) {
+        setTeamStatusFilter(parsed.teamStatusFilter);
+      }
+      if (typeof parsed.teamClubFilter === "string") {
+        setTeamClubFilter(parsed.teamClubFilter);
+      }
+      if (typeof parsed.teamDivisionFilter === "string") {
+        setTeamDivisionFilter(parsed.teamDivisionFilter);
+      }
+      if (typeof parsed.showDivisionFilters === "boolean") {
+        setShowDivisionFilters(parsed.showDivisionFilters);
+      }
+      if (typeof parsed.showTeamFilters === "boolean") {
+        setShowTeamFilters(parsed.showTeamFilters);
+      }
+    } catch {
+      // Ignore invalid persisted preferences.
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${CONFIGURE_PREFS_KEY_PREFIX}.${user.id}`;
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          expanded,
+          divisionQuery,
+          divisionStatusFilter,
+          teamQuery,
+          teamStatusFilter,
+          teamClubFilter,
+          teamDivisionFilter,
+          showDivisionFilters,
+          showTeamFilters,
+        })
+      );
+    } catch {
+      // Ignore local storage failures.
+    }
+  }, [
+    divisionQuery,
+    divisionStatusFilter,
+    expanded,
+    showDivisionFilters,
+    showTeamFilters,
+    teamClubFilter,
+    teamDivisionFilter,
+    teamQuery,
+    teamStatusFilter,
+    user?.id,
+  ]);
 
   const activeDivisions = useMemo(
     () => sortDivisions(divisions.filter((item) => item.is_active)),
@@ -144,11 +245,13 @@ export default function ConfigurePage() {
       setDivisions(sortDivisions(data.divisions));
       setTeams(sortTeams(data.teams));
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to load configuration."));
+      const message = getErrorMessage(err, "Failed to load configuration.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [canConfigure]);
+  }, [canConfigure, showToast]);
 
   useEffect(() => {
     loadData();

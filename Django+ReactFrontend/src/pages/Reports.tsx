@@ -11,10 +11,12 @@ import {
   type ReportableGame,
 } from "../services/reports";
 import { canAccessReportsPage, hasRefereeAccess } from "../utils/access";
+import { useToast } from "../context/ToastContext";
 import "../pages_css/Reports.css";
 
 type AdminStatusFilter = "ALL" | "PENDING" | "REVIEWED" | "RESOLVED";
 type ReportsSectionKey = "adminSubmittedReports";
+const REPORTS_PREFS_KEY_PREFIX = "refereepoint.reports.prefs";
 
 type ReportFormState = {
   match_no: string;
@@ -141,6 +143,7 @@ function gameTitle(gameDetails: GameDetails | undefined) {
 }
 
 export default function Reports() {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const isRefereeMode = hasRefereeAccess(user);
   const isAdminReportsMode = canAccessReportsPage(user) && !isRefereeMode;
@@ -166,6 +169,57 @@ export default function Reports() {
       [key]: !prev[key],
     }));
   };
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${REPORTS_PREFS_KEY_PREFIX}.${user.id}`;
+    try {
+      const rawValue = window.localStorage.getItem(storageKey);
+      if (!rawValue) {
+        return;
+      }
+      const parsed = JSON.parse(rawValue) as {
+        adminStatusFilter?: AdminStatusFilter;
+        expandedSections?: Partial<Record<ReportsSectionKey, boolean>>;
+      };
+      if (
+        parsed.adminStatusFilter &&
+        ["ALL", "PENDING", "REVIEWED", "RESOLVED"].includes(parsed.adminStatusFilter)
+      ) {
+        setAdminStatusFilter(parsed.adminStatusFilter);
+      }
+      if (parsed.expandedSections) {
+        setExpandedSections((prev) => ({
+          ...prev,
+          ...parsed.expandedSections,
+        }));
+      }
+    } catch {
+      // Ignore invalid persisted preferences.
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      return;
+    }
+
+    const storageKey = `${REPORTS_PREFS_KEY_PREFIX}.${user.id}`;
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          adminStatusFilter,
+          expandedSections,
+        })
+      );
+    } catch {
+      // Ignore local storage failures.
+    }
+  }, [adminStatusFilter, expandedSections, user?.id]);
 
   const loadPageData = useCallback(async () => {
     try {
@@ -201,11 +255,13 @@ export default function Reports() {
       setReports([]);
       setError("You do not have permission to view reports.");
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to load reports."));
+      const message = getErrorMessage(err, "Failed to load reports.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [adminStatusFilter, isAdminReportsMode, isRefereeMode]);
+  }, [adminStatusFilter, isAdminReportsMode, isRefereeMode, showToast]);
 
   useEffect(() => {
     loadPageData();
@@ -269,8 +325,11 @@ export default function Reports() {
       closeReportModal();
       await loadPageData();
       setSuccess("Report submitted successfully.");
+      showToast("Report submitted successfully.", "success");
     } catch (err) {
-      setSubmitError(getErrorMessage(err, "Failed to submit report."));
+      const message = getErrorMessage(err, "Failed to submit report.");
+      setSubmitError(message);
+      showToast(message, "error");
     } finally {
       setSubmitting(false);
     }

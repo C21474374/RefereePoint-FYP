@@ -177,6 +177,43 @@
   color: var(--color-text-muted);
 }
 
+.account-settings-dev-toggle-row {
+  margin-top: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-panel);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.account-settings-dev-toggle-row p {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.account-settings-dev-toggle-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-weight: 700;
+}
+
+.account-settings-dev-toggle-btn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.account-settings-dev-toggle-btn:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
 .account-settings-availability-copy {
   margin-top: 8px;
   color: var(--color-text-muted);

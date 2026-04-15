@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import EventCard from "../components/events/EventCard";
 import EventForm from "../components/events/EventForm";
 import AppIcon from "../components/AppIcon";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   deleteEvent,
   getEventVenueOptions,
@@ -19,6 +21,7 @@ import "../pages_css/Events.css";
 type EventSectionKey = "manageEvents" | "myEvents" | "openEvents" | "fullEvents";
 
 export default function Events() {
+  const { showToast } = useToast();
   const { user } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
 
@@ -29,6 +32,7 @@ export default function Events() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
   const [editing, setEditing] = useState(false);
+  const [pendingDeleteEventId, setPendingDeleteEventId] = useState<number | null>(null);
   const [myEventsOnly, setMyEventsOnly] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState<string>("ALL");
   const [selectedDate, setSelectedDate] = useState("");
@@ -61,12 +65,12 @@ export default function Events() {
       setEvents(eventsData);
       setVenues(venueData);
     } catch (err) {
-      console.error(err);
       setError("Failed to load events.");
+      showToast("Failed to load events.", "error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     loadPageData();
@@ -90,8 +94,8 @@ export default function Events() {
       await joinEvent(eventId);
       await loadPageData();
     } catch (err) {
-      console.error(err);
       setError("Failed to join event.");
+      showToast("Failed to join event.", "error");
     } finally {
       setActionLoadingId(null);
     }
@@ -104,27 +108,32 @@ export default function Events() {
       await leaveEvent(eventId);
       await loadPageData();
     } catch (err) {
-      console.error(err);
       setError("Failed to leave event.");
+      showToast("Failed to leave event.", "error");
     } finally {
       setActionLoadingId(null);
     }
   };
 
   const handleDeleteEvent = async (eventId: number) => {
-    const confirmed = window.confirm("Delete this event?");
-    if (!confirmed) {
+    setPendingDeleteEventId(eventId);
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (pendingDeleteEventId === null) {
       return;
     }
-
+    const eventId = pendingDeleteEventId;
     try {
       setActionLoadingId(eventId);
       setError("");
       await deleteEvent(eventId);
+      showToast("Event deleted.", "success");
+      setPendingDeleteEventId(null);
       await loadPageData();
     } catch (err) {
-      console.error(err);
       setError("Failed to delete event.");
+      showToast("Failed to delete event.", "error");
     } finally {
       setActionLoadingId(null);
     }
@@ -147,8 +156,8 @@ export default function Events() {
       setEditingEvent(null);
       await loadPageData();
     } catch (err) {
-      console.error(err);
       setError("Failed to update event.");
+      showToast("Failed to update event.", "error");
     } finally {
       setEditing(false);
     }
@@ -519,6 +528,20 @@ export default function Events() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteEventId !== null}
+        title="Delete Event"
+        message="Delete this event? This action cannot be undone."
+        confirmLabel="Delete Event"
+        cancelLabel="Keep Event"
+        confirmTone="danger"
+        busy={actionLoadingId === pendingDeleteEventId}
+        onCancel={() => setPendingDeleteEventId(null)}
+        onConfirm={() => {
+          void confirmDeleteEvent();
+        }}
+      />
     </div>
   );
 }

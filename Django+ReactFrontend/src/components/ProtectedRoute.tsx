@@ -17,7 +17,14 @@ export default function ProtectedRoute({
   const { isAuthenticated, loading, user } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="route-loading-screen">
+        <div className="route-loading-card">
+          <span className="route-loading-spinner" aria-hidden="true" />
+          <p>Loading your account...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

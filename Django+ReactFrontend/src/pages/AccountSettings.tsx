@@ -22,6 +22,7 @@ const ROLE_OPTIONS: Array<{ value: AccountType; label: string }> = [
   { value: "DOA", label: "DOA" },
   { value: "NL", label: "National League" },
 ];
+const TESTING_ROLE_SWITCH_STORAGE_KEY = "refereepoint.testing-role-switch.enabled";
 
 function getInitials(
   firstName: string | null | undefined,
@@ -102,6 +103,7 @@ export default function AccountSettings() {
   const [homeError, setHomeError] = useState("");
   const [homeAddressError, setHomeAddressError] = useState("");
   const [homeAddressDirty, setHomeAddressDirty] = useState(false);
+  const [testingRoleSwitchEnabled, setTestingRoleSwitchEnabled] = useState(false);
 
   useEffect(() => {
     if (user?.account_type) {
@@ -161,12 +163,29 @@ export default function AccountSettings() {
     void loadAvailability();
   }, [isRefereeUser]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const persisted = window.localStorage.getItem(TESTING_ROLE_SWITCH_STORAGE_KEY);
+      setTestingRoleSwitchEnabled(persisted === "true");
+    } catch {
+      setTestingRoleSwitchEnabled(false);
+    }
+  }, []);
+
   const fullName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() || "User";
   const grade = user?.referee_profile?.grade?.replaceAll("_", " ") || "N/A";
   const roleLabel = user?.account_type_display || "Not set";
   const initials = getInitials(user?.first_name, user?.last_name, user?.email);
   const currentAccountType = user?.account_type || "REFEREE";
+  const testingRoleSwitchEnabledByEnv =
+    String(import.meta.env.VITE_ENABLE_TESTING_ROLE_SWITCH || "").toLowerCase() === "true";
+  const showTestingRoleSwitch =
+    testingRoleSwitchEnabledByEnv || testingRoleSwitchEnabled;
   const showOrganizationField = ["CLUB", "SCHOOL", "COLLEGE"].includes(currentAccountType);
   const showInstitutionHeadPhoneField = ["SCHOOL", "COLLEGE"].includes(currentAccountType);
   const organizationLabel =
@@ -292,6 +311,31 @@ export default function AccountSettings() {
     } finally {
       setSwitchingRole(false);
     }
+  };
+
+  const handleToggleTestingRoleSwitch = () => {
+    if (testingRoleSwitchEnabledByEnv || typeof window === "undefined") {
+      return;
+    }
+
+    const nextValue = !testingRoleSwitchEnabled;
+    setTestingRoleSwitchEnabled(nextValue);
+
+    try {
+      window.localStorage.setItem(
+        TESTING_ROLE_SWITCH_STORAGE_KEY,
+        nextValue ? "true" : "false"
+      );
+    } catch {
+      // Ignore localStorage failures.
+    }
+
+    setRoleError("");
+    setRoleSuccess(
+      nextValue
+        ? "Testing role switch enabled for this browser."
+        : "Testing role switch disabled for this browser."
+    );
   };
 
   const handleAvailabilityDayChange = (
@@ -604,6 +648,35 @@ export default function AccountSettings() {
         </div>
       </section>
 
+      <section className="account-settings-card">
+        <h2 className="section-title-with-icon">
+          <AppIcon name="settings" className="section-title-icon" />
+          <span>Developer Controls</span>
+        </h2>
+        <p className="account-settings-testing-copy">
+          Enable the testing role-switch panel directly from the UI.
+        </p>
+        <div className="account-settings-dev-toggle-row">
+          <p>
+            Status:{" "}
+            <strong>{showTestingRoleSwitch ? "Enabled" : "Disabled"}</strong>
+            {testingRoleSwitchEnabledByEnv ? " (via .env)" : ""}
+          </p>
+          <button
+            type="button"
+            className="account-settings-dev-toggle-btn"
+            onClick={handleToggleTestingRoleSwitch}
+            disabled={testingRoleSwitchEnabledByEnv}
+          >
+            {testingRoleSwitchEnabledByEnv
+              ? "Enabled in .env"
+              : showTestingRoleSwitch
+                ? "Disable Role Switch Panel"
+                : "Enable Role Switch Panel"}
+          </button>
+        </div>
+      </section>
+
       {isRefereeUser && (
         <section className="account-settings-card">
           <h2 className="section-title-with-icon">
@@ -777,45 +850,47 @@ export default function AccountSettings() {
         </section>
       )}
 
-      <section className="account-settings-card">
-        <h2 className="section-title-with-icon">
-          <AppIcon name="approvals" className="section-title-icon" />
-          <span>Testing Bypass (Temporary)</span>
-        </h2>
-        <p className="account-settings-testing-copy">
-          Switch account role on the fly for faster testing. This is a temporary cheat flow.
-        </p>
+      {showTestingRoleSwitch && (
+        <section className="account-settings-card">
+          <h2 className="section-title-with-icon">
+            <AppIcon name="approvals" className="section-title-icon" />
+            <span>Testing Bypass (Temporary)</span>
+          </h2>
+          <p className="account-settings-testing-copy">
+            Switch account role on the fly for faster testing. This is a temporary cheat flow.
+          </p>
 
-        {roleError && <p className="account-settings-testing-error">{roleError}</p>}
-        {roleSuccess && <p className="account-settings-testing-success">{roleSuccess}</p>}
+          {roleError && <p className="account-settings-testing-error">{roleError}</p>}
+          {roleSuccess && <p className="account-settings-testing-success">{roleSuccess}</p>}
 
-        <div className="account-settings-testing-controls">
-          <label>
-            <span>Account Role</span>
-            <select
-              value={selectedRole}
-              onChange={(event) => setSelectedRole(event.target.value as AccountType)}
-              disabled={switchingRole}
+          <div className="account-settings-testing-controls">
+            <label>
+              <span>Account Role</span>
+              <select
+                value={selectedRole}
+                onChange={(event) => setSelectedRole(event.target.value as AccountType)}
+                disabled={switchingRole}
+              >
+                {ROLE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={handleRoleSwitch}
+              disabled={switchingRole || !user || selectedRole === user.account_type}
             >
-              {ROLE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={handleRoleSwitch}
-            disabled={switchingRole || !user || selectedRole === user.account_type}
-          >
-            <span className="button-with-icon">
-              <AppIcon name="settings" />
-              <span>{switchingRole ? "Switching..." : "Switch Role"}</span>
-            </span>
-          </button>
-        </div>
-      </section>
+              <span className="button-with-icon">
+                <AppIcon name="settings" />
+                <span>{switchingRole ? "Switching..." : "Switch Role"}</span>
+              </span>
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -199,13 +199,14 @@ const TopNavBar: React.FC = () => {
     setNotificationsMenuOpen((prev) => {
       const next = !prev;
       if (next) {
-        void (async () => {
-          const response = await loadNotifications();
-          await markAllAsReadIfNeeded(response?.unread_count || 0);
-        })();
+        void loadNotifications();
       }
       return next;
     });
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    await markAllAsReadIfNeeded();
   };
 
   const handleNotificationItemClick = async (notification: NotificationItem) => {
@@ -532,13 +533,24 @@ const TopNavBar: React.FC = () => {
                 <div className="notifications-menu-panel" role="menu">
                   <div className="notifications-menu-header">
                     <h3>Notifications</h3>
-                    <button
-                      type="button"
-                      className="notifications-menu-refresh"
-                      onClick={() => void loadNotifications()}
-                    >
-                      Refresh
-                    </button>
+                    <div className="notifications-menu-actions">
+                      <button
+                        type="button"
+                        className="notifications-menu-refresh"
+                        onClick={handleMarkAllNotificationsRead}
+                        disabled={notificationUnreadCount === 0 || notificationsLoading}
+                      >
+                        Mark all read
+                      </button>
+                      <button
+                        type="button"
+                        className="notifications-menu-refresh"
+                        onClick={() => void loadNotifications()}
+                        disabled={notificationsLoading}
+                      >
+                        Refresh
+                      </button>
+                    </div>
                   </div>
 
                   {notificationsLoading ? (

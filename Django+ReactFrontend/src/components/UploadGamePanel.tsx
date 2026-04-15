@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import UploadGameForm from "./UploadGameForm";
 import { getAccessToken } from "../services/auth";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 type SimpleOption = {
   id: number;
@@ -24,6 +25,7 @@ export default function UploadGamePanel({
   embedded = false,
   onPosted,
 }: UploadGamePanelProps) {
+  const { showToast } = useToast();
   const { user } = useAuth();
 
   const [divisions, setDivisions] = useState<SimpleOption[]>([]);
@@ -88,12 +90,12 @@ export default function UploadGamePanel({
           }))
         );
       } catch (error) {
-        console.error("Failed loading upload form data:", error);
-        setErrorMessage(
+        const message =
           error instanceof Error
             ? error.message
-            : "Failed to load upload form data."
-        );
+            : "Failed to load upload form data.";
+        setErrorMessage(message);
+        showToast(message, "error");
       } finally {
         setLoading(false);
       }

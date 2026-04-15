@@ -52,6 +52,46 @@
   gap: 8px;
 }
 
+.route-loading-screen {
+  min-height: calc(100vh - 60px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.route-loading-card {
+  width: min(360px, 100%);
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 18px 16px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.route-loading-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  animation: route-spin 0.9s linear infinite;
+}
+
+.route-loading-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+@keyframes route-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Keep all solid accent CTA buttons feeling consistent across pages. */
 body :is(
   .auth-submit,
@@ -227,6 +267,12 @@ body :is(
   font-size: 0.95rem;
 }
 
+.notifications-menu-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .notifications-menu-refresh {
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -239,6 +285,11 @@ body :is(
 
 .notifications-menu-refresh:hover {
   border-color: var(--color-accent);
+}
+
+.notifications-menu-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .notifications-menu-state {
@@ -649,6 +700,131 @@ body :is(
   color: var(--color-text);
   background: var(--color-error-bg);
   border-color: var(--color-error-border);
+}
+
+.confirm-modal {
+  width: min(520px, 100%);
+  max-height: none;
+}
+
+.confirm-modal-body {
+  display: grid;
+  gap: 14px;
+}
+
+.confirm-modal-body p {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.55;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-modal-cancel,
+.confirm-modal-confirm {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.confirm-modal-cancel:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.confirm-modal-confirm {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border-color: var(--color-accent);
+}
+
+.confirm-modal-confirm:hover:not(:disabled) {
+  opacity: 0.95;
+}
+
+.confirm-modal-confirm-danger {
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.toast-viewport {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 2200;
+  display: grid;
+  gap: 8px;
+  width: min(380px, calc(100vw - 20px));
+}
+
+.toast-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.toast-item-content {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.toast-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.toast-item p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.42;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.toast-item-success {
+  border-color: var(--color-accent);
+}
+
+.toast-item-error {
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
+}
+
+.toast-item-info {
+  border-color: var(--color-border);
+}
+
+.toast-item-close {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+
+.toast-item-close:hover {
+  border-color: var(--color-accent);
 }
 
 .upload-cover-form {
@@ -1142,5 +1318,12 @@ body :is(
 
   .app-footer-meta {
     white-space: normal;
+  }
+
+  .toast-viewport {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    bottom: 12px;
   }
 }

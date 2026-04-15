@@ -7,12 +7,14 @@ import {
   type EventVenueOption,
 } from "../services/events";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 type UploadEventPanelProps = {
   onUploaded?: () => void;
 };
 
 export default function UploadEventPanel({ onUploaded }: UploadEventPanelProps) {
+  const { showToast } = useToast();
   const { user } = useAuth();
 
   const [venues, setVenues] = useState<EventVenueOption[]>([]);
@@ -43,8 +45,8 @@ export default function UploadEventPanel({ onUploaded }: UploadEventPanelProps) 
         const data = await getEventVenueOptions();
         setVenues(data);
       } catch (error) {
-        console.error(error);
         setErrorMessage("Failed to load event form.");
+        showToast("Failed to load event form.", "error");
       } finally {
         setLoading(false);
       }
@@ -75,11 +77,12 @@ export default function UploadEventPanel({ onUploaded }: UploadEventPanelProps) 
         response?: { data?: { detail?: string } };
         message?: string;
       };
-      setErrorMessage(
+      const message =
         maybeAxiosError.response?.data?.detail ||
           maybeAxiosError.message ||
-          "Failed to upload event."
-      );
+          "Failed to upload event.";
+      setErrorMessage(message);
+      showToast(message, "error");
     } finally {
       setSubmitting(false);
     }
