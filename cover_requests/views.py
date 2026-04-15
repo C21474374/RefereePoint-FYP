@@ -11,6 +11,10 @@ from games.models import RefereeAssignment
 from games.serializers import GameSerializer
 from users.models import RefereeProfile
 from users.access import has_admin_approval_scope, has_referee_role
+from games.conflicts import (
+    get_referee_event_day_clashes,
+    get_referee_game_datetime_clashes,
+)
 from notifications.services import (
     notify_cover_request_approved,
     notify_cover_request_claimed,
@@ -20,6 +24,11 @@ from notifications.services import (
 
 from .models import CoverRequest
 from .serializers import CoverRequestSerializer, CoverRequestCreateSerializer
+
+
+def _is_truthy(value):
+    """Parse common truthy flag values from query/body strings."""
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _expire_stale_cover_requests():
@@ -323,6 +332,43 @@ class OfferCoverAPIView(APIView):
             return Response(
                 {"detail": "Intro referees cannot cover Crew Chief."},
                 status=status.HTTP_403_FORBIDDEN,
+            )
+
+        game_clashes = get_referee_game_datetime_clashes(
+            referee,
+            cover_request.game.date,
+            cover_request.game.time,
+        )
+        if game_clashes:
+            return Response(
+                {
+                    "detail": (
+                        "This game clashes with another game you already have at the same time."
+                    ),
+                    "conflict_kind": "GAME",
+                    "requires_confirmation": False,
+                    "game_clashes": game_clashes,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        force_event_clash = _is_truthy(
+            request.query_params.get("force_event_clash")
+            or request.data.get("force_event_clash")
+        )
+        event_clashes = get_referee_event_day_clashes(referee, cover_request.game.date)
+        if event_clashes and not force_event_clash:
+            return Response(
+                {
+                    "detail": (
+                        "You are already assigned to one or more events on this date. "
+                        "Are you sure you want to take this game?"
+                    ),
+                    "conflict_kind": "EVENT",
+                    "requires_confirmation": True,
+                    "event_clashes": event_clashes,
+                },
+                status=status.HTTP_409_CONFLICT,
             )
 
         if cover_request.replaced_by is not None:

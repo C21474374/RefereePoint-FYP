@@ -65,6 +65,39 @@ type RecommendedOpportunitiesResponse = {
   items?: Opportunity[];
 };
 
+type GameClashPayloadItem = {
+  game_id?: number;
+  title?: string;
+  date?: string;
+  time?: string;
+  venue_name?: string | null;
+  role_display?: string | null;
+};
+
+type EventClashPayloadItem = {
+  event_id?: number;
+  title?: string;
+  start_date?: string;
+  end_date?: string;
+  venue_name?: string | null;
+};
+
+type ConflictPayload = {
+  detail?: string;
+  requires_confirmation?: boolean;
+  conflict_kind?: "GAME" | "EVENT";
+  game_clashes?: GameClashPayloadItem[];
+  event_clashes?: EventClashPayloadItem[];
+};
+
+type PendingScheduleConflict = {
+  action: "CLAIM_SLOT" | "OFFER_COVER" | "JOIN_EVENT";
+  entityId: number;
+  title: string;
+  message: string;
+  clashItems: string[];
+};
+
 type GamesSectionKey = "manageUploadedGames";
 
 type ManageGameType = UploadedGame["game_type"];
@@ -147,6 +180,24 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function formatGameClashLine(item: GameClashPayloadItem) {
+  const title = item.title || "Existing game";
+  const date = item.date || "Date TBC";
+  const time = item.time ? String(item.time).slice(0, 5) : "Time TBC";
+  const venue = item.venue_name ? ` | ${item.venue_name}` : "";
+  const role = item.role_display ? ` | ${item.role_display}` : "";
+  return `${title} | ${date} ${time}${venue}${role}`;
+}
+
+function formatEventClashLine(item: EventClashPayloadItem) {
+  const title = item.title || "Existing event";
+  const start = item.start_date || "Start TBC";
+  const end = item.end_date || start;
+  const dateLabel = start === end ? start : `${start} to ${end}`;
+  const venue = item.venue_name ? ` | ${item.venue_name}` : "";
+  return `${title} | ${dateLabel}${venue}`;
+}
+
 function formFromGame(game: UploadedGame): ManageForm {
   const roles = new Set(game.uploaded_slots.map((slot) => slot.role));
   const gameType: ManageGameType = game.game_type;
@@ -185,6 +236,9 @@ export default function Games() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [claimingKey, setClaimingKey] = useState<string | null>(null);
+  const [pendingScheduleConflict, setPendingScheduleConflict] =
+    useState<PendingScheduleConflict | null>(null);
+  const [confirmingScheduleConflict, setConfirmingScheduleConflict] = useState(false);
   const [manageError, setManageError] = useState("");
   const [manageActionId, setManageActionId] = useState<number | null>(null);
   const [pendingDeleteGameId, setPendingDeleteGameId] = useState<number | null>(null);
@@ -355,22 +409,74 @@ export default function Games() {
     }
   }, [formOptions.divisions.length, formOptions.teams.length, formOptions.venues.length]);
 
-  const handleClaimSlot = async (slotId: number) => {
+  const parseConflictPayload = (
+    payload: ConflictPayload,
+    fallbackMessage: string
+  ) => {
+    const detail = payload.detail || fallbackMessage;
+    const gameClashLines = Array.isArray(payload.game_clashes)
+      ? payload.game_clashes.map((item) => formatGameClashLine(item))
+      : [];
+    const eventClashLines = Array.isArray(payload.event_clashes)
+      ? payload.event_clashes.map((item) => formatEventClashLine(item))
+      : [];
+
+    return {
+      detail,
+      gameClashLines,
+      eventClashLines,
+      requiresConfirmation: Boolean(payload.requires_confirmation),
+    };
+  };
+
+  const handleClaimSlot = async (slotId: number, forceEventClash = false) => {
     try {
       setClaimingKey(getOpportunityKey("NON_APPOINTED_SLOT", slotId));
       setError("");
+      if (forceEventClash) {
+        setPendingScheduleConflict(null);
+      }
+
       const token = getAccessToken();
       if (!token) {
         throw new Error("You must be logged in to take a game.");
       }
-      const response = await fetch(`${API_BASE_URL}/games/non-appointed-slots/${slotId}/claim/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
+
+      const forceQuery = forceEventClash ? "?force_event_clash=true" : "";
+      const response = await fetch(
+        `${API_BASE_URL}/games/non-appointed-slots/${slotId}/claim/${forceQuery}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = (await response.json().catch(() => ({}))) as ConflictPayload;
+
       if (!response.ok) {
+        if (response.status === 409) {
+          const parsed = parseConflictPayload(
+            data,
+            "Could not take this game due to schedule conflicts."
+          );
+          if (parsed.requiresConfirmation && parsed.eventClashLines.length > 0) {
+            setPendingScheduleConflict({
+              action: "CLAIM_SLOT",
+              entityId: slotId,
+              title: "Event Clash Warning",
+              message: parsed.detail,
+              clashItems: parsed.eventClashLines,
+            });
+            return;
+          }
+          const conflictDetails = parsed.gameClashLines.join(" | ");
+          throw new Error(
+            conflictDetails ? `${parsed.detail} ${conflictDetails}` : parsed.detail
+          );
+        }
         throw new Error(data.detail || "Failed to claim slot.");
       }
+
+      setPendingScheduleConflict(null);
       await loadPageData();
     } catch (err) {
       const message = getErrorMessage(err, "Failed to claim slot.");
@@ -381,22 +487,57 @@ export default function Games() {
     }
   };
 
-  const handleOfferCover = async (coverRequestId: number) => {
+  const handleOfferCover = async (
+    coverRequestId: number,
+    forceEventClash = false
+  ) => {
     try {
       setClaimingKey(getOpportunityKey("COVER_REQUEST", coverRequestId));
       setError("");
+      if (forceEventClash) {
+        setPendingScheduleConflict(null);
+      }
+
       const token = getAccessToken();
       if (!token) {
         throw new Error("You must be logged in to offer cover.");
       }
-      const response = await fetch(`${API_BASE_URL}/cover-requests/${coverRequestId}/offer/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
+
+      const forceQuery = forceEventClash ? "?force_event_clash=true" : "";
+      const response = await fetch(
+        `${API_BASE_URL}/cover-requests/${coverRequestId}/offer/${forceQuery}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const data = (await response.json().catch(() => ({}))) as ConflictPayload;
+
       if (!response.ok) {
+        if (response.status === 409) {
+          const parsed = parseConflictPayload(
+            data,
+            "Could not claim this cover request due to schedule conflicts."
+          );
+          if (parsed.requiresConfirmation && parsed.eventClashLines.length > 0) {
+            setPendingScheduleConflict({
+              action: "OFFER_COVER",
+              entityId: coverRequestId,
+              title: "Event Clash Warning",
+              message: parsed.detail,
+              clashItems: parsed.eventClashLines,
+            });
+            return;
+          }
+          const conflictDetails = parsed.gameClashLines.join(" | ");
+          throw new Error(
+            conflictDetails ? `${parsed.detail} ${conflictDetails}` : parsed.detail
+          );
+        }
         throw new Error(data.detail || "Failed to offer cover.");
       }
+
+      setPendingScheduleConflict(null);
       await loadPageData();
     } catch (err) {
       const message = getErrorMessage(err, "Failed to offer cover.");
@@ -407,22 +548,51 @@ export default function Games() {
     }
   };
 
-  const handleJoinEvent = async (eventId: number) => {
+  const handleJoinEvent = async (eventId: number, forceGameClash = false) => {
     try {
       setClaimingKey(getOpportunityKey("EVENT", eventId));
       setError("");
+      if (forceGameClash) {
+        setPendingScheduleConflict(null);
+      }
+
       const token = getAccessToken();
       if (!token) {
         throw new Error("You must be logged in to join an event.");
       }
-      const response = await fetch(`${API_BASE_URL}/events/${eventId}/join/`, {
+
+      const forceQuery = forceGameClash ? "?force_game_clash=true" : "";
+      const response = await fetch(`${API_BASE_URL}/events/${eventId}/join/${forceQuery}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await response.json();
+      const data = (await response.json().catch(() => ({}))) as ConflictPayload;
+
       if (!response.ok) {
+        if (response.status === 409) {
+          const parsed = parseConflictPayload(
+            data,
+            "Could not join this event due to schedule conflicts."
+          );
+          if (parsed.requiresConfirmation && parsed.gameClashLines.length > 0) {
+            setPendingScheduleConflict({
+              action: "JOIN_EVENT",
+              entityId: eventId,
+              title: "Game Clash Warning",
+              message: parsed.detail,
+              clashItems: parsed.gameClashLines,
+            });
+            return;
+          }
+          const conflictDetails = parsed.gameClashLines.join(" | ");
+          throw new Error(
+            conflictDetails ? `${parsed.detail} ${conflictDetails}` : parsed.detail
+          );
+        }
         throw new Error(data.detail || "Failed to join event.");
       }
+
+      setPendingScheduleConflict(null);
       await loadPageData();
     } catch (err) {
       const message = getErrorMessage(err, "Failed to join event.");
@@ -430,6 +600,27 @@ export default function Games() {
       showToast(message, "error");
     } finally {
       setClaimingKey(null);
+    }
+  };
+
+  const handleConfirmScheduleConflict = async () => {
+    if (!pendingScheduleConflict) {
+      return;
+    }
+
+    setConfirmingScheduleConflict(true);
+    try {
+      if (pendingScheduleConflict.action === "CLAIM_SLOT") {
+        await handleClaimSlot(pendingScheduleConflict.entityId, true);
+        return;
+      }
+      if (pendingScheduleConflict.action === "OFFER_COVER") {
+        await handleOfferCover(pendingScheduleConflict.entityId, true);
+        return;
+      }
+      await handleJoinEvent(pendingScheduleConflict.entityId, true);
+    } finally {
+      setConfirmingScheduleConflict(false);
     }
   };
 
@@ -1095,6 +1286,21 @@ export default function Games() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingScheduleConflict !== null}
+        title={pendingScheduleConflict?.title || "Schedule Conflict"}
+        message={pendingScheduleConflict?.message || ""}
+        details={pendingScheduleConflict?.clashItems || []}
+        confirmLabel="Yes, Continue"
+        cancelLabel="Cancel"
+        confirmTone="primary"
+        busy={confirmingScheduleConflict}
+        onCancel={() => setPendingScheduleConflict(null)}
+        onConfirm={() => {
+          void handleConfirmScheduleConflict();
+        }}
+      />
 
       <ConfirmDialog
         open={pendingDeleteGameId !== null}

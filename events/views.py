@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.models import RefereeProfile
+from games.conflicts import get_referee_game_range_clashes
 from notifications.services import notify_event_joined, notify_event_left
 
 from .models import Event, EventRefereeAssignment
@@ -25,6 +26,11 @@ def _get_referee_profile_or_none(user):
 def _can_manage_event(user, event: Event):
     """Managers can edit their own events; staff can manage all events."""
     return user.is_staff or event.created_by_id == user.id
+
+
+def _is_truthy(value):
+    """Parse common truthy flag values from query/body strings."""
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _get_event_upload_types_for_user(user):
@@ -264,6 +270,29 @@ class JoinEventAPIView(APIView):
                 return Response(
                     {"detail": "This event is already full."},
                     status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            force_game_clash = _is_truthy(
+                request.query_params.get("force_game_clash")
+                or request.data.get("force_game_clash")
+            )
+            game_clashes = get_referee_game_range_clashes(
+                referee_profile,
+                event.start_date,
+                event.end_date,
+            )
+            if game_clashes and not force_game_clash:
+                return Response(
+                    {
+                        "detail": (
+                            "This event overlaps with one or more games you already have. "
+                            "Are you sure you want to join this event?"
+                        ),
+                        "conflict_kind": "GAME",
+                        "requires_confirmation": True,
+                        "game_clashes": game_clashes,
+                    },
+                    status=status.HTTP_409_CONFLICT,
                 )
 
             EventRefereeAssignment.objects.create(

@@ -4,6 +4,7 @@ type ConfirmDialogProps = {
   open: boolean;
   title: string;
   message: string;
+  details?: string[];
   confirmLabel?: string;
   cancelLabel?: string;
   confirmTone?: "danger" | "primary";
@@ -17,6 +18,7 @@ export default function ConfirmDialog({
   open,
   title,
   message,
+  details = [],
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   confirmTone = "danger",
@@ -40,6 +42,13 @@ export default function ConfirmDialog({
         </div>
         <div className="upload-modal-body confirm-modal-body">
           <p>{message}</p>
+          {details.length > 0 && (
+            <ul className="confirm-modal-details">
+              {details.map((detail, index) => (
+                <li key={`${detail}-${index}`}>{detail}</li>
+              ))}
+            </ul>
+          )}
           <div className="confirm-modal-actions">
             {reverseActions ? (
               <>

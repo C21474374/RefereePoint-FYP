@@ -84,7 +84,7 @@ export default function Earnings() {
     <div className="earnings-page">
       <div className="earnings-header">
         <h1 className="page-title-with-icon">
-          <AppIcon name="basketball" className="page-title-icon" />
+          <AppIcon name="euro" className="page-title-icon" />
           <span>Earnings</span>
         </h1>
         <p>View monthly appointed claims by type. DOA(Dublin Officials Association) and NL(National League) are tracked separately.</p>

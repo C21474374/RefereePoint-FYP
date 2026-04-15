@@ -24,6 +24,10 @@ from notifications.services import (
     notify_non_appointed_slot_claimed,
     notify_non_appointed_slot_reopened,
 )
+from .conflicts import (
+    get_referee_event_day_clashes,
+    get_referee_game_datetime_clashes,
+)
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from datetime import datetime, time as dt_time, timedelta
@@ -39,6 +43,11 @@ APPOINTED_UPLOAD_GAME_TYPES = [
     Game.GameType.DOA,
     Game.GameType.NL,
 ]
+
+
+def _is_truthy(value):
+    """Parse common truthy flag values from query/body strings."""
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _shared_appointed_game_types_for_user(user):
@@ -299,6 +308,43 @@ class ClaimNonAppointedSlotAPIView(APIView):
                     {"detail": "Intro referees cannot claim Crew Chief."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
+
+        game_clashes = get_referee_game_datetime_clashes(
+            referee,
+            slot.game.date,
+            slot.game.time,
+        )
+        if game_clashes:
+            return Response(
+                {
+                    "detail": (
+                        "This game clashes with another game you already have at the same time."
+                    ),
+                    "conflict_kind": "GAME",
+                    "requires_confirmation": False,
+                    "game_clashes": game_clashes,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        force_event_clash = _is_truthy(
+            request.query_params.get("force_event_clash")
+            or request.data.get("force_event_clash")
+        )
+        event_clashes = get_referee_event_day_clashes(referee, slot.game.date)
+        if event_clashes and not force_event_clash:
+            return Response(
+                {
+                    "detail": (
+                        "You are already assigned to one or more events on this date. "
+                        "Are you sure you want to take this game?"
+                    ),
+                    "conflict_kind": "EVENT",
+                    "requires_confirmation": True,
+                    "event_clashes": event_clashes,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
 
         slot.claimed_by = referee
         slot.status = NonAppointedSlot.Status.CLAIMED
