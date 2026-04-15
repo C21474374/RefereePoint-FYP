@@ -1,3 +1,5 @@
+"""Recommendation API endpoints for ranked opportunity feeds."""
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -10,6 +12,7 @@ from .serializers import RecommendedOpportunityFeedItemSerializer
 
 
 class RecommendedOpportunityFeedAPIView(APIView):
+    """Return ranked opportunities and recommendation metadata for referees."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

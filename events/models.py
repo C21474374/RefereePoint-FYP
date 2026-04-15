@@ -1,3 +1,5 @@
+"""Event domain models."""
+
 from django.db import models
 
 
@@ -50,7 +52,7 @@ class Event(models.Model):
 
 
 class EventRefereeAssignment(models.Model):
-    """Referees assigned to an event tournament."""
+    """Join table linking referees to events."""
 
     event = models.ForeignKey(
         Event,

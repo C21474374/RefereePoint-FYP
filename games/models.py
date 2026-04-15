@@ -1,3 +1,5 @@
+"""Core game, slot, and assignment domain models."""
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
@@ -103,6 +105,7 @@ class Game(models.Model):
     def clean(self):
         super().clean()
 
+        # Payment rules depend on whether the game is appointed or self-uploaded.
         self_assign_types = {
             self.GameType.CLUB,
             self.GameType.SCHOOL,

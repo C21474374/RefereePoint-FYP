@@ -1,3 +1,5 @@
+"""Serializers for cover request reads and creation validation."""
+
 from rest_framework import serializers
 
 from .models import CoverRequest
@@ -6,6 +8,7 @@ from users.models import RefereeProfile
 
 
 class CoverRequestSerializer(serializers.ModelSerializer):
+    """Read serializer with expanded game/assignment/referee display fields."""
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     requested_by_name = serializers.CharField(
@@ -98,6 +101,7 @@ class CoverRequestSerializer(serializers.ModelSerializer):
 
 
 class CoverRequestCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for requesting cover on an owned assignment."""
     class Meta:
         model = CoverRequest
         fields = [

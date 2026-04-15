@@ -1,3 +1,5 @@
+"""Centralized role helpers used by backend authorization checks."""
+
 from __future__ import annotations
 
 from users.models import RefereeProfile, User
@@ -11,6 +13,7 @@ MANAGER_SCOPE_TO_ACCOUNT_ROLE = {
 
 
 def has_referee_role(user) -> bool:
+    """Return True when a logged-in user has a referee profile."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     return RefereeProfile.objects.filter(user_id=user.id).exists()
@@ -43,6 +46,7 @@ def get_effective_account_roles(user) -> set[str]:
 
 
 def has_admin_approval_scope(user) -> bool:
+    """Return True when user can perform DOA/NL admin approval actions."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if getattr(user, "is_staff", False):
@@ -51,4 +55,3 @@ def has_admin_approval_scope(user) -> bool:
         user.account_type in {User.AccountType.DOA, User.AccountType.NL}
         and bool(user.doa_approved)
     )
-

@@ -1,3 +1,5 @@
+"""Serializers for reportable-game projection and report CRUD payloads."""
+
 from datetime import timedelta
 
 from django.utils import timezone
@@ -11,6 +13,7 @@ from .models import GameReport
 
 
 def _is_referee_on_game(*, referee_profile_id: int, game_id: int):
+    """Return True if referee was appointed or claimed a slot for the game."""
     appointed_exists = RefereeAssignment.objects.filter(
         game_id=game_id,
         referee_id=referee_profile_id,
@@ -29,6 +32,7 @@ def _is_referee_on_game(*, referee_profile_id: int, game_id: int):
 
 
 class ReportableGameSerializer(serializers.Serializer):
+    """Read-only shape for the referee reportable-games list."""
     game_id = serializers.IntegerField()
     game_details = GameSerializer()
     roles = serializers.ListField(
@@ -45,6 +49,7 @@ class ReportableGameSerializer(serializers.Serializer):
 
 
 class GameReportSerializer(serializers.ModelSerializer):
+    """Full report serializer with denormalized game/referee display fields."""
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     game_details = GameSerializer(source="game", read_only=True)
     referee_name = serializers.CharField(
@@ -110,6 +115,7 @@ class GameReportSerializer(serializers.ModelSerializer):
 
 
 class GameReportCreateSerializer(serializers.ModelSerializer):
+    """Write serializer for submitting a new referee game report."""
     class Meta:
         model = GameReport
         fields = [

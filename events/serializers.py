@@ -1,9 +1,12 @@
+"""Serializers for event listing, detail, and create/update validation."""
+
 from rest_framework import serializers
 
 from .models import Event
 
 
 class EventRefereeSerializer(serializers.Serializer):
+    """Compact serializer for referees currently assigned to an event."""
     id = serializers.IntegerField(source="referee.id")
     user_id = serializers.IntegerField(source="referee.user.id")
     name = serializers.CharField(source="referee.user.get_full_name")
@@ -11,6 +14,7 @@ class EventRefereeSerializer(serializers.Serializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
+    """Read serializer with derived event stats and current-user flags."""
     event_type_display = serializers.CharField(source="get_event_type_display", read_only=True)
     venue_name = serializers.CharField(source="venue.name", read_only=True)
     created_by_name = serializers.CharField(source="created_by.get_full_name", read_only=True)
@@ -75,6 +79,7 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 class EventCreateUpdateSerializer(serializers.ModelSerializer):
+    """Write serializer for event create/update with date and numeric validation."""
     class Meta:
         model = Event
         fields = [

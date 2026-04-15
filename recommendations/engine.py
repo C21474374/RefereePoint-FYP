@@ -1,3 +1,11 @@
+"""Heuristic recommendation engine for referee opportunity ranking.
+
+Pipeline:
+1. Filter opportunities the referee can realistically take.
+2. Score each item using weighted features.
+3. Rank results and persist score snapshots for explainability.
+"""
+
 from __future__ import annotations
 
 import math
@@ -22,6 +30,7 @@ from users.models import RefereeProfile, User
 
 EARTH_RADIUS_KM = 6371.0
 
+# Weighted blend of the feature scores used to produce a 0-100 final score.
 WEIGHTS = {
     "distance": 0.35,
     "time_fit": 0.20,
@@ -80,6 +89,7 @@ def _clamp_score(value: float) -> float:
 
 
 def _build_user_history(profile: RefereeProfile) -> dict[str, Any]:
+    """Build lightweight referee behavior history used for preference scoring."""
     day_counts: Counter[str] = Counter()
     hour_values: list[float] = []
     type_counts: Counter[str] = Counter()
@@ -168,6 +178,7 @@ def _build_candidates(
     profile: RefereeProfile,
     query_params: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
+    """Collect normalized candidate opportunities after hard-rule filtering."""
     today = timezone.localdate()
     now_time = timezone.localtime().time().replace(second=0, microsecond=0)
 

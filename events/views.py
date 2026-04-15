@@ -1,3 +1,5 @@
+"""Event API endpoints for listing, management, and referee assignment actions."""
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import generics, status
@@ -13,6 +15,7 @@ from .serializers import EventCreateUpdateSerializer, EventSerializer
 
 
 def _get_referee_profile_or_none(user):
+    """Return referee profile for a user when present, otherwise None."""
     try:
         return RefereeProfile.objects.get(user=user)
     except RefereeProfile.DoesNotExist:
@@ -20,6 +23,7 @@ def _get_referee_profile_or_none(user):
 
 
 def _can_manage_event(user, event: Event):
+    """Managers can edit their own events; staff can manage all events."""
     return user.is_staff or event.created_by_id == user.id
 
 
@@ -30,6 +34,7 @@ def _get_event_upload_types_for_user(user):
 
 
 class EventListAPIView(generics.ListAPIView):
+    """List events with optional upcoming, venue, type, and joined filters."""
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
 
@@ -72,6 +77,7 @@ class EventListAPIView(generics.ListAPIView):
 
 
 class EventDetailAPIView(generics.RetrieveAPIView):
+    """Retrieve detailed data for a single event."""
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
     queryset = (
@@ -87,6 +93,7 @@ class EventDetailAPIView(generics.RetrieveAPIView):
 
 
 class EventCreateAPIView(APIView):
+    """Create an event constrained by the uploader's approved event types."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -135,6 +142,7 @@ class EventCreateAPIView(APIView):
 
 
 class EventUpdateAPIView(APIView):
+    """Update an event owned by the current user (or staff)."""
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
@@ -193,6 +201,7 @@ class EventUpdateAPIView(APIView):
 
 
 class EventDeleteAPIView(APIView):
+    """Delete an event owned by the current user (or staff)."""
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
@@ -215,6 +224,7 @@ class EventDeleteAPIView(APIView):
 
 
 class JoinEventAPIView(APIView):
+    """Allow a referee to join an event when capacity allows."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):

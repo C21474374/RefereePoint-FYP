@@ -1,3 +1,5 @@
+"""Report API endpoints for referee submissions and admin review."""
+
 from datetime import timedelta
 
 from django.db import models
@@ -22,6 +24,7 @@ from .serializers import (
 
 
 def _get_referee_profile_or_403(request):
+    """Resolve the requesting referee profile or return a standard 403 response."""
     try:
         return RefereeProfile.objects.get(user=request.user), None
     except RefereeProfile.DoesNotExist:
@@ -36,6 +39,7 @@ def _can_review_reports(user: User) -> bool:
 
 
 class ReportableGamesAPIView(APIView):
+    """List referee games from the last 7 days that are eligible for reporting."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -145,6 +149,7 @@ class ReportableGamesAPIView(APIView):
 
 
 class MyReportsAPIView(generics.ListAPIView):
+    """List reports submitted by the authenticated referee."""
     serializer_class = GameReportSerializer
     permission_classes = [IsAuthenticated]
     referee_profile = None
@@ -179,6 +184,7 @@ class MyReportsAPIView(generics.ListAPIView):
 
 
 class AdminReportsAPIView(generics.ListAPIView):
+    """List submitted reports for DOA/NL admin review workflows."""
     serializer_class = GameReportSerializer
     permission_classes = [IsAuthenticated]
 
@@ -219,6 +225,7 @@ class AdminReportsAPIView(generics.ListAPIView):
 
 
 class CreateGameReportAPIView(generics.CreateAPIView):
+    """Create a new game report for an assigned referee game."""
     serializer_class = GameReportCreateSerializer
     permission_classes = [IsAuthenticated]
 

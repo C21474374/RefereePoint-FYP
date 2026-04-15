@@ -1,3 +1,5 @@
+"""Serializers for game read models and upload/manage workflows."""
+
 from rest_framework import serializers
 from .models import Game, NonAppointedSlot, RefereeAssignment
 from django.db import transaction
@@ -11,6 +13,7 @@ from users.appointed_availability import (
 from clubs.models import Division, Team
 
 class GameSerializer(serializers.ModelSerializer):
+    """Primary read serializer for game cards/details across the app."""
     venue_name = serializers.CharField(source="venue.name", read_only=True)
     lat = serializers.FloatField(source="venue.lat", read_only=True)
     lng = serializers.FloatField(source="venue.lon", read_only=True)
@@ -68,6 +71,7 @@ class GameSerializer(serializers.ModelSerializer):
 
 
 class NonAppointedSlotSerializer(serializers.ModelSerializer):
+    """Read serializer for claimable non-appointed slots."""
     role_display = serializers.CharField(source="get_role_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -145,6 +149,7 @@ class UploadedGameAssignmentSerializer(serializers.ModelSerializer):
 
 
 class UploadedGameSerializer(GameSerializer):
+    """Game serializer enriched with uploader-specific slots and edit permissions."""
     uploaded_slots = serializers.SerializerMethodField()
     appointed_assignments = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
@@ -199,6 +204,7 @@ class UploadedGameSerializer(GameSerializer):
 
 
 class RefereeAssignmentSerializer(serializers.ModelSerializer):
+    """Read serializer for appointed assignments."""
     referee_name = serializers.CharField(source="referee.user.get_full_name", read_only=True)
     referee_bipin = serializers.CharField(source="referee.user.bipin_number", read_only=True)
     referee_grade = serializers.CharField(source="referee.grade", read_only=True)
@@ -241,6 +247,7 @@ class AppointedAssignmentCreateSerializer(serializers.Serializer):
 
 
 class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
+    """Create serializer for game upload with optional slots/appointed assignments."""
     slots = NonAppointedSlotCreateSerializer(
         many=True,
         write_only=True,
@@ -632,6 +639,7 @@ class NonAppointedGameUploadSerializer(serializers.ModelSerializer):
 
 
 class NonAppointedGameManageSerializer(NonAppointedGameUploadSerializer):
+    """Update serializer with ownership and claim-state safeguards for edits."""
     def validate(self, attrs):
         attrs = super().validate(attrs)
 

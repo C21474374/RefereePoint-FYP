@@ -1,3 +1,5 @@
+"""Game API endpoints for uploads, opportunities, assignments, and feed views."""
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -40,11 +42,13 @@ APPOINTED_UPLOAD_GAME_TYPES = [
 
 
 def _shared_appointed_game_types_for_user(user):
+    """Return appointed game types a user can share/manage across same role scope."""
     allowed_types = user.get_allowed_upload_game_types()
     return [game_type for game_type in APPOINTED_UPLOAD_GAME_TYPES if game_type in allowed_types]
 
 
 def _uploaded_games_queryset():
+    """Base queryset for upload-management views with all display relationships."""
     return Game.objects.select_related(
         "venue",
         "division",
@@ -76,11 +80,13 @@ def _get_uploaded_game_for_user(user, pk):
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
 class CsrfCookieAPIView(APIView):
+    """Utility endpoint to set CSRF cookie for authenticated browser flows."""
     def get(self, request):
         return Response({"detail": "CSRF cookie set."}, status=status.HTTP_200_OK)
 
 
 class GameListAPIView(generics.ListAPIView):
+    """List all games with optional query-parameter filtering."""
     serializer_class = GameSerializer
     permission_classes = [IsAuthenticated]
 
@@ -130,6 +136,7 @@ class GameListAPIView(generics.ListAPIView):
 
 
 class GameDetailAPIView(generics.RetrieveAPIView):
+    """Retrieve a game with related assignment/slot context."""
     queryset = (
         Game.objects.select_related(
             "venue",
@@ -150,6 +157,7 @@ class GameDetailAPIView(generics.RetrieveAPIView):
 
 
 class RefereeAssignmentListAPIView(generics.ListAPIView):
+    """List referee assignments with optional game/referee/role filters."""
     serializer_class = RefereeAssignmentSerializer
     permission_classes = [IsAuthenticated]
 
@@ -184,6 +192,7 @@ class RefereeAssignmentListAPIView(generics.ListAPIView):
 
 
 class NonAppointedSlotListAPIView(generics.ListAPIView):
+    """List non-appointed opportunity slots with flexible filters."""
     serializer_class = NonAppointedSlotSerializer
     permission_classes = [IsAuthenticated]
 

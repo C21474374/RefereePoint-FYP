@@ -112,9 +112,21 @@ class EventJoinLeaveAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["detail"], "You are not assigned to this event.")
 
-    def test_referee_can_create_event(self):
-        self.client.force_authenticate(user=self.ref_user_2)
+    def test_approved_club_uploader_can_create_event(self):
+        club_uploader = User.objects.create_user(
+            email="clubuploader@example.com",
+            password="password123",
+            first_name="Club",
+            last_name="Uploader",
+            bipin_number="3555",
+            account_type=User.AccountType.CLUB,
+            doa_approved=True,
+            bipin_verified=True,
+        )
+
+        self.client.force_authenticate(user=club_uploader)
         payload = {
+            "event_type": "CLUB",
             "start_date": "2026-07-01",
             "end_date": "2026-07-03",
             "venue": self.event.venue_id,
@@ -127,7 +139,27 @@ class EventJoinLeaveAPITests(TestCase):
         response = self.client.post(reverse("event-create"), payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["created_by"], self.ref_user_2.id)
+        self.assertEqual(response.data["created_by"], club_uploader.id)
+
+    def test_referee_cannot_create_event_without_uploader_scope(self):
+        self.client.force_authenticate(user=self.ref_user_2)
+        payload = {
+            "start_date": "2026-07-01",
+            "end_date": "2026-07-03",
+            "venue": self.event.venue_id,
+            "description": "Should fail for plain referee",
+            "fee_per_game": "30.00",
+            "contact_information": "contact@example.com",
+            "referees_required": 4,
+        }
+
+        response = self.client.post(reverse("event-create"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["detail"],
+            "Your account cannot upload events. Only approved Club, School, and College roles can upload events.",
+        )
 
     def test_non_referee_cannot_create_event(self):
         non_ref_user = User.objects.create_user(
@@ -153,7 +185,10 @@ class EventJoinLeaveAPITests(TestCase):
         response = self.client.post(reverse("event-create"), payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(response.data["detail"], "Only referees can create events.")
+        self.assertEqual(
+            response.data["detail"],
+            "Your account cannot upload events. Only approved Club, School, and College roles can upload events.",
+        )
 
     def test_creator_can_update_and_delete_event(self):
         self.client.force_authenticate(user=self.ref_user_1)

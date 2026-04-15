@@ -1,3 +1,5 @@
+"""Cover request API endpoints for referee workflows and admin approvals."""
+
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework import generics, status
@@ -37,6 +39,7 @@ def _expire_stale_cover_requests():
 
 
 def _referee_role_required_response():
+    """Standardized response when non-referee accounts hit referee-only endpoints."""
     return Response(
         {"detail": "Only referee-role accounts can access cover request pages."},
         status=status.HTTP_403_FORBIDDEN,
@@ -44,6 +47,7 @@ def _referee_role_required_response():
 
 
 class CoverRequestListAPIView(generics.ListAPIView):
+    """List cover requests visible to referee/admin users."""
     serializer_class = CoverRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -83,6 +87,7 @@ class CoverRequestListAPIView(generics.ListAPIView):
 
 
 class CoverRequestDetailAPIView(generics.RetrieveAPIView):
+    """Retrieve a single cover request for referee/admin users."""
     queryset = (
         CoverRequest.objects.select_related(
             "game",
@@ -112,6 +117,7 @@ class CoverRequestDetailAPIView(generics.RetrieveAPIView):
 
 
 class MyCoverRequestListAPIView(generics.ListAPIView):
+    """List requests created by user plus claims currently held by user."""
     serializer_class = CoverRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -148,6 +154,7 @@ class MyCoverRequestListAPIView(generics.ListAPIView):
 
 
 class PendingCoverRequestListAPIView(generics.ListAPIView):
+    """List pending future cover requests that current referee can claim."""
     serializer_class = CoverRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -186,6 +193,7 @@ class PendingCoverRequestListAPIView(generics.ListAPIView):
 
 
 class CreateCoverRequestAPIView(generics.CreateAPIView):
+    """Create a new cover request from an existing referee assignment."""
     serializer_class = CoverRequestCreateSerializer
     permission_classes = [IsAuthenticated]
 
@@ -212,6 +220,7 @@ class CreateCoverRequestAPIView(generics.CreateAPIView):
 
 
 class CancelCoverRequestAPIView(APIView):
+    """Allow requester to cancel a pending cover request."""
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
@@ -245,6 +254,7 @@ class CancelCoverRequestAPIView(APIView):
 
 
 class OfferCoverAPIView(APIView):
+    """Allow a referee to claim a pending cover request."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):

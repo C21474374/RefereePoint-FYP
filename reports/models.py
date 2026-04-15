@@ -1,3 +1,5 @@
+"""Report domain model for post-game referee incident workflows."""
+
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
@@ -6,6 +8,7 @@ from django.utils import timezone
 
 
 class GameReport(models.Model):
+    """Single referee report linked to a specific game assignment."""
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
         REVIEWED = "REVIEWED", "Reviewed"
@@ -73,6 +76,7 @@ class GameReport(models.Model):
         return f"Report #{self.id} - Game {self.game_id} - {self.get_status_display()}"
 
     def _has_refereed_game(self):
+        """Ensure report subject is a game the referee actually officiated."""
         from games.models import NonAppointedSlot, RefereeAssignment
 
         appointed_exists = RefereeAssignment.objects.filter(

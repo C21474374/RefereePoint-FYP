@@ -1,3 +1,5 @@
+"""Notification API endpoints for list/read workflows."""
+
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +12,7 @@ from .services import ensure_referee_daily_reminders_for_user
 
 
 def _parse_limit(raw_limit, default_value: int, max_value: int):
+    """Parse list limit parameter with sane fallback and upper bound."""
     if raw_limit in (None, "", "null"):
         return default_value
 
@@ -25,6 +28,7 @@ def _parse_limit(raw_limit, default_value: int, max_value: int):
 
 
 class NotificationListAPIView(APIView):
+    """Return notification list and unread count for the authenticated user."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -47,6 +51,7 @@ class NotificationListAPIView(APIView):
 
 
 class RecentNotificationListAPIView(APIView):
+    """Return a short recent notification list and unread count."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -69,6 +74,7 @@ class RecentNotificationListAPIView(APIView):
 
 
 class MarkAllNotificationsReadAPIView(APIView):
+    """Mark all unread notifications as read for current user."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -84,6 +90,7 @@ class MarkAllNotificationsReadAPIView(APIView):
 
 
 class MarkNotificationReadAPIView(APIView):
+    """Mark a single notification as read for current user."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
