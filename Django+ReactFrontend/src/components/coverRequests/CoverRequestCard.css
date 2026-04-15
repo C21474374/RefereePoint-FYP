@@ -10,7 +10,7 @@
 }
 
 .cover-request-card:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
   transform: translateY(-2px);
 }
 
@@ -31,7 +31,7 @@
 .cover-request-division {
   margin-top: 4px;
   font-size: 0.92rem;
-  color: var(--color-text-secondary);
+  color: var(--color-text-muted);
 }
 
 .cover-request-card-tags {
@@ -88,6 +88,10 @@
   font-size: 0.92rem;
   color: var(--color-text);
   font-weight: 500;
+}
+
+.cover-request-date-time {
+  font-weight: 700;
 }
 
 .cover-request-reason {

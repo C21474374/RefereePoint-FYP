@@ -324,13 +324,15 @@ export default function Events() {
               className="events-section-toggle"
               onClick={() => toggleSection("manageEvents")}
               aria-expanded={expandedSections.manageEvents}
+              aria-label={expandedSections.manageEvents ? "Collapse section" : "Expand section"}
+              title={expandedSections.manageEvents ? "Collapse section" : "Expand section"}
             >
               <span className="inline-icon-label">
-                <AppIcon name={expandedSections.manageEvents ? "filter" : "plus"} />
+                <AppIcon
+                  name={expandedSections.manageEvents ? "filter" : "plus"}
+                  className="events-section-toggle-icon"
+                />
                 <span>{expandedSections.manageEvents ? "Collapse" : "Expand"}</span>
-              </span>
-              <span className="events-section-toggle-icon" aria-hidden="true">
-                {expandedSections.manageEvents ? "^" : "v"}
               </span>
             </button>
           </section>
@@ -376,13 +378,15 @@ export default function Events() {
                   className="events-section-toggle"
                   onClick={() => toggleSection("myEvents")}
                   aria-expanded={expandedSections.myEvents}
+                  aria-label={expandedSections.myEvents ? "Collapse section" : "Expand section"}
+                  title={expandedSections.myEvents ? "Collapse section" : "Expand section"}
                 >
                   <span className="inline-icon-label">
-                    <AppIcon name={expandedSections.myEvents ? "filter" : "plus"} />
+                    <AppIcon
+                      name={expandedSections.myEvents ? "filter" : "plus"}
+                      className="events-section-toggle-icon"
+                    />
                     <span>{expandedSections.myEvents ? "Collapse" : "Expand"}</span>
-                  </span>
-                  <span className="events-section-toggle-icon" aria-hidden="true">
-                    {expandedSections.myEvents ? "^" : "v"}
                   </span>
                 </button>
               </section>
@@ -426,13 +430,15 @@ export default function Events() {
                   className="events-section-toggle"
                   onClick={() => toggleSection("openEvents")}
                   aria-expanded={expandedSections.openEvents}
+                  aria-label={expandedSections.openEvents ? "Collapse section" : "Expand section"}
+                  title={expandedSections.openEvents ? "Collapse section" : "Expand section"}
                 >
                   <span className="inline-icon-label">
-                    <AppIcon name={expandedSections.openEvents ? "filter" : "plus"} />
+                    <AppIcon
+                      name={expandedSections.openEvents ? "filter" : "plus"}
+                      className="events-section-toggle-icon"
+                    />
                     <span>{expandedSections.openEvents ? "Collapse" : "Expand"}</span>
-                  </span>
-                  <span className="events-section-toggle-icon" aria-hidden="true">
-                    {expandedSections.openEvents ? "^" : "v"}
                   </span>
                 </button>
               </section>
@@ -471,13 +477,15 @@ export default function Events() {
                     className="events-section-toggle"
                     onClick={() => toggleSection("fullEvents")}
                     aria-expanded={expandedSections.fullEvents}
+                    aria-label={expandedSections.fullEvents ? "Collapse section" : "Expand section"}
+                    title={expandedSections.fullEvents ? "Collapse section" : "Expand section"}
                   >
                     <span className="inline-icon-label">
-                      <AppIcon name={expandedSections.fullEvents ? "filter" : "plus"} />
+                      <AppIcon
+                        name={expandedSections.fullEvents ? "filter" : "plus"}
+                        className="events-section-toggle-icon"
+                      />
                       <span>{expandedSections.fullEvents ? "Collapse" : "Expand"}</span>
-                    </span>
-                    <span className="events-section-toggle-icon" aria-hidden="true">
-                      {expandedSections.fullEvents ? "^" : "v"}
                     </span>
                   </button>
                 </section>

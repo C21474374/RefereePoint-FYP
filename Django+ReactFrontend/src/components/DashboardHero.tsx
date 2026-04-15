@@ -17,13 +17,16 @@ export default function DashboardHero({
   subtitle,
 }: DashboardHeroProps) {
   const badgeTitle = badgeType === "grade" ? "Grade" : "Role";
+  const rawFirstName = name.trim().split(/\s+/)[0] || "Referee";
+  const displayFirstName =
+    rawFirstName.charAt(0).toUpperCase() + rawFirstName.slice(1);
 
   return (
     <section className="dashboard-hero">
       <div className="dashboard-hero-content">
-        <h1 className="page-title-with-icon">
-          <AppIcon name="dashboard" className="page-title-icon" />
-          <span>Welcome back, {name.split(" ")[0]}</span>
+        <h1 className="dashboard-hero-title">
+          <span>Welcome back, </span>
+          <span className="dashboard-hero-name">{displayFirstName}</span>
         </h1>
         <p className="dashboard-hero-subtitle">
           {subtitle || "Ready to referee? Check your next game and take action."}

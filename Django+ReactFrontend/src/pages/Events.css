@@ -112,27 +112,22 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-panel);
-  color: var(--color-text);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border-radius: 10px;
-  padding: 7px 10px;
+  padding: 7px 11px;
   font-size: 0.82rem;
   font-weight: 700;
 }
 
 .events-section-toggle:hover {
-  border-color: var(--color-accent);
+  filter: brightness(1.05);
 }
 
 .events-section-toggle-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 16px;
   height: 16px;
-  font-size: 0.9rem;
-  line-height: 1;
 }
 
 .events-form {
@@ -242,7 +237,7 @@
 }
 
 .events-referee-quick-button:hover:not(:disabled) {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .events-referee-quick-hint {

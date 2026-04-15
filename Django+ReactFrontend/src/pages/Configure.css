@@ -33,7 +33,7 @@
 }
 
 .configure-overview-card:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
   transform: translateY(-1px);
 }
 
@@ -66,7 +66,7 @@
 }
 
 .configure-overview-btn:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .configure-message,
@@ -90,6 +90,9 @@
 }
 
 .configure-section {
+  position: relative;
+  min-height: 136px;
+  padding-bottom: 62px;
   border: 1px solid var(--color-border);
   border-radius: 14px;
   background: var(--color-card);
@@ -169,7 +172,7 @@
 }
 
 .configure-clear-btn:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .configure-create-row {
@@ -219,8 +222,7 @@
 
 .configure-create-grid button,
 .configure-create-row button,
-.configure-item-actions button,
-.configure-section-toggle {
+.configure-item-actions button {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   background: var(--color-bg-panel);
@@ -231,9 +233,8 @@
 
 .configure-create-grid button:hover,
 .configure-create-row button:hover,
-.configure-item-actions button:hover,
-.configure-section-toggle:hover {
-  border-color: var(--color-accent);
+.configure-item-actions button:hover {
+  border-color: var(--color-border-hover);
 }
 
 .configure-empty {
@@ -264,7 +265,7 @@
 }
 
 .configure-item-card:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
   transform: translateY(-1px);
 }
 
@@ -341,18 +342,28 @@
 }
 
 .configure-section-toggle {
-  width: 100%;
-  border: none;
-  border-top: 1px solid var(--color-border);
-  border-radius: 0;
-  background: var(--color-bg-secondary);
-  display: flex;
-  justify-content: space-between;
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
   align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .configure-section-toggle-icon {
-  font-weight: 700;
+  width: 16px;
+  height: 16px;
+}
+
+.configure-section-toggle:hover {
+  filter: brightness(1.05);
 }
 
 @media (max-width: 700px) {
@@ -374,5 +385,15 @@
 
   .configure-list-scroll {
     max-height: min(48vh, 420px);
+  }
+
+  .configure-section {
+    min-height: 124px;
+    padding-bottom: 56px;
+  }
+
+  .configure-section-toggle {
+    right: 10px;
+    bottom: 10px;
   }
 }

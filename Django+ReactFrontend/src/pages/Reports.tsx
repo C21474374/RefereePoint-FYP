@@ -340,7 +340,7 @@ export default function Reports() {
     <div className="reports-page">
       <div className="reports-page-header">
         <h1 className="page-title-with-icon">
-          <AppIcon name="reports" className="page-title-icon" />
+          <AppIcon name="whistle" className="page-title-icon" />
           <span>Reports</span>
         </h1>
         {isRefereeMode ? (
@@ -367,8 +367,8 @@ export default function Reports() {
             <>
               <section className="reports-section">
                 <div className="reports-section-header">
-                  <h2 className="section-title-with-icon">
-                    <AppIcon name="games" className="section-title-icon" />
+                  <h2 className="section-title-with-icon reports-referee-heading">
+                    <AppIcon name="basketball" className="section-title-icon" />
                     <span>Past Games (Last 7 Days)</span>
                   </h2>
                   <p>Only completed/past games inside the 7-day report window are shown.</p>
@@ -392,8 +392,10 @@ export default function Reports() {
                         </div>
 
                         <p className="reports-game-meta">
-                          {toDisplayDate(item.game_details?.date)} | {toDisplayTime(item.game_details?.time)} |{" "}
-                          {item.game_details?.venue_name || "Venue TBC"}
+                          <span className="reports-game-date-time">
+                            {toDisplayDate(item.game_details?.date)} | {toDisplayTime(item.game_details?.time)}
+                          </span>{" "}
+                          | {item.game_details?.venue_name || "Venue TBC"}
                         </p>
 
                         <div className="reports-game-tags">
@@ -422,8 +424,8 @@ export default function Reports() {
 
               <section className="reports-section">
                 <div className="reports-section-header">
-                  <h2 className="section-title-with-icon">
-                    <AppIcon name="notifications" className="section-title-icon" />
+                  <h2 className="section-title-with-icon reports-referee-heading">
+                    <AppIcon name="whistle" className="section-title-icon" />
                     <span>Report Status</span>
                   </h2>
                   <p>Track your submitted reports by status: Pending, Reviewed, and Resolved.</p>
@@ -446,7 +448,9 @@ export default function Reports() {
 
                         <p className="reports-status-meta">
                           Submitted: {toDisplayDateTime(report.created_at)} | Game date:{" "}
-                          {toDisplayDate(report.game_details?.date)}
+                          <span className="reports-game-date-time">
+                            {toDisplayDate(report.game_details?.date)}
+                          </span>
                         </p>
 
                         <p className="reports-status-summary">
@@ -516,8 +520,12 @@ export default function Reports() {
                           </p>
 
                           <p className="reports-status-meta">
-                            Game: {toDisplayDate(report.game_details?.date)} |{" "}
-                            {toDisplayTime(report.game_details?.time)} |{" "}
+                            Game:{" "}
+                            <span className="reports-game-date-time">
+                              {toDisplayDate(report.game_details?.date)} |{" "}
+                              {toDisplayTime(report.game_details?.time)}
+                            </span>{" "}
+                            |{" "}
                             {report.game_details?.venue_name || "Venue TBC"}
                           </p>
 
@@ -539,13 +547,19 @@ export default function Reports() {
                 className="reports-section-toggle"
                 onClick={() => toggleSection("adminSubmittedReports")}
                 aria-expanded={expandedSections.adminSubmittedReports}
+                aria-label={
+                  expandedSections.adminSubmittedReports ? "Collapse section" : "Expand section"
+                }
+                title={
+                  expandedSections.adminSubmittedReports ? "Collapse section" : "Expand section"
+                }
               >
                 <span className="inline-icon-label">
-                  <AppIcon name={expandedSections.adminSubmittedReports ? "filter" : "plus"} />
+                  <AppIcon
+                    name={expandedSections.adminSubmittedReports ? "filter" : "plus"}
+                    className="reports-section-toggle-icon"
+                  />
                   <span>{expandedSections.adminSubmittedReports ? "Collapse" : "Expand"}</span>
-                </span>
-                <span className="reports-section-toggle-icon" aria-hidden="true">
-                  {expandedSections.adminSubmittedReports ? "^" : "v"}
                 </span>
               </button>
             </section>

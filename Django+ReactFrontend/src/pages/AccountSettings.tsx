@@ -497,7 +497,7 @@ export default function AccountSettings() {
           <AppIcon name="settings" className="page-title-icon" />
           <span>Account Settings</span>
         </h1>
-        <p>Manage your account details. Profile picture upload will be added next.</p>
+        <p>Manage your account details.</p>
       </div>
 
       <section className="account-settings-card">
@@ -508,7 +508,6 @@ export default function AccountSettings() {
           <div>
             <h2>{fullName}</h2>
             <p>{user?.email || "Email unavailable"}</p>
-            <span className="account-profile-coming-soon">Profile photo upload coming soon</span>
           </div>
         </div>
       </section>

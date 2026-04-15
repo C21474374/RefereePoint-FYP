@@ -36,7 +36,9 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-shell auth-shell-compact">
-        <p className="auth-brand">RefereePoint</p>
+        <Link to="/" className="auth-brand auth-brand-link">
+          RefereePoint
+        </Link>
         <div className="auth-card">
           <div className="auth-header">
             <h1 className="page-title-with-icon">
@@ -78,7 +80,8 @@ export default function LoginPage() {
           </form>
 
           <p className="auth-footer-text">
-            Need an account? <Link to="/signup">Register</Link>
+            Need an account? <Link to="/signup">Register</Link> ·{" "}
+            <Link to="/">Back to Home</Link>
           </p>
         </div>
       </div>

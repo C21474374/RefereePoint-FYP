@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AppIcon, { type AppIconName } from "./AppIcon";
 import {
+  canAccessCoverRequestsPage,
   canAccessConfigurePage,
   canAccessReportsPage,
   hasRefereeAccess,
@@ -12,13 +13,13 @@ const refereeActions = [
   {
     name: "Opportunities",
     path: "/games",
-    icon: "opportunities" as AppIconName,
+    icon: "basketball" as AppIconName,
     description: "Find open games, cover requests, and available opportunities.",
   },
   {
     name: "Cover Requests",
     path: "/cover-requests",
-    icon: "cover" as AppIconName,
+    icon: "whistle" as AppIconName,
     description: "Manage your requests and see games that need cover.",
   },
   {
@@ -45,7 +46,7 @@ const managerBaseActions = [
   {
     name: "Games",
     path: "/games",
-    icon: "games" as AppIconName,
+    icon: "basketball" as AppIconName,
     description: "Upload and manage games posted by your organisation.",
   },
   {
@@ -62,12 +63,23 @@ export default function DashboardQuickActions() {
   const isRefereeUser = hasRefereeAccess(user);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const canApproveCoverRequests = canAccessCoverRequestsPage(user) && !isRefereeUser;
   const canConfigure = canAccessConfigurePage(user);
   const canViewReports = canAccessReportsPage(user);
   const managerActions = [
     ...managerBaseActions.filter(
       (action) => hasEventManagerScope || action.path !== "/events"
     ),
+    ...(canApproveCoverRequests
+      ? [
+          {
+            name: "Cover Requests",
+            path: "/cover-requests",
+            icon: "whistle" as AppIconName,
+            description: "Approve claimed cover requests for appointed games.",
+          },
+        ]
+      : []),
     ...(canViewReports
       ? [
           {
@@ -107,7 +119,7 @@ export default function DashboardQuickActions() {
   return (
     <section className="dashboard-quick-actions">
       <h2 className="section-title-with-icon">
-        <AppIcon name="plus" className="section-title-icon" />
+        <AppIcon name="whistle" className="section-title-icon" />
         <span>Quick Actions</span>
       </h2>
 

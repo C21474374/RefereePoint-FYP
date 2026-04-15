@@ -28,6 +28,14 @@
   font-size: 1.22rem;
 }
 
+.dashboard-ref-section-heading {
+  color: var(--color-accent);
+}
+
+.dashboard-ref-section-heading .section-title-icon {
+  color: var(--color-accent);
+}
+
 .dashboard-notifications-header p {
   margin: 0;
   color: var(--color-text-muted);
@@ -53,7 +61,7 @@
 }
 
 .dashboard-notification-item:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
   transform: translateY(-1px);
 }
 
@@ -124,7 +132,7 @@
 
 .dashboard-role-overview-card:hover {
   transform: translateY(-2px);
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .dashboard-role-overview-card h3 {
@@ -162,7 +170,7 @@
 }
 
 .dashboard-role-overview-link:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .dashboard-calendar-section {
@@ -322,7 +330,7 @@
 }
 
 .dashboard-day-item:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
   transform: translateY(-1px);
 }
 
@@ -381,7 +389,7 @@
 }
 
 .dashboard-day-cancel-btn:hover:not(:disabled) {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .dashboard-day-cancel-btn:disabled {

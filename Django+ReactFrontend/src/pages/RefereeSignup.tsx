@@ -438,7 +438,9 @@ export default function RefereeSignup() {
   return (
     <div className="auth-page">
       <div className="auth-shell">
-        <p className="auth-brand">RefereePoint</p>
+        <Link to="/" className="auth-brand auth-brand-link">
+          RefereePoint
+        </Link>
         <div className="auth-card">
           <div className="auth-header">
             <h1 className="page-title-with-icon">
@@ -746,7 +748,8 @@ export default function RefereeSignup() {
           </form>
 
           <p className="auth-footer-text">
-            Already have an account? <Link to="/login">Login</Link>
+            Already have an account? <Link to="/login">Login</Link> ·{" "}
+            <Link to="/">Back to Home</Link>
           </p>
         </div>
       </div>

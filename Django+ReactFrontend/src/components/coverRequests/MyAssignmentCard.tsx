@@ -43,7 +43,10 @@ export default function MyAssignmentCard({
       </div>
 
       <div className="my-assignment-meta">
-        <p><strong>Date:</strong> {formatGameDate(assignment.game_details)}</p>
+        <p>
+          <strong>Date:</strong>
+          <span className="my-assignment-date-time">{formatGameDate(assignment.game_details)}</span>
+        </p>
         <p><strong>Venue:</strong> {venueName}</p>
       </div>
 

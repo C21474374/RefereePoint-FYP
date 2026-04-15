@@ -138,7 +138,7 @@
 }
 
 .upload-choice-card:hover:not(:disabled) {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .upload-choice-card:disabled {

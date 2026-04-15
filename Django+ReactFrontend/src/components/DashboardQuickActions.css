@@ -9,6 +9,11 @@
 .dashboard-quick-actions h2 {
   margin: 0 0 14px;
   font-size: 1.24rem;
+  color: var(--color-accent);
+}
+
+.dashboard-quick-actions h2 .section-title-icon {
+  color: var(--color-accent);
 }
 
 .dashboard-action-grid {
@@ -25,13 +30,23 @@
   border: 1px solid var(--color-border);
   text-decoration: none;
   color: var(--color-text);
-  background: var(--color-bg-panel);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  background: var(--color-card);
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .dashboard-action-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--color-accent);
+  background: var(--color-bg-panel);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.dashboard-action-card:visited {
+  color: var(--color-text);
+}
+
+.dashboard-action-card:hover h3,
+.dashboard-action-card:hover p {
+  color: inherit;
 }
 
 .dashboard-action-card h3 {

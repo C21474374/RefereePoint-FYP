@@ -27,6 +27,15 @@
   margin: 0 2px;
 }
 
+.auth-brand-link {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.auth-brand-link:hover {
+  color: var(--color-link-hover);
+}
+
 .auth-card {
   border-radius: 16px;
   border: 1px solid var(--color-border);

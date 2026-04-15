@@ -973,7 +973,7 @@ export default function RefereeDashboard() {
         },
         {
           label: "This Month Claim",
-          value: `EUR ${monthlyEarnings?.total_claim_amount ?? "0.00"}`,
+          value: `€ ${monthlyEarnings?.total_claim_amount ?? "0.00"}`,
         },
       ];
     }
@@ -1252,8 +1252,12 @@ export default function RefereeDashboard() {
 
       <section className="dashboard-notifications-section">
         <div className="dashboard-notifications-header">
-          <h2 className="section-title-with-icon">
-            <AppIcon name="notifications" className="section-title-icon" />
+          <h2
+            className={`section-title-with-icon ${
+              isRefereeUser ? "dashboard-ref-section-heading" : ""
+            }`}
+          >
+            <AppIcon name="whistle" className="section-title-icon" />
             <span>Recent Notifications</span>
           </h2>
           <p>
@@ -1343,8 +1347,12 @@ export default function RefereeDashboard() {
 
       <section className="dashboard-calendar-section">
         <div className="dashboard-calendar-header">
-          <h2 className="section-title-with-icon">
-            <AppIcon name="calendar" className="section-title-icon" />
+          <h2
+            className={`section-title-with-icon ${
+              isRefereeUser ? "dashboard-ref-section-heading" : ""
+            }`}
+          >
+            <AppIcon name="basketball" className="section-title-icon" />
             <span>{calendarSectionTitle}</span>
           </h2>
           <div className="dashboard-calendar-nav">
@@ -1454,6 +1462,16 @@ export default function RefereeDashboard() {
                         </p>
                       )}
                       <div className="dashboard-day-item-actions">
+                        <button
+                          type="button"
+                          className="dashboard-day-view-btn"
+                          onClick={() => setSelectedCalendarItem(item)}
+                        >
+                          <span className="button-with-icon">
+                            <AppIcon name="reports" />
+                            <span>View Details</span>
+                          </span>
+                        </button>
                         {typeof item.cancelClaimSlotId === "number" && (
                           <button
                             type="button"
@@ -1470,20 +1488,10 @@ export default function RefereeDashboard() {
                             {cancellingCalendarItemId === item.id
                               ? "Cancelling..."
                               : canCancelClaimedCalendarItem(item)
-                                ? "Cancel"
+                                ? "Cancel Game"
                                 : "Cancel Closed"}
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="dashboard-day-view-btn"
-                          onClick={() => setSelectedCalendarItem(item)}
-                        >
-                          <span className="button-with-icon">
-                            <AppIcon name="reports" />
-                            <span>View Details</span>
-                          </span>
-                        </button>
                       </div>
                     </article>
                   ))}
@@ -1514,6 +1522,7 @@ export default function RefereeDashboard() {
         message="Cancel this taken game? It will be reopened in Opportunities for other referees to claim."
         confirmLabel="Cancel Game"
         cancelLabel="Keep Claimed"
+        reverseActions
         confirmTone="danger"
         busy={cancellingCalendarItemId === pendingCancelCalendarItem?.id}
         onCancel={() => setPendingCancelCalendarItem(null)}

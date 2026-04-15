@@ -86,6 +86,14 @@
   font-size: 1.18rem;
 }
 
+.reports-referee-heading {
+  color: var(--color-accent);
+}
+
+.reports-referee-heading .section-title-icon {
+  color: var(--color-accent);
+}
+
 .reports-section-header p {
   margin-top: 8px;
   color: var(--color-text-muted);
@@ -136,27 +144,22 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-panel);
-  color: var(--color-text);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border-radius: 10px;
-  padding: 7px 10px;
+  padding: 7px 11px;
   font-size: 0.82rem;
   font-weight: 700;
 }
 
 .reports-section-toggle:hover {
-  border-color: var(--color-accent);
+  filter: brightness(1.05);
 }
 
 .reports-section-toggle-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 16px;
   height: 16px;
-  font-size: 0.9rem;
-  line-height: 1;
 }
 
 .reports-game-list,
@@ -197,6 +200,11 @@
   font-size: 0.88rem;
 }
 
+.reports-game-date-time {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
 .reports-game-tags {
   display: flex;
   flex-wrap: wrap;
@@ -220,11 +228,12 @@
 .reports-action-button {
   border: none;
   border-radius: 10px;
-  padding: 9px 13px;
+  padding: 10px 14px;
   background: var(--color-accent);
   color: var(--color-text-inverse);
   font-weight: 700;
-  font-size: 0.84rem;
+  font-size: 0.88rem;
+  line-height: 1.2;
 }
 
 .reports-action-button:disabled {

@@ -5,31 +5,43 @@
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 700;
-  border: 1px solid var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
+  border: 1px solid var(--status-border-color, var(--color-border));
+  background: var(--status-soft-bg, var(--color-bg-secondary));
+  color: var(--status-text-color, var(--color-text));
 }
 
 .cover-status-pending {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
+  --status-text-color: #c58a00;
+  --status-soft-bg: rgba(197, 138, 0, 0.15);
+  --status-border-color: rgba(197, 138, 0, 0.45);
 }
 
 .cover-status-claimed {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
+  --status-text-color: #d2232a;
+  --status-soft-bg: rgba(210, 35, 42, 0.14);
+  --status-border-color: rgba(210, 35, 42, 0.45);
 }
 
 .cover-status-approved {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
+  --status-text-color: #1f9d55;
+  --status-soft-bg: rgba(31, 157, 85, 0.14);
+  --status-border-color: rgba(31, 157, 85, 0.45);
 }
 
 .cover-status-rejected {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: var(--color-text-inverse);
+  --status-text-color: #b42318;
+  --status-soft-bg: rgba(180, 35, 24, 0.14);
+  --status-border-color: rgba(180, 35, 24, 0.45);
+}
+
+:root[data-theme='light'] .cover-status-pending {
+  --status-text-color: #8a6700;
+  --status-soft-bg: rgba(197, 138, 0, 0.18);
+  --status-border-color: rgba(138, 103, 0, 0.35);
+}
+
+:root[data-theme='light'] .cover-status-approved {
+  --status-text-color: #15803d;
+  --status-soft-bg: rgba(21, 128, 61, 0.14);
+  --status-border-color: rgba(21, 128, 61, 0.32);
 }

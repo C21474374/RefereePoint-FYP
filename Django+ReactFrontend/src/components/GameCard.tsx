@@ -54,6 +54,9 @@ const GameCard = ({
   const isNonAppointed = opportunity.type === "NON_APPOINTED_SLOT";
   const isCoverRequest = opportunity.type === "COVER_REQUEST";
   const isEvent = opportunity.type === "EVENT";
+  const isUmpireOneRole =
+    opportunity.role === "UMPIRE_1" ||
+    opportunity.role_display?.trim().toLowerCase() === "umpire 1";
   const typeClassName = isNonAppointed
     ? "non-appointed"
     : isCoverRequest
@@ -149,15 +152,19 @@ const GameCard = ({
     <>
       <div className="game-card">
         <div className="game-card-top">
-          <span className={`game-card-type ${typeClassName}`}>
+          <span
+            className={`game-card-type ${typeClassName}${isNonAppointed ? " game-card-tag-match-style" : ""}`}
+          >
             <span className="inline-icon-label">
-              <AppIcon name={isEvent ? "events" : isCoverRequest ? "cover" : "games"} />
+              <AppIcon name={isEvent ? "events" : isCoverRequest ? "whistle" : "basketball"} />
               <span>{typeLabel}</span>
             </span>
           </span>
 
           {opportunity.role_display && (
-            <span className="game-card-role inline-icon-label">
+            <span
+              className={`game-card-role inline-icon-label${isUmpireOneRole ? " game-card-tag-match-style" : ""}`}
+            >
               <AppIcon name="user" />
               <span>{opportunity.role_display}</span>
             </span>
@@ -204,7 +211,7 @@ const GameCard = ({
 
         {recommendationScore !== null && (
           <div className="game-card-recommendation">
-            <span className="game-card-recommendation-score">Match {recommendationScore}/100</span>
+            <span className="game-card-recommendation-score">Match {recommendationScore}%</span>
             {recommendationReasons.length > 0 && (
               <div className="game-card-recommendation-reasons">
                 {recommendationReasons.map((reason) => (

@@ -10,7 +10,7 @@
 }
 
 .my-assignment-card:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
   transform: translateY(-2px);
 }
 
@@ -62,6 +62,10 @@
   min-width: 160px;
   color: var(--color-text);
   font-size: 0.92rem;
+}
+
+.my-assignment-date-time {
+  font-weight: 700;
 }
 
 .my-assignment-meta strong {

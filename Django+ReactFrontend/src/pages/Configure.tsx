@@ -638,9 +638,16 @@ export default function ConfigurePage() {
               className="configure-section-toggle"
               onClick={() => toggleSection("division")}
               aria-expanded={expanded.division}
+              aria-label={expanded.division ? "Collapse section" : "Expand section"}
+              title={expanded.division ? "Collapse section" : "Expand section"}
             >
-              <span>{expanded.division ? "Collapse" : "Expand"}</span>
-              <span className="configure-section-toggle-icon">{expanded.division ? "^" : "v"}</span>
+              <span className="inline-icon-label">
+                <AppIcon
+                  name={expanded.division ? "filter" : "plus"}
+                  className="configure-section-toggle-icon"
+                />
+                <span>{expanded.division ? "Collapse" : "Expand"}</span>
+              </span>
             </button>
           </section>
 
@@ -854,9 +861,16 @@ export default function ConfigurePage() {
               className="configure-section-toggle"
               onClick={() => toggleSection("team")}
               aria-expanded={expanded.team}
+              aria-label={expanded.team ? "Collapse section" : "Expand section"}
+              title={expanded.team ? "Collapse section" : "Expand section"}
             >
-              <span>{expanded.team ? "Collapse" : "Expand"}</span>
-              <span className="configure-section-toggle-icon">{expanded.team ? "^" : "v"}</span>
+              <span className="inline-icon-label">
+                <AppIcon
+                  name={expanded.team ? "filter" : "plus"}
+                  className="configure-section-toggle-icon"
+                />
+                <span>{expanded.team ? "Collapse" : "Expand"}</span>
+              </span>
             </button>
           </section>
         </>

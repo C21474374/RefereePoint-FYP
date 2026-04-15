@@ -36,7 +36,7 @@ const Gameslist = ({
         <>
           <div className="games-list-section-header">
             <h3 className="section-title-with-icon">
-              <AppIcon name="opportunities" className="section-title-icon" />
+              <AppIcon name="whistle" className="section-title-icon" />
               <span>Recommended For You</span>
             </h3>
           </div>
@@ -56,7 +56,7 @@ const Gameslist = ({
       {showRecommendations && otherOpportunities.length > 0 && (
         <div className="games-list-section-header">
           <h3 className="section-title-with-icon">
-            <AppIcon name="games" className="section-title-icon" />
+            <AppIcon name="basketball" className="section-title-icon" />
             <span>More Opportunities</span>
           </h3>
         </div>

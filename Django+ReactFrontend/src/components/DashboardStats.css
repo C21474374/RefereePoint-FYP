@@ -19,7 +19,7 @@
 
 .dashboard-stat-card:hover {
   transform: translateY(-2px);
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .dashboard-stat-label {

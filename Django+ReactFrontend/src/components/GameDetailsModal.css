@@ -173,8 +173,8 @@
 }
 
 .game-details-directions-link:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
 }
 
 .game-details-directions-help {

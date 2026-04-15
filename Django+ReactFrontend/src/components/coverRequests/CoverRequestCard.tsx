@@ -6,9 +6,11 @@ import AppIcon from "../AppIcon";
 type CoverRequestCardProps = {
   coverRequest: CoverRequest;
   canClaim?: boolean;
+  canApprove?: boolean;
   canCancel?: boolean;
   canWithdrawClaim?: boolean;
   onClaim?: (id: number) => void;
+  onApprove?: (id: number) => void;
   onCancel?: (id: number) => void;
   onWithdrawClaim?: (id: number) => void;
   loadingActionId?: number | null;
@@ -34,9 +36,11 @@ function formatGameDate(gameDetails: CoverRequest["game_details"]) {
 export default function CoverRequestCard({
   coverRequest,
   canClaim = false,
+  canApprove = false,
   canCancel = false,
   canWithdrawClaim = false,
   onClaim,
+  onApprove,
   onCancel,
   onWithdrawClaim,
   loadingActionId = null,
@@ -99,7 +103,7 @@ export default function CoverRequestCard({
             <AppIcon name="calendar" />
             <span>Date</span>
           </span>
-          <p>{formatGameDate(game_details)}</p>
+          <p className="cover-request-date-time">{formatGameDate(game_details)}</p>
         </div>
 
         <div>
@@ -149,6 +153,19 @@ export default function CoverRequestCard({
       )}
 
       <div className="cover-request-actions">
+        {canApprove && status === "CLAIMED" && (
+          <button
+            className="cover-request-button"
+            onClick={() => onApprove?.(id)}
+            disabled={isLoading}
+          >
+            <span className="button-with-icon">
+              <AppIcon name="approvals" />
+              <span>{isLoading ? "Approving..." : "Approve Cover"}</span>
+            </span>
+          </button>
+        )}
+
         {canCancel && (
           <button
             className="cover-request-button cover-request-button-cancel"

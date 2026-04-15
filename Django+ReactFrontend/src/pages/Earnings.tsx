@@ -84,7 +84,7 @@ export default function Earnings() {
     <div className="earnings-page">
       <div className="earnings-header">
         <h1 className="page-title-with-icon">
-          <AppIcon name="earnings" className="page-title-icon" />
+          <AppIcon name="basketball" className="page-title-icon" />
           <span>Earnings</span>
         </h1>
         <p>View monthly appointed claims by type. DOA(Dublin Officials Association) and NL(National League) are tracked separately.</p>
@@ -142,7 +142,7 @@ export default function Earnings() {
 
           <section className="earnings-section">
             <h2 className="section-title-with-icon">
-              <AppIcon name="dashboard" className="section-title-icon" />
+              <AppIcon name="whistle" className="section-title-icon" />
               <span>Summary</span>
             </h2>
             <div className="earnings-summary-grid">
@@ -152,15 +152,15 @@ export default function Earnings() {
               </div>
               <div className="earnings-summary-card">
                 <p>Base Fee Total</p>
-                <h3>EUR {report.totals.base_fee_total}</h3>
+                <h3>€{report.totals.base_fee_total}</h3>
               </div>
               <div className="earnings-summary-card">
                 <p>Travel Total</p>
-                <h3>EUR {report.totals.travel_total}</h3>
+                <h3>€{report.totals.travel_total}</h3>
               </div>
-              <div className="earnings-summary-card">
+              <div className="earnings-summary-card earnings-summary-card-total">
                 <p>Total Claim Amount</p>
-                <h3>EUR {report.totals.total_claim_amount}</h3>
+                <h3>€{report.totals.total_claim_amount}</h3>
               </div>
             </div>
             {report.selected_month?.is_finalized && (
@@ -170,7 +170,7 @@ export default function Earnings() {
 
           <section className="earnings-section">
             <h2 className="section-title-with-icon">
-              <AppIcon name="games" className="section-title-icon" />
+              <AppIcon name="basketball" className="section-title-icon" />
               <span>Per-Game Breakdown</span>
             </h2>
             {report.items.length === 0 ? (
@@ -187,16 +187,21 @@ export default function Earnings() {
                           {item.home_team_name || "Home Team"} vs {item.away_team_name || "Away Team"}
                         </h3>
                         <p className="earnings-item-subtitle">
-                          {item.date} {item.time} | {item.venue_name || "Venue TBC"} | {item.role_display}
+                          <span className="earnings-item-date-time">
+                            {item.date} {item.time}
+                          </span>{" "}
+                          | {item.venue_name || "Venue TBC"} | {item.role_display}
                         </p>
                       </div>
-                      <span className="earnings-item-total">EUR {item.total}</span>
+                      <span className="earnings-item-total">€{item.total}</span>
                     </div>
                     <div className="earnings-item-meta">
-                      <span className="earnings-pill">Base: EUR {item.base_fee}</span>
-                      <span className="earnings-pill">Travel: EUR {item.travel_amount}</span>
+                      <span className="earnings-pill">Base: €{item.base_fee}</span>
+                      <span className="earnings-pill">Travel: €{item.travel_amount}</span>
                       <span className="earnings-pill">Mileage: {item.mileage_km} km</span>
-                      <span className="earnings-pill">{item.travel_mode_display}</span>
+                      {item.travel_mode_display.trim().toLowerCase() !== "mileage" && (
+                        <span className="earnings-pill">{item.travel_mode_display}</span>
+                      )}
                       {item.is_back_to_back_same_venue && (
                         <span className="earnings-pill">Back-to-back same venue (mileage excluded)</span>
                       )}

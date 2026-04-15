@@ -45,6 +45,9 @@
 .clear-venue-btn {
   cursor: pointer;
   font-weight: 600;
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
 }
 
 .clear-venue-btn:disabled {
@@ -134,7 +137,7 @@
 }
 
 .game-card:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
   transform: translateY(-2px);
 }
 
@@ -222,6 +225,10 @@
   margin-bottom: 6px;
 }
 
+.game-card-meta {
+  font-weight: 700;
+}
+
 .game-card-recommendation {
   margin-top: 8px;
 }
@@ -235,6 +242,15 @@
   color: var(--color-text-muted);
   font-size: 0.76rem;
   font-weight: 700;
+  padding: 4px 9px;
+}
+
+.game-card-type.game-card-tag-match-style,
+.game-card-role.game-card-tag-match-style {
+  border-color: var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
   padding: 4px 9px;
 }
 
@@ -439,27 +455,22 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-panel);
-  color: var(--color-text);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border-radius: 10px;
-  padding: 7px 10px;
+  padding: 7px 11px;
   font-size: 0.82rem;
   font-weight: 700;
 }
 
 .games-manage-section-toggle:hover {
-  border-color: var(--color-accent);
+  filter: brightness(1.05);
 }
 
 .games-manage-section-toggle-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 16px;
   height: 16px;
-  font-size: 0.9rem;
-  line-height: 1;
 }
 
 .games-manage-item {
@@ -487,6 +498,11 @@
   font-size: 0.86rem;
 }
 
+.games-manage-date-time {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
 .games-manage-actions {
   display: flex;
   gap: 8px;
@@ -504,7 +520,7 @@
 }
 
 .games-manage-button:hover:not(:disabled) {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-hover);
 }
 
 .games-manage-button:disabled {

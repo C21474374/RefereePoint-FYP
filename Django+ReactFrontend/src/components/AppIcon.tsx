@@ -1,6 +1,8 @@
 import type { SVGProps } from "react";
 
 export type AppIconName =
+  | "basketball"
+  | "whistle"
   | "dashboard"
   | "games"
   | "opportunities"
@@ -30,6 +32,25 @@ type AppIconProps = Omit<SVGProps<SVGSVGElement>, "children"> & {
 
 function renderIconPath(name: AppIconName) {
   switch (name) {
+    case "basketball":
+      return (
+        <>
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M3.8 12h16.4" />
+          <path d="M12 3.5v17" />
+          <path d="M6.8 5.6c2 1.6 3.2 4 3.2 6.4s-1.2 4.8-3.2 6.4" />
+          <path d="M17.2 5.6c-2 1.6-3.2 4-3.2 6.4s1.2 4.8 3.2 6.4" />
+        </>
+      );
+    case "whistle":
+      return (
+        <>
+          <path d="M4.5 13a5 5 0 1 0 10 0v-1.5a4 4 0 0 0-4-4H9" />
+          <circle cx="9.5" cy="13" r="1.7" />
+          <path d="M14.5 12h3a2 2 0 1 1 0 4h-3" />
+          <path d="M18.8 8.7v8.6" />
+        </>
+      );
     case "dashboard":
       return (
         <>

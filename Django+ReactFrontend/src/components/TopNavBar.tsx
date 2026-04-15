@@ -12,6 +12,7 @@ import AppIcon, { type AppIconName } from "./AppIcon";
 import UploadGamePanel from "./UploadGamePanel";
 import UploadEventPanel from "./UploadEventPanel";
 import {
+  canAccessCoverRequestsPage,
   canAccessConfigurePage,
   canAccessReportsPage,
   hasRefereeAccess,
@@ -25,8 +26,8 @@ type UploadMenuItem =
 
 const refereeNavLinks: NavLinkItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: "dashboard" },
-  { name: "Opportunities", path: "/games", icon: "opportunities" },
-  { name: "Cover Requests", path: "/cover-requests", icon: "cover" },
+  { name: "Opportunities", path: "/games", icon: "basketball" },
+  { name: "Cover Requests", path: "/cover-requests", icon: "whistle" },
   { name: "Events", path: "/events", icon: "events" },
   { name: "Reports", path: "/reports", icon: "reports" },
   { name: "Earnings", path: "/earnings", icon: "earnings" },
@@ -34,7 +35,7 @@ const refereeNavLinks: NavLinkItem[] = [
 
 const managerBaseNavLinks: NavLinkItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: "dashboard" },
-  { name: "Games", path: "/games", icon: "games" },
+  { name: "Games", path: "/games", icon: "basketball" },
   { name: "Events", path: "/events", icon: "events" },
 ];
 
@@ -338,10 +339,14 @@ const TopNavBar: React.FC = () => {
   const isRefereeUser = hasRefereeAccess(user);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
+  const canApproveCoverRequests = canAccessCoverRequestsPage(user) && !isRefereeUser;
   const canConfigure = canAccessConfigurePage(user);
   const canViewReports = canAccessReportsPage(user);
   const managerNavLinks: NavLinkItem[] = [
     ...managerBaseNavLinks.filter((link) => hasEventManagerScope || link.path !== "/events"),
+    ...(canApproveCoverRequests
+      ? ([{ name: "Cover Requests", path: "/cover-requests", icon: "whistle" as AppIconName }] as NavLinkItem[])
+      : []),
     ...(canConfigure
       ? ([
           {
@@ -417,7 +422,10 @@ const TopNavBar: React.FC = () => {
             <span></span>
           </button>
           <Link to="/dashboard" className="nav-title">
-            RefereePoint
+            <span className="nav-title-content">
+              <AppIcon name="basketball" className="nav-title-icon" />
+              <span>RefereePoint</span>
+            </span>
           </Link>
         </div>
 
@@ -670,7 +678,12 @@ const TopNavBar: React.FC = () => {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="mobile-drawer-header">
-              <div className="mobile-drawer-title">RefereePoint</div>
+              <div className="mobile-drawer-title">
+                <span className="mobile-drawer-title-content">
+                  <AppIcon name="whistle" className="mobile-drawer-title-icon" />
+                  <span>RefereePoint</span>
+                </span>
+              </div>
             </div>
             <div className="mobile-drawer-divider" />
 

@@ -652,7 +652,7 @@ export default function Games() {
         <div>
           <h1 className="page-title-with-icon">
             <AppIcon
-              name={isRefereeUser ? "opportunities" : "games"}
+              name={isRefereeUser ? "basketball" : "basketball"}
               className="page-title-icon"
             />
             <span>{isRefereeUser ? "Opportunities" : "Games"}</span>
@@ -778,8 +778,11 @@ export default function Games() {
                         <div>
                           <h3>{game.home_team_name || "Home Team"} vs {game.away_team_name || "Away Team"}</h3>
                           <p>
-                            {game.division_display || game.division_name || "Division"} | {game.date}{" "}
-                            {game.time?.slice(0, 5)} | {game.venue_name || "Venue TBC"}
+                            {game.division_display || game.division_name || "Division"} |{" "}
+                            <span className="games-manage-date-time">
+                              {game.date} {game.time?.slice(0, 5)}
+                            </span>{" "}
+                            | {game.venue_name || "Venue TBC"}
                           </p>
                         </div>
                         {game.can_edit && game.can_delete ? (
@@ -858,13 +861,15 @@ export default function Games() {
             className="games-manage-section-toggle"
             onClick={() => toggleSection("manageUploadedGames")}
             aria-expanded={expandedSections.manageUploadedGames}
+            aria-label={expandedSections.manageUploadedGames ? "Collapse section" : "Expand section"}
+            title={expandedSections.manageUploadedGames ? "Collapse section" : "Expand section"}
           >
             <span className="inline-icon-label">
-              <AppIcon name={expandedSections.manageUploadedGames ? "filter" : "plus"} />
+              <AppIcon
+                name={expandedSections.manageUploadedGames ? "filter" : "plus"}
+                className="games-manage-section-toggle-icon"
+              />
               <span>{expandedSections.manageUploadedGames ? "Collapse" : "Expand"}</span>
-            </span>
-            <span className="games-manage-section-toggle-icon" aria-hidden="true">
-              {expandedSections.manageUploadedGames ? "^" : "v"}
             </span>
           </button>
         </section>

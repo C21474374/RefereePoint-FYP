@@ -285,13 +285,15 @@ export default function AccountApprovals() {
           className="account-approvals-section-toggle"
           onClick={() => setPendingSectionExpanded((prev) => !prev)}
           aria-expanded={pendingSectionExpanded}
+          aria-label={pendingSectionExpanded ? "Collapse section" : "Expand section"}
+          title={pendingSectionExpanded ? "Collapse section" : "Expand section"}
         >
           <span className="inline-icon-label">
-            <AppIcon name={pendingSectionExpanded ? "filter" : "plus"} />
+            <AppIcon
+              name={pendingSectionExpanded ? "filter" : "plus"}
+              className="account-approvals-section-toggle-icon"
+            />
             <span>{pendingSectionExpanded ? "Collapse" : "Expand"}</span>
-          </span>
-          <span className="account-approvals-section-toggle-icon" aria-hidden="true">
-            {pendingSectionExpanded ? "^" : "v"}
           </span>
         </button>
       </section>

@@ -230,7 +230,7 @@ const GameDetailsModal = ({
         <div className="game-details-modal-header">
           <div>
             <h2 className="section-title-with-icon">
-              <AppIcon name="games" className="section-title-icon" />
+              <AppIcon name="basketball" className="section-title-icon" />
               <span>{details.title}</span>
             </h2>
             <p className="inline-icon-label">
@@ -265,7 +265,7 @@ const GameDetailsModal = ({
           {details.reason && (
             <div className="game-details-block">
               <h3 className="section-title-with-icon">
-                <AppIcon name="cover" className="section-title-icon" />
+                <AppIcon name="whistle" className="section-title-icon" />
                 <span>Reason</span>
               </h3>
               <p>{details.reason}</p>

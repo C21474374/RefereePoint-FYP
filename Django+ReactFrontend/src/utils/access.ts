@@ -46,7 +46,15 @@ export function canAccessGamesPage(user: CurrentUser | null | undefined) {
 }
 
 export function canAccessCoverRequestsPage(user: CurrentUser | null | undefined) {
-  return hasRefereeAccess(user);
+  if (hasRefereeAccess(user)) {
+    return true;
+  }
+
+  const roles = getEffectiveRoles(user);
+  return (
+    Boolean(user?.can_approve_accounts) ||
+    (Boolean(user?.doa_approved) && (roles.has("DOA") || roles.has("NL")))
+  );
 }
 
 export function canAccessEventsPage(user: CurrentUser | null | undefined) {
@@ -75,4 +83,3 @@ export function canAccessConfigurePage(user: CurrentUser | null | undefined) {
   const roles = getEffectiveRoles(user);
   return Boolean(user?.doa_approved) && (roles.has("DOA") || roles.has("NL"));
 }
-

@@ -5,6 +5,15 @@
   min-height: calc(100vh - 60px);
   box-sizing: border-box;
   color: var(--color-text);
+  --earnings-money-color: #1fbf63;
+  --earnings-money-soft: rgba(31, 191, 99, 0.14);
+  --earnings-money-border: rgba(31, 191, 99, 0.45);
+}
+
+:root[data-theme='light'] .earnings-page {
+  --earnings-money-color: #15803d;
+  --earnings-money-soft: rgba(21, 128, 61, 0.14);
+  --earnings-money-border: rgba(21, 128, 61, 0.32);
 }
 
 .earnings-header {
@@ -74,6 +83,11 @@
 
 .earnings-section h2 {
   margin: 0 0 12px;
+  color: var(--color-accent);
+}
+
+.earnings-section .section-title-icon {
+  color: var(--color-accent);
 }
 
 .earnings-home-grid {
@@ -170,6 +184,10 @@
   font-size: 1.15rem;
 }
 
+.earnings-summary-card-total h3 {
+  color: var(--earnings-money-color);
+}
+
 .earnings-items {
   display: flex;
   flex-direction: column;
@@ -202,9 +220,23 @@
   font-size: 0.9rem;
 }
 
-.earnings-item-total {
+.earnings-item-date-time {
   font-weight: 700;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
+}
+
+.earnings-item-total {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 1px solid var(--earnings-money-border);
+  background: var(--earnings-money-soft);
+  color: var(--earnings-money-color);
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 5px 11px;
 }
 
 .earnings-item-meta {
@@ -223,6 +255,13 @@
   background: var(--color-bg-secondary);
   color: var(--color-text-muted);
   font-size: 0.8rem;
+}
+
+.earnings-pill-money {
+  border-color: var(--earnings-money-border);
+  background: var(--earnings-money-soft);
+  color: var(--earnings-money-color);
+  font-weight: 700;
 }
 
 .earnings-note {

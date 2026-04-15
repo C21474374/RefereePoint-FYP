@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import RefereeSignup from './pages/RefereeSignup'
 import RefereeLogin from './pages/RefereeLogin'
+import LandingPage from './pages/Landing'
 import RefereeDashboard from './pages/RefereeDashboard'
 import Games from './pages/Games'
 import CoverRequests from './pages/CoverRequests'
@@ -101,8 +102,8 @@ function App() {
           <Route path="/account-settings" element={<AccountSettings />} />
         </Route>
 
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   </ThemeProvider>

@@ -144,27 +144,22 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-panel);
-  color: var(--color-text);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
   border-radius: 10px;
-  padding: 7px 10px;
+  padding: 7px 11px;
   font-size: 0.82rem;
   font-weight: 700;
 }
 
 .account-approvals-section-toggle:hover {
-  border-color: var(--color-accent);
+  filter: brightness(1.05);
 }
 
 .account-approvals-section-toggle-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 16px;
   height: 16px;
-  font-size: 0.9rem;
-  line-height: 1;
 }
 
 .account-approvals-grid {
