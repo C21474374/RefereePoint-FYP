@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { EventItem, EventPayload, EventVenueOption } from "../../services/events";
+import { useToast } from "../../context/ToastContext";
 
 type EventFormProps = {
   venues: EventVenueOption[];
@@ -8,6 +9,7 @@ type EventFormProps = {
   loading?: boolean;
   onSubmit: (payload: EventPayload) => Promise<void>;
   onCancelEdit?: () => void;
+  onCancel?: () => void;
 };
 
 type FormState = {
@@ -27,7 +29,7 @@ const emptyState: FormState = {
   description: "",
   fee_per_game: "",
   contact_information: "",
-  referees_required: "0",
+  referees_required: "1",
 };
 
 function buildFormState(initialEvent?: EventItem | null): FormState {
@@ -42,7 +44,7 @@ function buildFormState(initialEvent?: EventItem | null): FormState {
     description: initialEvent.description || "",
     fee_per_game: initialEvent.fee_per_game || "",
     contact_information: initialEvent.contact_information || "",
-    referees_required: String(initialEvent.referees_required),
+    referees_required: String(Math.max(initialEvent.referees_required, 1)),
   };
 }
 
@@ -53,7 +55,9 @@ export default function EventForm({
   loading = false,
   onSubmit,
   onCancelEdit,
+  onCancel,
 }: EventFormProps) {
+  const { showToast } = useToast();
   const [form, setForm] = useState<FormState>(() => buildFormState(initialEvent));
   const [localError, setLocalError] = useState("");
 
@@ -66,13 +70,17 @@ export default function EventForm({
     setLocalError("");
 
     if (form.start_date && form.end_date && form.end_date < form.start_date) {
-      setLocalError("End date must be on or after start date.");
+      const message = "End date must be on or after start date.";
+      setLocalError(message);
+      showToast(message, "error");
       return;
     }
 
-    const parsedRefereesRequired = Number(form.referees_required || 0);
-    if (!Number.isFinite(parsedRefereesRequired) || parsedRefereesRequired < 0) {
-      setLocalError("Referees required must be 0 or more.");
+    const parsedRefereesRequired = Number(form.referees_required || 1);
+    if (!Number.isFinite(parsedRefereesRequired) || parsedRefereesRequired < 1) {
+      const message = "Referees required must be at least 1.";
+      setLocalError(message);
+      showToast(message, "error");
       return;
     }
 
@@ -96,10 +104,9 @@ export default function EventForm({
   return (
     <form className="events-form" onSubmit={handleSubmit}>
       {eventTypeLabel && (
-        <div className="events-form-event-type">
-          <span>Event Type</span>
-          <strong>{eventTypeLabel}</strong>
-        </div>
+        <h3 className="events-form-event-type">
+          Event Type <span className="events-form-event-type-value">{eventTypeLabel}</span>
+        </h3>
       )}
       {localError && <p className="events-form-inline-error">{localError}</p>}
 
@@ -154,7 +161,7 @@ export default function EventForm({
           <span>Referees Required</span>
           <input
             type="number"
-            min="0"
+            min="1"
             value={form.referees_required}
             onChange={(e) => onFieldChange("referees_required", e.target.value)}
             required
@@ -177,19 +184,9 @@ export default function EventForm({
                 {value}
               </button>
             ))}
-            <button
-              type="button"
-              className={`events-referee-quick-button ${
-                Number(form.referees_required || 0) === 0 ? "active" : ""
-              }`}
-              onClick={() => onFieldChange("referees_required", "0")}
-              disabled={loading}
-            >
-              Open
-            </button>
           </div>
           <p className="events-referee-quick-hint">
-            Use Open for flexible capacity, or set a fixed limit for signups.
+            Set a fixed referee limit for this event.
           </p>
         </div>
 
@@ -233,6 +230,17 @@ export default function EventForm({
             disabled={loading}
           >
             Cancel Edit
+          </button>
+        )}
+
+        {!initialEvent && onCancel && (
+          <button
+            type="button"
+            className="events-form-cancel"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            Cancel
           </button>
         )}
       </div>

@@ -1,5 +1,6 @@
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 
 class ExpenseRecord(models.Model):
@@ -138,6 +139,62 @@ class MonthlyEarningsSnapshot(models.Model):
             models.CheckConstraint(
                 condition=models.Q(month__gte=1) & models.Q(month__lte=12),
                 name="expenses_monthly_snapshot_month_range",
+            ),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.referee} | {self.game_type} | "
+            f"{self.year}-{str(self.month).zfill(2)} | {self.total_claim_amount}"
+        )
+
+
+class MonthlyPaymentApproval(models.Model):
+    """Tracks admin-confirmed monthly payments for appointed referee earnings."""
+
+    referee = models.ForeignKey(
+        "users.RefereeProfile",
+        on_delete=models.CASCADE,
+        related_name="monthly_payment_approvals",
+    )
+    game_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("DOA", "DOA"),
+            ("NL", "National League"),
+        ],
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveSmallIntegerField()
+    games_count = models.PositiveIntegerField(default=0)
+    total_claim_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+    )
+    confirmed_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="monthly_payments_confirmed",
+    )
+    confirmed_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "expenses_monthly_payment_approval"
+        ordering = ["-year", "-month", "-confirmed_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["referee", "game_type", "year", "month"],
+                name="unique_monthly_payment_approval_per_ref_type",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(month__gte=1) & models.Q(month__lte=12),
+                name="expenses_payment_approval_month_range",
             ),
         ]
 

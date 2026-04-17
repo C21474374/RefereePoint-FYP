@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AppIcon from "../components/AppIcon";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   switchTestingRole,
   updateCurrentUserProfile,
@@ -72,6 +73,7 @@ type ProfileFormState = {
 };
 
 export default function AccountSettings() {
+  const { showToast } = useToast();
   const { user, refreshUser } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
   const [profileForm, setProfileForm] = useState<ProfileFormState>({
@@ -232,19 +234,27 @@ export default function AccountSettings() {
 
   const handleSaveProfileDetails = async () => {
     if (!normalizedDraft.first_name) {
-      setProfileError("First name is required.");
+      const message = "First name is required.";
+      setProfileError(message);
+      showToast(message, "error");
       return;
     }
     if (!normalizedDraft.last_name) {
-      setProfileError("Last name is required.");
+      const message = "Last name is required.";
+      setProfileError(message);
+      showToast(message, "error");
       return;
     }
     if (showOrganizationField && !normalizedDraft.organization_name) {
-      setProfileError(`${organizationLabel} is required.`);
+      const message = `${organizationLabel} is required.`;
+      setProfileError(message);
+      showToast(message, "error");
       return;
     }
     if (showInstitutionHeadPhoneField && !normalizedDraft.institution_head_phone) {
-      setProfileError("Principal/Head contact number is required.");
+      const message = "Principal/Head contact number is required.";
+      setProfileError(message);
+      showToast(message, "error");
       return;
     }
 
@@ -267,10 +277,12 @@ export default function AccountSettings() {
       await refreshUser();
       setIsEditingProfile(false);
       setProfileSuccess("Personal details updated.");
+      showToast("Personal details updated.", "success");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to update personal details.";
       setProfileError(message);
+      showToast(message, "error");
     } finally {
       setProfileSaving(false);
     }
@@ -305,11 +317,13 @@ export default function AccountSettings() {
       const selectedLabel =
         ROLE_OPTIONS.find((option) => option.value === selectedRole)?.label || selectedRole;
       setRoleSuccess(`Switched role to ${selectedLabel} (temporary testing bypass).`);
+      showToast(`Switched role to ${selectedLabel}.`, "success");
       window.dispatchEvent(new Event("refereepoint:data-refresh"));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to switch role.";
       setRoleError(message);
+      showToast(message, "error");
     } finally {
       setSwitchingRole(false);
     }
@@ -401,10 +415,18 @@ export default function AccountSettings() {
             ? "Availability updated and applied immediately."
             : "Availability update saved for the next month.")
       );
+      showToast(
+        response.detail ||
+          (applyNow
+            ? "Availability updated and applied immediately."
+            : "Availability update saved for the next month."),
+        "success"
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to save appointed availability.";
       setAvailabilityError(message);
+      showToast(message, "error");
     } finally {
       setAvailabilitySaving(false);
     }
@@ -415,14 +437,18 @@ export default function AccountSettings() {
     const hasCoordinates = homeLat !== null && homeLon !== null;
 
     if (!trimmedAddress && !hasCoordinates) {
+      const message = "Please provide home location details before saving.";
       setHomeAddressError("Enter a home address/postcode or use current location.");
-      setHomeError("Please provide home location details before saving.");
+      setHomeError(message);
+      showToast(message, "error");
       return;
     }
 
     if (trimmedAddress && trimmedAddress.length < 3) {
+      const message = "Address looks too short.";
       setHomeAddressError("Please enter a more specific address or postcode.");
-      setHomeError("Address looks too short.");
+      setHomeError(message);
+      showToast(message, "error");
       return;
     }
 
@@ -443,8 +469,10 @@ export default function AccountSettings() {
       if (response.geocode_warning) {
         setHomeError(String(response.geocode_warning));
         setHomeMessage("Home address saved.");
+        showToast("Home address saved.", "success");
       } else {
         setHomeMessage("Home location saved.");
+        showToast("Home location saved.", "success");
       }
     } catch (error: any) {
       const detail =
@@ -452,6 +480,7 @@ export default function AccountSettings() {
         error?.message ||
         "Failed to update home location.";
       setHomeError(detail);
+      showToast(String(detail), "error");
       if (String(detail).toLowerCase().includes("address")) {
         setHomeAddressError("Could not find that address/postcode. Try a more specific one.");
       }
@@ -462,7 +491,9 @@ export default function AccountSettings() {
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setHomeError("Geolocation is not supported in this browser.");
+      const message = "Geolocation is not supported in this browser.";
+      setHomeError(message);
+      showToast(message, "error");
       return;
     }
 
@@ -477,10 +508,12 @@ export default function AccountSettings() {
         setHomeLat(position.coords.latitude);
         setHomeLon(position.coords.longitude);
         setHomeMessage("Location captured. Save to apply it.");
+        showToast("Location captured. Save to apply it.", "success");
         setHomeLocating(false);
       },
       () => {
         setHomeError("Could not access your location. Please allow location permission.");
+        showToast("Could not access your location. Please allow location permission.", "error");
         setHomeLocating(false);
       },
       {

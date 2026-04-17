@@ -188,6 +188,10 @@
   color: var(--earnings-money-color);
 }
 
+.earnings-summary-card-pending-total h3 {
+  color: var(--color-accent);
+}
+
 .earnings-items {
   display: flex;
   flex-direction: column;
@@ -270,6 +274,91 @@
   font-size: 0.88rem;
 }
 
+.earnings-admin-section {
+  display: grid;
+  gap: 12px;
+}
+
+.earnings-admin-section-header h2 {
+  margin-bottom: 6px;
+}
+
+.earnings-admin-section-header p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.earnings-admin-section-content {
+  display: grid;
+  gap: 10px;
+}
+
+.earnings-admin-list {
+  display: grid;
+  gap: 10px;
+}
+
+.earnings-admin-card {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-panel);
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.earnings-admin-card-left h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.earnings-admin-card-left p {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}
+
+.earnings-admin-card-right {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.earnings-admin-confirm-btn {
+  border: none;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.earnings-admin-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.earnings-admin-approved-meta {
+  font-size: 0.8rem;
+}
+
+.earnings-admin-section-toggle {
+  justify-self: end;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .earnings-info,
 .earnings-error {
   padding: 12px;
@@ -316,6 +405,15 @@
 
   .earnings-item-top {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .earnings-admin-card {
+    flex-direction: column;
+  }
+
+  .earnings-admin-card-right {
+    width: 100%;
     align-items: flex-start;
   }
 }

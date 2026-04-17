@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import AppIcon from "../components/AppIcon";
 import "./Auth.css";
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -25,8 +27,10 @@ export default function LoginPage() {
       const message = err instanceof Error ? err.message : "Login failed";
       if (message === "No active account found with the given credentials") {
         setError("Invalid email or password");
+        showToast("Invalid email or password", "error");
       } else {
         setError(message);
+        showToast(message, "error");
       }
     } finally {
       setSubmitting(false);

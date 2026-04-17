@@ -4,6 +4,7 @@ import AppIcon, { type AppIconName } from "./AppIcon";
 import {
   canAccessCoverRequestsPage,
   canAccessConfigurePage,
+  canAccessEarningsPage,
   canAccessReportsPage,
   hasRefereeAccess,
 } from "../utils/access";
@@ -66,6 +67,7 @@ export default function DashboardQuickActions() {
   const canApproveCoverRequests = canAccessCoverRequestsPage(user) && !isRefereeUser;
   const canConfigure = canAccessConfigurePage(user);
   const canViewReports = canAccessReportsPage(user);
+  const canViewEarnings = canAccessEarningsPage(user);
   const managerActions = [
     ...managerBaseActions.filter(
       (action) => hasEventManagerScope || action.path !== "/events"
@@ -87,6 +89,16 @@ export default function DashboardQuickActions() {
             path: "/reports",
             icon: "reports" as AppIconName,
             description: "Review reports submitted by referees.",
+          },
+        ]
+      : []),
+    ...(canViewEarnings
+      ? [
+          {
+            name: "Earnings",
+            path: "/earnings",
+            icon: "earnings" as AppIconName,
+            description: "View monthly referee earnings and confirm payments.",
           },
         ]
       : []),

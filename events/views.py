@@ -263,10 +263,7 @@ class JoinEventAPIView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            if (
-                event.referees_required > 0
-                and event.referee_assignments.count() >= event.referees_required
-            ):
+            if event.referee_assignments.count() >= event.referees_required:
                 return Response(
                     {"detail": "This event is already full."},
                     status=status.HTTP_400_BAD_REQUEST,

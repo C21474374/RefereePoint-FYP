@@ -270,7 +270,9 @@ export default function ConfigurePage() {
   const createNewDivision = async () => {
     const name = newDivisionName.trim();
     if (!name) {
-      setError("Division name is required.");
+      const message = "Division name is required.";
+      setError(message);
+      showToast(message, "error");
       return;
     }
     try {
@@ -287,7 +289,9 @@ export default function ConfigurePage() {
       await loadData();
       setSuccess("Division created.");
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to create division."));
+      const message = getErrorMessage(err, "Failed to create division.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionKey(null);
     }
@@ -312,7 +316,9 @@ export default function ConfigurePage() {
   const saveDivisionEdit = async (item: ConfigureDivision) => {
     const nextName = editDivisionName.trim();
     if (!nextName) {
-      setError("Division name is required.");
+      const message = "Division name is required.";
+      setError(message);
+      showToast(message, "error");
       return;
     }
     try {
@@ -327,7 +333,9 @@ export default function ConfigurePage() {
       setSuccess("Division updated.");
       setEditingDivisionId(null);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to update division."));
+      const message = getErrorMessage(err, "Failed to update division.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionKey(null);
     }
@@ -341,7 +349,9 @@ export default function ConfigurePage() {
       await loadData();
       setSuccess(item.is_active ? "Division deactivated." : "Division reactivated.");
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to update division status."));
+      const message = getErrorMessage(err, "Failed to update division status.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionKey(null);
     }
@@ -349,7 +359,9 @@ export default function ConfigurePage() {
 
   const createNewTeam = async () => {
     if (!newTeamClubId || !newTeamDivisionId) {
-      setError("Select a club and division.");
+      const message = "Select a club and division.";
+      setError(message);
+      showToast(message, "error");
       return;
     }
     try {
@@ -364,7 +376,9 @@ export default function ConfigurePage() {
       await loadData();
       setSuccess("Team created.");
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to create team."));
+      const message = getErrorMessage(err, "Failed to create team.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionKey(null);
     }
@@ -386,7 +400,9 @@ export default function ConfigurePage() {
 
   const saveTeamEdit = async (item: ConfigureTeam) => {
     if (!editTeamClubId || !editTeamDivisionId) {
-      setError("Select both club and division before saving.");
+      const message = "Select both club and division before saving.";
+      setError(message);
+      showToast(message, "error");
       return;
     }
     try {
@@ -400,7 +416,9 @@ export default function ConfigurePage() {
       setSuccess("Team updated.");
       setEditingTeamId(null);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to update team."));
+      const message = getErrorMessage(err, "Failed to update team.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionKey(null);
     }
@@ -414,7 +432,9 @@ export default function ConfigurePage() {
       await loadData();
       setSuccess(item.is_active ? "Team deactivated." : "Team reactivated.");
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to update team status."));
+      const message = getErrorMessage(err, "Failed to update team status.");
+      setError(message);
+      showToast(message, "error");
     } finally {
       setActionKey(null);
     }

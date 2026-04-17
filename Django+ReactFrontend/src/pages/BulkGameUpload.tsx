@@ -726,9 +726,9 @@ export default function BulkGameUpload({
           setRefereesByDateTimeKey((prev) => ({ ...prev, [key]: availableReferees }));
         })
         .catch((error) => {
-          setPageError((prev) =>
-            prev || getErrorMessage(error, "Failed to load referee availability.")
-          );
+          const message = getErrorMessage(error, "Failed to load referee availability.");
+          setPageError((prev) => prev || message);
+          showToast(message, "error");
           setRefereesByDateTimeKey((prev) => ({ ...prev, [key]: [] }));
         })
         .finally(() => {
@@ -1078,6 +1078,7 @@ export default function BulkGameUpload({
           ? `${validationPreview} | +${validationFailures.length - 3} more error(s).`
           : validationPreview
       );
+      showToast("Some rows contain validation errors. Check row messages.", "error");
       return;
     }
 

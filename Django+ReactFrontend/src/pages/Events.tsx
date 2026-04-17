@@ -18,12 +18,20 @@ import {
 } from "../services/events";
 import "./Events.css";
 
-type EventSectionKey = "manageEvents" | "myEvents" | "openEvents" | "fullEvents";
+type EventSectionKey =
+  | "manageEvents"
+  | "pastEvents"
+  | "myEvents"
+  | "openEvents"
+  | "fullEvents";
 
 export default function Events() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const isRefereeUser = Boolean(user?.referee_profile);
+  const isClubSchoolCollegeUploader =
+    !isRefereeUser &&
+    ["CLUB", "SCHOOL", "COLLEGE"].includes(String(user?.account_type || "").toUpperCase());
 
   const [events, setEvents] = useState<EventItem[]>([]);
   const [venues, setVenues] = useState<EventVenueOption[]>([]);
@@ -33,13 +41,13 @@ export default function Events() {
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
   const [editing, setEditing] = useState(false);
   const [pendingDeleteEventId, setPendingDeleteEventId] = useState<number | null>(null);
-  const [myEventsOnly, setMyEventsOnly] = useState(false);
-  const [selectedVenue, setSelectedVenue] = useState<string>("ALL");
-  const [selectedDate, setSelectedDate] = useState("");
+  const [manageMonthFilter, setManageMonthFilter] = useState("ALL");
+  const [pastMonthFilter, setPastMonthFilter] = useState("ALL");
   const [expandedSections, setExpandedSections] = useState<
     Record<EventSectionKey, boolean>
   >({
     manageEvents: false,
+    pastEvents: false,
     myEvents: false,
     openEvents: false,
     fullEvents: false,
@@ -58,7 +66,7 @@ export default function Events() {
       setError("");
 
       const [eventsData, venueData] = await Promise.all([
-        getUpcomingEvents(),
+        getUpcomingEvents(isRefereeUser),
         getEventVenueOptions(),
       ]);
 
@@ -70,7 +78,7 @@ export default function Events() {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [isRefereeUser, showToast]);
 
   useEffect(() => {
     loadPageData();
@@ -93,6 +101,7 @@ export default function Events() {
       setError("");
       await joinEvent(eventId);
       await loadPageData();
+      showToast("Joined event successfully.", "success");
     } catch (err) {
       setError("Failed to join event.");
       showToast("Failed to join event.", "error");
@@ -107,6 +116,7 @@ export default function Events() {
       setError("");
       await leaveEvent(eventId);
       await loadPageData();
+      showToast("Left event successfully.", "success");
     } catch (err) {
       setError("Failed to leave event.");
       showToast("Failed to leave event.", "error");
@@ -155,6 +165,7 @@ export default function Events() {
       await updateEvent(editingEvent.id, payload);
       setEditingEvent(null);
       await loadPageData();
+      showToast("Event updated.", "success");
     } catch (err) {
       setError("Failed to update event.");
       showToast("Failed to update event.", "error");
@@ -163,64 +174,98 @@ export default function Events() {
     }
   };
 
-  const filteredEvents = useMemo(
-    () =>
-      events.filter((event) => {
-        if (myEventsOnly && !event.current_user_joined) {
-          return false;
-        }
-
-        if (selectedVenue !== "ALL" && String(event.venue) !== selectedVenue) {
-          return false;
-        }
-
-        if (selectedDate) {
-          if (selectedDate < event.start_date || selectedDate > event.end_date) {
-            return false;
-          }
-        }
-
-        return true;
-      }),
-    [events, myEventsOnly, selectedVenue, selectedDate]
-  );
+  const todayDateKey = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
 
   const manageableEvents = useMemo(
-    () => filteredEvents.filter((event) => event.can_manage),
-    [filteredEvents]
+    () => events.filter((event) => event.can_manage && event.end_date >= todayDateKey),
+    [events, todayDateKey]
+  );
+  const pastManageableEvents = useMemo(
+    () => events.filter((event) => event.can_manage && event.end_date < todayDateKey),
+    [events, todayDateKey]
   );
 
   const myEvents = useMemo(
-    () => filteredEvents.filter((event) => event.current_user_joined),
-    [filteredEvents]
+    () => events.filter((event) => event.current_user_joined),
+    [events]
   );
 
   const openEvents = useMemo(
     () =>
-      filteredEvents.filter(
-        (event) => !event.current_user_joined && (event.slots_left === null || event.slots_left > 0)
+      events.filter(
+        (event) => !event.current_user_joined && (event.slots_left ?? 0) > 0
       ),
-    [filteredEvents]
+    [events]
   );
 
   const fullEvents = useMemo(
     () =>
-      filteredEvents.filter(
-        (event) => !event.current_user_joined && event.slots_left !== null && event.slots_left <= 0
+      events.filter(
+        (event) => !event.current_user_joined && (event.slots_left ?? 0) <= 0
       ),
-    [filteredEvents]
+    [events]
+  );
+  const manageMonthOptions = useMemo(() => {
+    const uniqueMonths = Array.from(
+      new Set(
+        manageableEvents
+          .map((event) => event.start_date?.slice(0, 7))
+          .filter((month): month is string => Boolean(month))
+      )
+    );
+    return uniqueMonths.sort((a, b) => b.localeCompare(a));
+  }, [manageableEvents]);
+  const pastMonthOptions = useMemo(() => {
+    const uniqueMonths = Array.from(
+      new Set(
+        pastManageableEvents
+          .map((event) => event.start_date?.slice(0, 7))
+          .filter((month): month is string => Boolean(month))
+      )
+    );
+    return uniqueMonths.sort((a, b) => b.localeCompare(a));
+  }, [pastManageableEvents]);
+  useEffect(() => {
+    if (manageMonthFilter === "ALL") {
+      return;
+    }
+    if (!manageMonthOptions.includes(manageMonthFilter)) {
+      setManageMonthFilter("ALL");
+    }
+  }, [manageMonthFilter, manageMonthOptions]);
+  useEffect(() => {
+    if (pastMonthFilter === "ALL") {
+      return;
+    }
+    if (!pastMonthOptions.includes(pastMonthFilter)) {
+      setPastMonthFilter("ALL");
+    }
+  }, [pastMonthFilter, pastMonthOptions]);
+  const displayedManageEvents = useMemo(
+    () =>
+      manageMonthFilter === "ALL"
+        ? manageableEvents
+        : manageableEvents.filter((event) => event.start_date?.startsWith(manageMonthFilter)),
+    [manageMonthFilter, manageableEvents]
+  );
+  const displayedPastEvents = useMemo(
+    () =>
+      pastMonthFilter === "ALL"
+        ? pastManageableEvents
+        : pastManageableEvents.filter((event) => event.start_date?.startsWith(pastMonthFilter)),
+    [pastManageableEvents, pastMonthFilter]
   );
 
-  const clearFilters = () => {
-    setMyEventsOnly(false);
-    setSelectedVenue("ALL");
-    setSelectedDate("");
-  };
-
-  const hasActiveFilters = myEventsOnly || selectedVenue !== "ALL" || selectedDate !== "";
-
   return (
-    <div className="events-page">
+    <div
+      className={`events-page ${isClubSchoolCollegeUploader ? "events-page-org-uploader" : ""}`}
+    >
       <div className="events-page-header">
         <h1 className="page-title-with-icon">
           <AppIcon name="events" className="page-title-icon" />
@@ -232,52 +277,6 @@ export default function Events() {
             : "Upload and manage tournament events created by your organisation."}
         </p>
       </div>
-
-      {!loading && (
-        <div className="events-filters">
-          {isRefereeUser && (
-            <label className="events-filter-toggle">
-              <input
-                type="checkbox"
-                checked={myEventsOnly}
-                onChange={(e) => setMyEventsOnly(e.target.checked)}
-              />
-              <span>My events only</span>
-            </label>
-          )}
-
-          <select
-            className="events-filter-select"
-            value={selectedVenue}
-            onChange={(e) => setSelectedVenue(e.target.value)}
-          >
-            <option value="ALL">All Venues</option>
-            {venues.map((venue) => (
-              <option key={venue.id} value={String(venue.id)}>
-                {venue.name}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="date"
-            className="events-filter-date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          />
-
-          <button
-            className="events-filter-clear"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-          >
-            <span className="button-with-icon">
-              <AppIcon name="filter" />
-              <span>Clear Filters</span>
-            </span>
-          </button>
-        </div>
-      )}
 
       {loading && <p className="events-page-message">Loading events...</p>}
       {error && <p className="events-page-error">{error}</p>}
@@ -299,13 +298,35 @@ export default function Events() {
 
             {expandedSections.manageEvents && (
               <div className="events-section-content">
-                {manageableEvents.length === 0 ? (
+                {!isRefereeUser && (
+                  <div className="events-manage-toolbar">
+                    <label>
+                      <span className="inline-icon-label">
+                        <AppIcon name="calendar" />
+                        <span>Month</span>
+                      </span>
+                      <select
+                        value={manageMonthFilter}
+                        onChange={(event) => setManageMonthFilter(event.target.value)}
+                      >
+                        <option value="ALL">All Months</option>
+                        {manageMonthOptions.map((month) => (
+                          <option key={month} value={month}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+
+                {displayedManageEvents.length === 0 ? (
                   <div className="events-empty">
-                    <p>You have no events to manage yet.</p>
+                    <p>You have no events to manage for this month.</p>
                   </div>
                 ) : (
                   <div className="events-grid">
-                    {manageableEvents.map((event) => (
+                    {displayedManageEvents.map((event) => (
                       <EventCard
                         key={event.id}
                         event={event}
@@ -336,6 +357,81 @@ export default function Events() {
               </span>
             </button>
           </section>
+
+          {!isRefereeUser && (
+            <section
+              className={`events-section ${
+                expandedSections.pastEvents ? "expanded" : "collapsed"
+              }`}
+            >
+              <div className="events-section-header">
+                <h2 className="section-title-with-icon">
+                  <AppIcon name="calendar" className="section-title-icon" />
+                  <span>Past Events</span>
+                </h2>
+                <p>Previous events your account uploaded.</p>
+              </div>
+
+              {expandedSections.pastEvents && (
+                <div className="events-section-content">
+                  <div className="events-manage-toolbar">
+                    <label>
+                      <span className="inline-icon-label">
+                        <AppIcon name="calendar" />
+                        <span>Month</span>
+                      </span>
+                      <select
+                        value={pastMonthFilter}
+                        onChange={(event) => setPastMonthFilter(event.target.value)}
+                      >
+                        <option value="ALL">All Months</option>
+                        {pastMonthOptions.map((month) => (
+                          <option key={month} value={month}>
+                            {month}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {displayedPastEvents.length === 0 ? (
+                    <div className="events-empty">
+                      <p>No past events for this month.</p>
+                    </div>
+                  ) : (
+                    <div className="events-grid">
+                      {displayedPastEvents.map((event) => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          actionLoadingId={actionLoadingId}
+                          onEdit={handleEditEvent}
+                          onDelete={handleDeleteEvent}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="events-section-toggle"
+                onClick={() => toggleSection("pastEvents")}
+                aria-expanded={expandedSections.pastEvents}
+                aria-label={expandedSections.pastEvents ? "Collapse section" : "Expand section"}
+                title={expandedSections.pastEvents ? "Collapse section" : "Expand section"}
+              >
+                <span className="inline-icon-label">
+                  <AppIcon
+                    name={expandedSections.pastEvents ? "filter" : "plus"}
+                    className="events-section-toggle-icon"
+                  />
+                  <span>{expandedSections.pastEvents ? "Collapse" : "Expand"}</span>
+                </span>
+              </button>
+            </section>
+          )}
 
           {isRefereeUser && (
             <>

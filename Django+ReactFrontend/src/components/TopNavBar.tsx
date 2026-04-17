@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useToast } from "../context/ToastContext";
 import {
   getNotifications,
   markAllNotificationsRead,
@@ -14,6 +15,7 @@ import UploadEventPanel from "./UploadEventPanel";
 import {
   canAccessCoverRequestsPage,
   canAccessConfigurePage,
+  canAccessEarningsPage,
   canAccessReportsPage,
   hasRefereeAccess,
 } from "../utils/access";
@@ -83,6 +85,7 @@ const TopNavBar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
 
   const [isMobileNav, setIsMobileNav] = useState(detectMobileNav);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -115,11 +118,12 @@ const TopNavBar: React.FC = () => {
       const message =
         error instanceof Error ? error.message : "Failed to load notifications.";
       setNotificationsError(message);
+      showToast(message, "error");
       return null;
     } finally {
       setNotificationsLoading(false);
     }
-  }, [user]);
+  }, [showToast, user]);
 
   const markAllAsReadIfNeeded = useCallback(async (unreadOverride?: number) => {
     const unreadCount = unreadOverride ?? notificationUnreadCount;
@@ -135,8 +139,9 @@ const TopNavBar: React.FC = () => {
       );
     } catch {
       // Keep UI responsive even if marking read fails.
+      showToast("Failed to mark notifications as read.", "error");
     }
-  }, [notificationUnreadCount]);
+  }, [notificationUnreadCount, showToast]);
 
   const closeUploadModal = () => {
     setActiveUploadModal(null);
@@ -225,6 +230,7 @@ const TopNavBar: React.FC = () => {
       setNotificationUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
     } catch {
       // Ignore read-update failure to avoid blocking navigation.
+      showToast("Failed to mark notification as read.", "error");
     }
   };
 
@@ -342,6 +348,7 @@ const TopNavBar: React.FC = () => {
   const canApproveCoverRequests = canAccessCoverRequestsPage(user) && !isRefereeUser;
   const canConfigure = canAccessConfigurePage(user);
   const canViewReports = canAccessReportsPage(user);
+  const canViewEarnings = canAccessEarningsPage(user);
   const managerNavLinks: NavLinkItem[] = [
     ...managerBaseNavLinks.filter((link) => hasEventManagerScope || link.path !== "/events"),
     ...(canApproveCoverRequests
@@ -362,6 +369,15 @@ const TopNavBar: React.FC = () => {
             name: "Reports",
             path: "/reports",
             icon: "reports" as AppIconName,
+          },
+        ] as NavLinkItem[])
+      : []),
+    ...(canViewEarnings
+      ? ([
+          {
+            name: "Earnings",
+            path: "/earnings",
+            icon: "earnings" as AppIconName,
           },
         ] as NavLinkItem[])
       : []),
@@ -545,7 +561,7 @@ const TopNavBar: React.FC = () => {
                     <div className="notifications-menu-actions">
                       <button
                         type="button"
-                        className="notifications-menu-refresh"
+                        className="notifications-menu-refresh notifications-menu-mark-all"
                         onClick={handleMarkAllNotificationsRead}
                         disabled={notificationUnreadCount === 0 || notificationsLoading}
                       >
@@ -785,17 +801,18 @@ const TopNavBar: React.FC = () => {
           <div className="upload-modal" onClick={(event) => event.stopPropagation()}>
             <div className="upload-modal-header">
               <h2>{uploadModalTitle}</h2>
-              <button
-                type="button"
-                className="upload-modal-close"
-                onClick={closeUploadModal}
-              >
-                Close
-              </button>
             </div>
             <div className="upload-modal-body">
-              {activeUploadModal === "game" && <UploadGamePanel embedded onPosted={handleUploaded} />}
-              {activeUploadModal === "event" && <UploadEventPanel onUploaded={handleUploaded} />}
+              {activeUploadModal === "game" && (
+                <UploadGamePanel
+                  embedded
+                  onPosted={handleUploaded}
+                  onCancel={closeUploadModal}
+                />
+              )}
+              {activeUploadModal === "event" && (
+                <UploadEventPanel onUploaded={handleUploaded} onCancel={closeUploadModal} />
+              )}
             </div>
           </div>
         </div>

@@ -44,8 +44,10 @@ export type EventPayload = {
   referees_required: number;
 };
 
-export const getUpcomingEvents = async () => {
-  const response = await axiosInstance.get<EventItem[]>("/events/?upcoming=true");
+export const getUpcomingEvents = async (upcoming = true) => {
+  const response = await axiosInstance.get<EventItem[]>(
+    `/events/?upcoming=${upcoming ? "true" : "false"}`
+  );
   return response.data;
 };
 

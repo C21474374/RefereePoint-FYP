@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
+import { useToast } from "../context/ToastContext";
 
 import 'leaflet/dist/leaflet.css';
 
@@ -134,6 +135,7 @@ const styles = {
 };
 
 export default function VenueMap() {
+  const { showToast } = useToast();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [radiusKm, setRadiusKm] = useState(10);
@@ -162,10 +164,13 @@ export default function VenueMap() {
               ? err.message
               : 'Could not get your location';
           setError(locationMessage);
+          showToast(locationMessage, "error");
         }
       );
     } else {
-      setError('Geolocation not supported');
+      const message = 'Geolocation not supported';
+      setError(message);
+      showToast(message, "error");
     }
   };
 
@@ -180,7 +185,9 @@ export default function VenueMap() {
       setVenues(data);
       setMode('all');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error fetching venues');
+      const message = err instanceof Error ? err.message : 'Error fetching venues';
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -189,7 +196,9 @@ export default function VenueMap() {
   // Fetch nearby venues
   const fetchNearbyVenues = async () => {
     if (!userLocation) {
-      setError('Get your location first');
+      const message = 'Get your location first';
+      setError(message);
+      showToast(message, "error");
       return;
     }
     setLoading(true);
@@ -203,7 +212,9 @@ export default function VenueMap() {
       setVenues(data);
       setMode('nearby');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error fetching nearby venues');
+      const message = err instanceof Error ? err.message : 'Error fetching nearby venues';
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -212,7 +223,9 @@ export default function VenueMap() {
   // Search venues by name
   const searchVenues = async () => {
     if (!searchName.trim()) {
-      setError('Enter a search term');
+      const message = 'Enter a search term';
+      setError(message);
+      showToast(message, "error");
       return;
     }
     setLoading(true);
@@ -224,7 +237,9 @@ export default function VenueMap() {
       setVenues(data);
       setMode('search');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error searching venues');
+      const message = err instanceof Error ? err.message : 'Error searching venues';
+      setError(message);
+      showToast(message, "error");
     } finally {
       setLoading(false);
     }

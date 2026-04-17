@@ -254,7 +254,9 @@ export default function Reports() {
 
       setReportableGames([]);
       setReports([]);
-      setError("You do not have permission to view reports.");
+      const message = "You do not have permission to view reports.";
+      setError(message);
+      showToast(message, "error");
     } catch (err) {
       const message = getErrorMessage(err, "Failed to load reports.");
       setError(message);
@@ -303,7 +305,9 @@ export default function Reports() {
     setSuccess("");
 
     if (!formState.incident_details.trim() || !formState.action_taken.trim()) {
-      setSubmitError("Incident details and action taken are required.");
+      const message = "Incident details and action taken are required.";
+      setSubmitError(message);
+      showToast(message, "error");
       return;
     }
 

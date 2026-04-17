@@ -38,7 +38,8 @@ export default function EventCard({
   onDelete,
 }: EventCardProps) {
   const isLoading = actionLoadingId === event.id;
-  const isFull = event.slots_left !== null && event.slots_left <= 0;
+  const slotsLeft = event.slots_left ?? 0;
+  const isFull = slotsLeft <= 0;
   const canJoin = !event.current_user_joined && !isFull;
   const canRunPrimaryAction =
     (event.current_user_joined && Boolean(onLeave)) ||
@@ -74,10 +75,10 @@ export default function EventCard({
           {event.joined_referees_count} joined
         </span>
         <span className="event-pill">
-          {event.referees_required > 0 ? `${event.referees_required} required` : "Flexible slots"}
+          {event.referees_required} required
         </span>
         <span className="event-pill">
-          {event.slots_left === null ? "Slots open" : `${event.slots_left} slots left`}
+          {slotsLeft} slots left
         </span>
       </div>
 

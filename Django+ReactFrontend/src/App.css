@@ -281,6 +281,7 @@ body :is(
 .notifications-menu-header h3 {
   margin: 0;
   font-size: 0.95rem;
+  color: var(--color-accent);
 }
 
 .notifications-menu-actions {
@@ -306,6 +307,16 @@ body :is(
 .notifications-menu-refresh:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.notifications-menu-mark-all {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.notifications-menu-mark-all:hover:not(:disabled) {
+  filter: brightness(1.05);
 }
 
 .notifications-menu-state {
@@ -347,6 +358,7 @@ body :is(
 
 .notifications-menu-item:hover {
   background: var(--color-bg-panel);
+  color: var(--color-text);
 }
 
 .notifications-menu-item.is-unread {
@@ -680,6 +692,7 @@ body :is(
 .upload-modal-header h2 {
   margin: 0;
   font-size: 1.2rem;
+  color: var(--color-accent);
 }
 
 .upload-modal-close {
@@ -698,6 +711,10 @@ body :is(
 .upload-modal-body {
   padding: 14px;
   overflow-y: auto;
+}
+
+.upload-modal-body .upload-section h2 {
+  color: var(--color-accent);
 }
 
 .upload-modal-panel .events-form {
@@ -891,11 +908,16 @@ body :is(
   margin-bottom: 10px;
 }
 
-.upload-event-type-label {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.upload-event-type-heading {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.upload-event-type-heading-value {
+  color: var(--color-text);
+  margin-left: 8px;
 }
 
 .upload-event-type-grid {
@@ -920,28 +942,6 @@ body :is(
 
 .upload-event-type-card:hover:not(:disabled) {
   border-color: var(--color-border-hover);
-}
-
-.upload-event-type-readonly {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-bg-panel);
-  padding: 8px 10px;
-  margin-bottom: 10px;
-}
-
-.upload-event-type-readonly span {
-  color: var(--color-text-muted);
-  font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.upload-event-type-readonly strong {
-  font-size: 0.9rem;
 }
 
 .upload-event-type-hint {

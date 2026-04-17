@@ -19,11 +19,13 @@ type TeamOption = {
 type UploadGamePanelProps = {
   embedded?: boolean;
   onPosted?: () => void;
+  onCancel?: () => void;
 };
 
 export default function UploadGamePanel({
   embedded = false,
   onPosted,
+  onCancel,
 }: UploadGamePanelProps) {
   const { showToast } = useToast();
   const { user } = useAuth();
@@ -126,6 +128,7 @@ export default function UploadGamePanel({
       canUploadGames={Boolean(user?.uploads_approved)}
       embedded={embedded}
       onPosted={onPosted}
+      onCancel={onCancel}
     />
   );
 }

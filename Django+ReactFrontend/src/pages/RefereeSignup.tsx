@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppIcon from "../components/AppIcon";
+import { useToast } from "../context/ToastContext";
 import "./Auth.css";
 
 type TeamOption = {
@@ -150,6 +151,7 @@ function buildTimeOptions(windowStart: string, windowEnd: string) {
 }
 
 export default function RefereeSignup() {
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const [form, setForm] = useState<FormState>(initialForm);
@@ -194,7 +196,9 @@ export default function RefereeSignup() {
         const data = await response.json();
         setClubs(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load clubs.");
+        const message = err instanceof Error ? err.message : "Failed to load clubs.";
+        setError(message);
+        showToast(message, "error");
       } finally {
         setLoadingClubs(false);
       }
@@ -214,7 +218,9 @@ export default function RefereeSignup() {
         const data = await response.json();
         setTeams(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load teams.");
+        const message = err instanceof Error ? err.message : "Failed to load teams.";
+        setError(message);
+        showToast(message, "error");
       } finally {
         setLoadingTeams(false);
       }
@@ -340,13 +346,17 @@ export default function RefereeSignup() {
     setSuccess("");
 
     if (isSchoolOrCollege && !form.verification_id_photo) {
-      setError("School/College registration requires a photo ID upload.");
+      const message = "School/College registration requires a photo ID upload.";
+      setError(message);
+      showToast(message, "error");
       setSubmitting(false);
       return;
     }
 
     if (isReferee && form.is_team_manager && !form.managed_team) {
-      setError("Please select your managed team.");
+      const message = "Please select your managed team.";
+      setError(message);
+      showToast(message, "error");
       setSubmitting(false);
       return;
     }
@@ -358,7 +368,9 @@ export default function RefereeSignup() {
           timeToMinutes(item.end_time) <= timeToMinutes(item.start_time)
       );
       if (invalidDay) {
-        setError(`End time must be after start time for ${invalidDay.day_label}.`);
+        const message = `End time must be after start time for ${invalidDay.day_label}.`;
+        setError(message);
+        showToast(message, "error");
         setSubmitting(false);
         return;
       }
@@ -425,11 +437,17 @@ export default function RefereeSignup() {
       setSuccess(
         "Account created successfully. Verification and approval are required before upload permissions are activated."
       );
+      showToast(
+        "Account created successfully. Verification and approval are required before upload permissions are activated.",
+        "success"
+      );
       setForm(initialForm);
       setAppointedAvailability(APPOINTED_AVAILABILITY_TEMPLATE.map((item) => ({ ...item })));
       setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed.");
+      const message = err instanceof Error ? err.message : "Registration failed.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setSubmitting(false);
     }

@@ -10,10 +10,11 @@ from rest_framework.views import APIView
 from django.utils import timezone
 
 from games.models import Game, RefereeAssignment
+from users.access import has_admin_approval_scope
 from users.geocoding import geocode_address
 from users.models import RefereeProfile
 
-from .models import ExpenseRecord, MonthlyEarningsSnapshot
+from .models import ExpenseRecord, MonthlyEarningsSnapshot, MonthlyPaymentApproval
 
 
 def _haversine_km(lat1, lon1, lat2, lon2):
@@ -25,6 +26,232 @@ def _haversine_km(lat1, lon1, lat2, lon2):
     a = sin(dlat / 2) ** 2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2) ** 2
     c = 2 * atan2(sqrt(a), sqrt(1 - a))
     return earth_radius_km * c
+
+
+def _parse_year_month(request):
+    today = timezone.localdate()
+    try:
+        year = int(request.query_params.get("year", today.year))
+        month = int(request.query_params.get("month", today.month))
+    except (TypeError, ValueError):
+        return None, None, Response(
+            {"detail": "year and month must be valid numbers."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if month < 1 or month > 12:
+        return None, None, Response(
+            {"detail": "month must be between 1 and 12."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return year, month, None
+
+
+def _resolve_admin_game_type(request):
+    requested_game_type = str(request.query_params.get("game_type", "")).upper()
+    if not requested_game_type:
+        requested_game_type = str(request.data.get("game_type", "")).upper()
+
+    if requested_game_type and requested_game_type not in {Game.GameType.DOA, Game.GameType.NL}:
+        return None, None, Response(
+            {"detail": "game_type must be one of: DOA, NL."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if request.user.is_staff:
+        selected = requested_game_type or Game.GameType.DOA
+        return selected, [Game.GameType.DOA, Game.GameType.NL], None
+
+    if not has_admin_approval_scope(request.user):
+        return None, None, Response(
+            {"detail": "Only approved DOA/NL admins can access admin earnings."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    account_type = str(request.user.account_type or "").upper()
+    if account_type not in {Game.GameType.DOA, Game.GameType.NL}:
+        return None, None, Response(
+            {"detail": "Only DOA or NL account types can access admin earnings."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    allowed_game_types = [account_type]
+
+    if requested_game_type:
+        if requested_game_type != account_type:
+            return None, None, Response(
+                {"detail": "You can only view earnings for your admin role type."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+    selected = account_type
+
+    return selected, allowed_game_types, None
+
+
+def _resolve_home_coordinates(user):
+    home_lat = user.home_lat
+    home_lon = user.home_lon
+
+    if (home_lat is None or home_lon is None) and user.home_address:
+        geocoded_home = geocode_address(user.home_address)
+        if geocoded_home:
+            home_lat, home_lon = geocoded_home
+            user.home_lat = home_lat
+            user.home_lon = home_lon
+            user.save(update_fields=["home_lat", "home_lon"])
+
+    return home_lat, home_lon
+
+
+def _resolve_venue_coordinates(venue, geocoded_venues):
+    if venue is None:
+        return None, None
+
+    venue_lat = venue.lat
+    venue_lon = venue.lon
+
+    if (venue_lat is None or venue_lon is None) and venue.address:
+        cached = geocoded_venues.get(venue.id)
+        if cached is None:
+            query = f"{venue.name} {venue.address}".strip()
+            cached = geocode_address(query)
+            geocoded_venues[venue.id] = cached
+        if cached:
+            venue_lat, venue_lon = cached
+            venue.lat = venue_lat
+            venue.lon = venue_lon
+            venue.save(update_fields=["lat", "lon"])
+
+    return venue_lat, venue_lon
+
+
+def _quantized_decimal(value):
+    return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _calculate_referee_month_totals(referee_profile, game_type, year, month):
+    """Calculate monthly totals for one referee and appointed game type."""
+    today = timezone.localdate()
+    requested_month_has_elapsed = (year, month) < (today.year, today.month)
+    snapshot = MonthlyEarningsSnapshot.objects.filter(
+        referee=referee_profile,
+        game_type=game_type,
+        year=year,
+        month=month,
+    ).first()
+
+    if snapshot and requested_month_has_elapsed:
+        return {
+            "games_count": snapshot.games_count,
+            "total_claim_amount": _quantized_decimal(snapshot.total_claim_amount),
+            "is_finalized": True,
+        }
+
+    start_date = date(year, month, 1)
+    end_date = date(year, month, calendar.monthrange(year, month)[1])
+
+    assignments = (
+        RefereeAssignment.objects.select_related("game", "game__venue")
+        .filter(
+            referee=referee_profile,
+            game__game_type=game_type,
+            game__payment_type=Game.PaymentType.CLAIM,
+            game__date__range=(start_date, end_date),
+        )
+        .order_by("game__date", "game__time", "id")
+    )
+
+    if not assignments.exists():
+        return {
+            "games_count": 0,
+            "total_claim_amount": Decimal("0.00"),
+            "is_finalized": False,
+        }
+
+    base_fee = Decimal("25.00")
+    rate_per_km = Decimal("0.31")
+    home_lat, home_lon = _resolve_home_coordinates(referee_profile.user)
+    geocoded_venues = {}
+
+    previous_date = None
+    previous_venue_id = None
+    games_count = 0
+    total_claim_amount = Decimal("0.00")
+
+    for assignment in assignments:
+        game = assignment.game
+        games_count += 1
+        travel_amount = Decimal("0.00")
+
+        is_back_to_back_same_venue = (
+            previous_date == game.date
+            and previous_venue_id == game.venue_id
+            and game.venue_id is not None
+        )
+
+        if not is_back_to_back_same_venue:
+            if (
+                assignment.travel_mode == RefereeAssignment.TravelMode.PUBLIC_TRANSPORT
+                and assignment.public_transport_fare is not None
+            ):
+                travel_amount = _quantized_decimal(assignment.public_transport_fare)
+            else:
+                venue_lat, venue_lon = _resolve_venue_coordinates(game.venue, geocoded_venues)
+                if (
+                    home_lat is not None
+                    and home_lon is not None
+                    and venue_lat is not None
+                    and venue_lon is not None
+                ):
+                    raw_distance = _haversine_km(home_lat, home_lon, venue_lat, venue_lon)
+                    mileage_km = _quantized_decimal(str(raw_distance))
+                    travel_amount = _quantized_decimal(mileage_km * rate_per_km)
+
+        total_claim_amount += _quantized_decimal(base_fee + travel_amount)
+        previous_date = game.date
+        previous_venue_id = game.venue_id
+
+    return {
+        "games_count": games_count,
+        "total_claim_amount": _quantized_decimal(total_claim_amount),
+        "is_finalized": False,
+    }
+
+
+def _build_available_months(game_type, year, month):
+    month_keys = {(year, month)}
+
+    assignment_dates = RefereeAssignment.objects.filter(
+        game__game_type=game_type,
+        game__payment_type=Game.PaymentType.CLAIM,
+    ).values_list("game__date", flat=True)
+    for game_date in assignment_dates:
+        month_keys.add((game_date.year, game_date.month))
+
+    snapshots = MonthlyEarningsSnapshot.objects.filter(game_type=game_type).values_list(
+        "year",
+        "month",
+    )
+    for snapshot_year, snapshot_month in snapshots:
+        month_keys.add((snapshot_year, snapshot_month))
+
+    approvals = MonthlyPaymentApproval.objects.filter(game_type=game_type).values_list(
+        "year",
+        "month",
+    )
+    for approval_year, approval_month in approvals:
+        month_keys.add((approval_year, approval_month))
+
+    return [
+        {
+            "year": month_year,
+            "month": month_number,
+            "value": f"{month_year}-{str(month_number).zfill(2)}",
+            "label": f"{calendar.month_abbr[month_number]} {month_year}",
+        }
+        for month_year, month_number in sorted(month_keys, reverse=True)
+    ]
 
 
 class RefereeEarningsAPIView(APIView):
@@ -374,3 +601,170 @@ class RefereeEarningsAPIView(APIView):
         }
 
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class AdminMonthlyEarningsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        game_type, allowed_game_types, error_response = _resolve_admin_game_type(request)
+        if error_response:
+            return error_response
+
+        year, month, month_error_response = _parse_year_month(request)
+        if month_error_response:
+            return month_error_response
+
+        confirmations = (
+            MonthlyPaymentApproval.objects.select_related("referee", "referee__user", "confirmed_by")
+            .filter(game_type=game_type, year=year, month=month)
+            .order_by("referee__user__first_name", "referee__user__last_name", "referee__id")
+        )
+        confirmations_by_referee_id = {item.referee_id: item for item in confirmations}
+
+        pending_payments = []
+        approved_payments = []
+
+        referees = RefereeProfile.objects.select_related("user").all().order_by(
+            "user__first_name",
+            "user__last_name",
+            "id",
+        )
+
+        for referee in referees:
+            totals = _calculate_referee_month_totals(referee, game_type, year, month)
+            confirmation = confirmations_by_referee_id.get(referee.id)
+            referee_name = referee.user.get_full_name().strip() or referee.user.email
+
+            if confirmation:
+                approved_payments.append(
+                    {
+                        "payment_id": confirmation.id,
+                        "referee_id": referee.id,
+                        "referee_name": referee_name,
+                        "referee_email": referee.user.email,
+                        "referee_phone": referee.user.phone_number,
+                        "games_count": confirmation.games_count,
+                        "total_claim_amount": str(
+                            _quantized_decimal(confirmation.total_claim_amount)
+                        ),
+                        "confirmed_at": confirmation.confirmed_at,
+                        "confirmed_by_name": (
+                            confirmation.confirmed_by.get_full_name().strip()
+                            if confirmation.confirmed_by
+                            else None
+                        ),
+                    }
+                )
+                continue
+
+            if totals["games_count"] <= 0:
+                continue
+
+            pending_payments.append(
+                {
+                    "referee_id": referee.id,
+                    "referee_name": referee_name,
+                    "referee_email": referee.user.email,
+                    "referee_phone": referee.user.phone_number,
+                    "games_count": totals["games_count"],
+                    "total_claim_amount": str(_quantized_decimal(totals["total_claim_amount"])),
+                    "is_finalized": totals["is_finalized"],
+                }
+            )
+
+        game_type_display = "National League" if game_type == Game.GameType.NL else "DOA"
+        available_months = _build_available_months(game_type, year, month)
+        selected_value = f"{year}-{str(month).zfill(2)}"
+
+        return Response(
+            {
+                "game_type": game_type,
+                "game_type_display": game_type_display,
+                "allowed_game_types": allowed_game_types,
+                "selected_month": {
+                    "year": year,
+                    "month": month,
+                    "value": selected_value,
+                    "label": f"{calendar.month_name[month]} {year}",
+                },
+                "available_months": available_months,
+                "pending_payments": pending_payments,
+                "approved_payments": approved_payments,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ConfirmAdminMonthlyPaymentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        game_type, _, error_response = _resolve_admin_game_type(request)
+        if error_response:
+            return error_response
+
+        try:
+            referee_id = int(request.data.get("referee_id"))
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "referee_id must be a valid number."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            year = int(request.data.get("year"))
+            month = int(request.data.get("month"))
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "year and month must be valid numbers."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if month < 1 or month > 12:
+            return Response(
+                {"detail": "month must be between 1 and 12."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        referee = RefereeProfile.objects.select_related("user").filter(pk=referee_id).first()
+        if not referee:
+            return Response(
+                {"detail": "Referee not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        totals = _calculate_referee_month_totals(referee, game_type, year, month)
+        if totals["games_count"] <= 0:
+            return Response(
+                {"detail": "No monthly earnings found for this referee."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        approval, _ = MonthlyPaymentApproval.objects.update_or_create(
+            referee=referee,
+            game_type=game_type,
+            year=year,
+            month=month,
+            defaults={
+                "games_count": totals["games_count"],
+                "total_claim_amount": _quantized_decimal(totals["total_claim_amount"]),
+                "confirmed_by": request.user,
+                "confirmed_at": timezone.now(),
+            },
+        )
+
+        return Response(
+            {
+                "payment_id": approval.id,
+                "referee_id": referee.id,
+                "referee_name": referee.user.get_full_name().strip() or referee.user.email,
+                "year": year,
+                "month": month,
+                "game_type": game_type,
+                "games_count": approval.games_count,
+                "total_claim_amount": str(_quantized_decimal(approval.total_claim_amount)),
+                "confirmed_at": approval.confirmed_at,
+            },
+            status=status.HTTP_200_OK,
+        )

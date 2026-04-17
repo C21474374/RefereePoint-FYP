@@ -98,7 +98,7 @@ type PendingScheduleConflict = {
   clashItems: string[];
 };
 
-type GamesSectionKey = "manageUploadedGames";
+type GamesSectionKey = "manageUploadedGames" | "pastUploadedGames";
 
 type ManageGameType = UploadedGame["game_type"];
 type ManagePaymentType = "CASH" | "REVOLUT" | "CLAIM";
@@ -225,6 +225,9 @@ export default function Games() {
   const { showToast } = useToast();
   const { user } = useAuth();
   const isRefereeUser = hasRefereeAccess(user);
+  const isClubSchoolCollegeUploader =
+    !isRefereeUser &&
+    ["CLUB", "SCHOOL", "COLLEGE"].includes(String(user?.account_type || "").toUpperCase());
   const canManageUploadedGames = hasGameUploadAccess(user);
   const isDoaOrNlUploader =
     canManageUploadedGames && (user?.account_type === "DOA" || user?.account_type === "NL");
@@ -244,6 +247,7 @@ export default function Games() {
   const [pendingDeleteGameId, setPendingDeleteGameId] = useState<number | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<GamesSectionKey, boolean>>({
     manageUploadedGames: false,
+    pastUploadedGames: false,
   });
 
   const [editingGame, setEditingGame] = useState<UploadedGame | null>(null);
@@ -257,6 +261,7 @@ export default function Games() {
     teams: [],
   });
   const [manageMonthFilter, setManageMonthFilter] = useState("ALL");
+  const [pastManageMonthFilter, setPastManageMonthFilter] = useState("ALL");
 
   const toggleSection = (key: GamesSectionKey) => {
     setExpandedSections((prev) => ({
@@ -281,6 +286,7 @@ export default function Games() {
         selectedType?: string;
         selectedVenueId?: number | null;
         manageMonthFilter?: string;
+        pastManageMonthFilter?: string;
         expandedSections?: Partial<Record<GamesSectionKey, boolean>>;
       };
 
@@ -295,6 +301,9 @@ export default function Games() {
       }
       if (typeof parsed.manageMonthFilter === "string") {
         setManageMonthFilter(parsed.manageMonthFilter);
+      }
+      if (typeof parsed.pastManageMonthFilter === "string") {
+        setPastManageMonthFilter(parsed.pastManageMonthFilter);
       }
       if (parsed.expandedSections) {
         setExpandedSections((prev) => ({
@@ -320,13 +329,21 @@ export default function Games() {
           selectedType,
           selectedVenueId,
           manageMonthFilter,
+          pastManageMonthFilter,
           expandedSections,
         })
       );
     } catch {
       // Ignore local storage failures.
     }
-  }, [expandedSections, manageMonthFilter, selectedType, selectedVenueId, user?.id]);
+  }, [
+    expandedSections,
+    manageMonthFilter,
+    pastManageMonthFilter,
+    selectedType,
+    selectedVenueId,
+    user?.id,
+  ]);
 
   const getOpportunityKey = (type: Opportunity["type"], id: number) => `${type}-${id}`;
 
@@ -478,6 +495,7 @@ export default function Games() {
 
       setPendingScheduleConflict(null);
       await loadPageData();
+      showToast("Opportunity claimed successfully.", "success");
     } catch (err) {
       const message = getErrorMessage(err, "Failed to claim slot.");
       setError(message);
@@ -539,6 +557,7 @@ export default function Games() {
 
       setPendingScheduleConflict(null);
       await loadPageData();
+      showToast("Cover request claimed successfully.", "success");
     } catch (err) {
       const message = getErrorMessage(err, "Failed to offer cover.");
       setError(message);
@@ -594,6 +613,7 @@ export default function Games() {
 
       setPendingScheduleConflict(null);
       await loadPageData();
+      showToast("Event joined successfully.", "success");
     } catch (err) {
       const message = getErrorMessage(err, "Failed to join event.");
       setError(message);
@@ -631,7 +651,9 @@ export default function Games() {
     try {
       await ensureOptionsLoaded();
     } catch (err) {
-      setManageError(getErrorMessage(err, "Failed to load game form options."));
+      const message = getErrorMessage(err, "Failed to load game form options.");
+      setManageError(message);
+      showToast(message, "error");
     }
   };
 
@@ -658,18 +680,24 @@ export default function Games() {
       !editForm.date ||
       !editForm.time
     ) {
-      setManageError("Please complete all required fields.");
+      const message = "Please complete all required fields.";
+      setManageError(message);
+      showToast(message, "error");
       return;
     }
     if (editForm.home_team === editForm.away_team) {
-      setManageError("Home team and away team must be different.");
+      const message = "Home team and away team must be different.";
+      setManageError(message);
+      showToast(message, "error");
       return;
     }
 
     const isNonAppointedGameType = NON_APPOINTED_MANAGE_GAME_TYPES.has(editForm.game_type);
 
     if (isNonAppointedGameType && !editForm.crew_chief && !editForm.umpire_1) {
-      setManageError("Select at least one role to keep active.");
+      const message = "Select at least one role to keep active.";
+      setManageError(message);
+      showToast(message, "error");
       return;
     }
 
@@ -750,18 +778,42 @@ export default function Games() {
     return filtered;
   }, [opportunities, selectedVenueId, selectedType]);
 
-  const manageableUploadedGames = useMemo(() => uploadedGames, [uploadedGames]);
+  const todayDateKey = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
+  const manageableUploadedGames = useMemo(
+    () => uploadedGames.filter((game) => (game.date || "") >= todayDateKey),
+    [todayDateKey, uploadedGames]
+  );
+  const pastUploadedGames = useMemo(
+    () => uploadedGames.filter((game) => (game.date || "") < todayDateKey),
+    [todayDateKey, uploadedGames]
+  );
 
   const manageMonthOptions = useMemo(() => {
     const uniqueMonths = Array.from(
       new Set(
-        uploadedGames
+        manageableUploadedGames
           .map((game) => game.date?.slice(0, 7))
           .filter((month): month is string => Boolean(month))
       )
     );
     return uniqueMonths.sort((a, b) => b.localeCompare(a));
-  }, [uploadedGames]);
+  }, [manageableUploadedGames]);
+  const pastManageMonthOptions = useMemo(() => {
+    const uniqueMonths = Array.from(
+      new Set(
+        pastUploadedGames
+          .map((game) => game.date?.slice(0, 7))
+          .filter((month): month is string => Boolean(month))
+      )
+    );
+    return uniqueMonths.sort((a, b) => b.localeCompare(a));
+  }, [pastUploadedGames]);
 
   useEffect(() => {
     if (manageMonthFilter === "ALL") {
@@ -771,6 +823,14 @@ export default function Games() {
       setManageMonthFilter("ALL");
     }
   }, [manageMonthFilter, manageMonthOptions]);
+  useEffect(() => {
+    if (pastManageMonthFilter === "ALL") {
+      return;
+    }
+    if (!pastManageMonthOptions.includes(pastManageMonthFilter)) {
+      setPastManageMonthFilter("ALL");
+    }
+  }, [pastManageMonthFilter, pastManageMonthOptions]);
 
   const displayedManageGames = useMemo(
     () =>
@@ -780,6 +840,15 @@ export default function Games() {
             game.date?.startsWith(manageMonthFilter)
           ),
     [manageableUploadedGames, manageMonthFilter]
+  );
+  const displayedPastManageGames = useMemo(
+    () =>
+      pastManageMonthFilter === "ALL"
+        ? pastUploadedGames
+        : pastUploadedGames.filter((game) =>
+            game.date?.startsWith(pastManageMonthFilter)
+          ),
+    [pastManageMonthFilter, pastUploadedGames]
   );
   const pendingDeleteGame =
     pendingDeleteGameId === null
@@ -838,7 +907,9 @@ export default function Games() {
   );
 
   return (
-    <div className="games-page">
+    <div
+      className={`games-page ${isClubSchoolCollegeUploader ? "games-page-org-uploader" : ""}`}
+    >
       <div className="games-header">
         <div>
           <h1 className="page-title-with-icon">
@@ -1061,6 +1132,97 @@ export default function Games() {
                 className="games-manage-section-toggle-icon"
               />
               <span>{expandedSections.manageUploadedGames ? "Collapse" : "Expand"}</span>
+            </span>
+          </button>
+        </section>
+      )}
+
+      {canManageUploadedGames && !isDoaOrNlUploader && (
+        <section
+          className={`games-manage-section ${
+            expandedSections.pastUploadedGames ? "expanded" : "collapsed"
+          }`}
+        >
+          <div className="games-manage-header">
+            <h2 className="section-title-with-icon">
+              <AppIcon name="calendar" className="section-title-icon" />
+              <span>Past Games</span>
+            </h2>
+            <p>Past uploaded games, grouped by month.</p>
+          </div>
+          {expandedSections.pastUploadedGames && (
+            <div className="games-manage-section-content">
+              <div className="games-manage-toolbar">
+                <label>
+                  <span className="inline-icon-label">
+                    <AppIcon name="calendar" />
+                    <span>Month</span>
+                  </span>
+                  <select
+                    value={pastManageMonthFilter}
+                    onChange={(event) => setPastManageMonthFilter(event.target.value)}
+                  >
+                    <option value="ALL">All Months</option>
+                    {pastManageMonthOptions.map((month) => (
+                      <option key={month} value={month}>
+                        {month}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {displayedPastManageGames.length === 0 ? (
+                <p className="games-manage-empty">
+                  No past uploaded games for this month.
+                </p>
+              ) : (
+                <div className="games-manage-list">
+                  {displayedPastManageGames.map((game) => (
+                    <article key={game.id} className="games-manage-item">
+                      <div className="games-manage-item-top">
+                        <div>
+                          <h3>{game.home_team_name || "Home Team"} vs {game.away_team_name || "Away Team"}</h3>
+                          <p>
+                            {game.division_display || game.division_name || "Division"} |{" "}
+                            <span className="games-manage-date-time">
+                              {game.date} {game.time?.slice(0, 5)}
+                            </span>{" "}
+                            | {game.venue_name || "Venue TBC"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="games-manage-tags">
+                        <span>{game.game_type_display}</span>
+                        <span>{game.payment_type_display || "Payment TBC"}</span>
+                        {game.uploaded_slots.map((slot) => (
+                          <span key={`${game.id}-past-${slot.id}`}>
+                            {slot.role_display}: {slot.status_display}
+                          </span>
+                        ))}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="games-manage-section-toggle"
+            onClick={() => toggleSection("pastUploadedGames")}
+            aria-expanded={expandedSections.pastUploadedGames}
+            aria-label={expandedSections.pastUploadedGames ? "Collapse section" : "Expand section"}
+            title={expandedSections.pastUploadedGames ? "Collapse section" : "Expand section"}
+          >
+            <span className="inline-icon-label">
+              <AppIcon
+                name={expandedSections.pastUploadedGames ? "filter" : "plus"}
+                className="games-manage-section-toggle-icon"
+              />
+              <span>{expandedSections.pastUploadedGames ? "Collapse" : "Expand"}</span>
             </span>
           </button>
         </section>

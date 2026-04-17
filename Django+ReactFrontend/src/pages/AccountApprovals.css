@@ -63,6 +63,11 @@
   line-height: 1.2;
   min-width: 0;
   flex: 1;
+  color: var(--color-accent);
+}
+
+.account-approvals-top .section-title-icon {
+  color: var(--color-accent);
 }
 
 .account-approvals-top h2.section-title-with-icon {

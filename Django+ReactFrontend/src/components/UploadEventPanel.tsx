@@ -11,9 +11,10 @@ import { useToast } from "../context/ToastContext";
 
 type UploadEventPanelProps = {
   onUploaded?: () => void;
+  onCancel?: () => void;
 };
 
-export default function UploadEventPanel({ onUploaded }: UploadEventPanelProps) {
+export default function UploadEventPanel({ onUploaded, onCancel }: UploadEventPanelProps) {
   const { showToast } = useToast();
   const { user } = useAuth();
 
@@ -24,14 +25,6 @@ export default function UploadEventPanel({ onUploaded }: UploadEventPanelProps) 
   const [selectedEventType, setSelectedEventType] = useState<
     "CLUB" | "SCHOOL" | "COLLEGE" | ""
   >("");
-  const eventTypeLabel =
-    selectedEventType === "CLUB"
-      ? "Club"
-      : selectedEventType === "SCHOOL"
-        ? "School"
-        : selectedEventType === "COLLEGE"
-          ? "College"
-          : "";
 
   const allowedEventTypes = (user?.allowed_upload_event_types || []).filter((value) =>
     ["CLUB", "SCHOOL", "COLLEGE"].includes(value)
@@ -71,6 +64,7 @@ export default function UploadEventPanel({ onUploaded }: UploadEventPanelProps) 
         ...payload,
         event_type: selectedEventType,
       });
+      showToast("Event uploaded successfully.", "success");
       onUploaded?.();
     } catch (error) {
       const maybeAxiosError = error as {
@@ -101,42 +95,11 @@ export default function UploadEventPanel({ onUploaded }: UploadEventPanelProps) 
         </p>
       ) : (
         <>
-          {allowedEventTypes.length > 1 ? (
-            <div className="upload-event-type-wrap">
-              <span className="upload-event-type-label">Event Type</span>
-              <div className="upload-event-type-grid">
-                {allowedEventTypes.map((type) => {
-                  const label = type.charAt(0) + type.slice(1).toLowerCase();
-                  const active = selectedEventType === type;
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      className={`upload-event-type-card ${active ? "active" : ""}`}
-                      onClick={() => setSelectedEventType(type)}
-                      disabled={submitting}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="upload-event-type-readonly">
-              <span>Event Type</span>
-              <strong>{eventTypeLabel}</strong>
-            </div>
-          )}
-
-          <p className="upload-event-type-hint">
-            This event will be posted under <strong>{eventTypeLabel}</strong>.
-          </p>
           <EventForm
             venues={venues}
-            eventTypeLabel={eventTypeLabel}
             loading={submitting}
             onSubmit={handleCreateEvent}
+            onCancel={onCancel}
           />
         </>
       )}

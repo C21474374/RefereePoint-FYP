@@ -72,7 +72,13 @@ export function canAccessReportsPage(user: CurrentUser | null | undefined) {
 }
 
 export function canAccessEarningsPage(user: CurrentUser | null | undefined) {
-  return hasRefereeAccess(user);
+  if (hasRefereeAccess(user)) {
+    return true;
+  }
+  return (
+    Boolean(user?.doa_approved) &&
+    (user?.account_type === "DOA" || user?.account_type === "NL")
+  );
 }
 
 export function canAccessAccountApprovalsPage(user: CurrentUser | null | undefined) {
@@ -80,6 +86,6 @@ export function canAccessAccountApprovalsPage(user: CurrentUser | null | undefin
 }
 
 export function canAccessConfigurePage(user: CurrentUser | null | undefined) {
-  const roles = getEffectiveRoles(user);
-  return Boolean(user?.doa_approved) && (roles.has("DOA") || roles.has("NL"));
+  void user;
+  return false;
 }

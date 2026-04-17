@@ -7,14 +7,9 @@ type EventStatsProps = {
 export default function EventStats({ events }: EventStatsProps) {
   const joinedCount = events.filter((event) => event.current_user_joined).length;
   const openCount = events.filter(
-    (event) => !event.current_user_joined && (event.slots_left === null || event.slots_left > 0)
+    (event) => !event.current_user_joined && (event.slots_left ?? 0) > 0
   ).length;
-  const totalSlots = events.reduce((total, event) => {
-    if (event.slots_left === null) {
-      return total;
-    }
-    return total + event.slots_left;
-  }, 0);
+  const totalSlots = events.reduce((total, event) => total + (event.slots_left ?? 0), 0);
 
   return (
     <div className="events-stats">

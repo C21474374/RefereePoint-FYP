@@ -578,9 +578,10 @@ export default function RefereeDashboard() {
         setMyJoinedEvents([]);
         setMonthlyEarnings(null);
       } catch (error) {
-        setDashboardError(
-          error instanceof Error ? error.message : "Failed to load dashboard data."
-        );
+        const message =
+          error instanceof Error ? error.message : "Failed to load dashboard data.";
+        setDashboardError(message);
+        showToast(message, "error");
         setRecentNotifications([]);
         setRecentNotificationUnreadCount(0);
       } finally {
@@ -594,7 +595,6 @@ export default function RefereeDashboard() {
   const fullName =
     `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
     (isRefereeUser ? "Referee" : "Manager");
-  const accountType = user?.account_type || "";
   const displayGrade = user?.referee_profile?.grade?.replaceAll("_", " ") || "N/A";
   const heroBadgeLabel = isRefereeUser ? displayGrade : user?.account_type_display || "Manager";
   const heroSubtitle = isRefereeUser
@@ -925,6 +925,20 @@ export default function RefereeDashboard() {
 
   const nextManagedCalendarItem =
     !isRefereeUser && upcomingCalendarItems.length > 0 ? upcomingCalendarItems[0] : null;
+  const nextUploadedGameItem = useMemo(
+    () =>
+      !isRefereeUser
+        ? upcomingCalendarItems.find((item) => item.id.startsWith("uploaded-game-")) || null
+        : null,
+    [isRefereeUser, upcomingCalendarItems]
+  );
+  const nextUploadedEventItem = useMemo(
+    () =>
+      !isRefereeUser
+        ? upcomingCalendarItems.find((item) => item.id.startsWith("uploaded-event-")) || null
+        : null,
+    [isRefereeUser, upcomingCalendarItems]
+  );
   const openUploadedSlotCount = useMemo(
     () =>
       myUploadedGames.reduce((sum, game) => {
@@ -957,6 +971,29 @@ export default function RefereeDashboard() {
         const hasCrewChief = roles.has("CREW_CHIEF");
         const hasUmpireOne = roles.has("UMPIRE_1");
         return sum + (hasCrewChief && hasUmpireOne ? 0 : 1);
+      }, 0),
+    [myUploadedGames]
+  );
+  const gamesRequiringRefereesCount = useMemo(
+    () =>
+      myUploadedGames.reduce((sum, game) => {
+        const hasOpenUploadedSlot = (game.uploaded_slots || []).some(
+          (slot) => slot.status === "OPEN" && slot.is_active !== false
+        );
+
+        const gameType = String(game.game_type || "").toUpperCase();
+        const isAppointedType = gameType === "DOA" || gameType === "NL";
+        if (isAppointedType) {
+          const roles = new Set(
+            (game.appointed_assignments || []).map((assignment) => assignment.role)
+          );
+          const hasCrewChief = roles.has("CREW_CHIEF");
+          const hasUmpireOne = roles.has("UMPIRE_1");
+          const needsAppointedReferee = !(hasCrewChief && hasUmpireOne);
+          return sum + (needsAppointedReferee ? 1 : 0);
+        }
+
+        return sum + (hasOpenUploadedSlot ? 1 : 0);
       }, 0),
     [myUploadedGames]
   );
@@ -1004,25 +1041,29 @@ export default function RefereeDashboard() {
 
     return [
       {
-        label: "Uploaded Games",
-        value: String(myUploadedGames.length),
+        label: "Next Game",
+        value: nextUploadedGameItem
+          ? toDisplayDate(nextUploadedGameItem.date)
+          : "No upcoming game",
+        detail: nextUploadedGameItem
+          ? `${nextUploadedGameItem.title} - ${toDisplayTime(nextUploadedGameItem.time)}`
+          : "No uploaded games scheduled",
       },
       {
-        label: "Open Referee Slots",
-        value: String(openUploadedSlotCount),
-        detail:
-          openUploadedSlotCount > 0
-            ? "Slots available for referees to claim"
-            : "No open slots right now",
+        label: "Games that require referees",
+        value: String(gamesRequiringRefereesCount),
+        detail: gamesRequiringRefereesCount
+          ? "These games still need referee coverage"
+          : "All uploaded games are currently covered",
       },
       {
-        label: "Next Upload",
-        value: nextManagedCalendarItem
-          ? toDisplayDate(nextManagedCalendarItem.date)
-          : "No upcoming upload",
-        detail: nextManagedCalendarItem
-          ? `${nextManagedCalendarItem.title} - ${toDisplayTime(nextManagedCalendarItem.time)}`
-          : "No upcoming games in your uploads",
+        label: "Next Event",
+        value: nextUploadedEventItem
+          ? toDisplayDate(nextUploadedEventItem.date)
+          : "No upcoming event",
+        detail: nextUploadedEventItem
+          ? `${nextUploadedEventItem.title} - ${toDisplayTime(nextUploadedEventItem.time)}`
+          : "No uploaded events scheduled",
       },
     ];
   }, [
@@ -1033,11 +1074,14 @@ export default function RefereeDashboard() {
     monthlyEarnings?.mileage_km_total,
     monthlyEarnings?.total_claim_amount,
     myUploadedGames.length,
+    nextUploadedEventItem,
+    nextUploadedGameItem,
     nextManagedCalendarItem,
     nextTakenGame,
     openUploadedSlotCount,
     pendingApprovalCount,
     isAdminDashboard,
+    gamesRequiringRefereesCount,
   ]);
 
   const calendarItemsByDate = useMemo(() => {
@@ -1151,20 +1195,6 @@ export default function RefereeDashboard() {
       return day;
     });
   }, [calendarMonth]);
-  const upcomingWeekUploadCount = useMemo(() => {
-    const now = Date.now();
-    const sevenDaysAhead = now + 7 * 24 * 60 * 60 * 1000;
-
-    return myUploadedGames.filter((game) => {
-      const parsedDate = parseDateTime(game.date, game.time || null);
-      if (!parsedDate) {
-        return false;
-      }
-
-      const timestamp = parsedDate.getTime();
-      return timestamp >= now && timestamp <= sevenDaysAhead;
-    }).length;
-  }, [myUploadedGames]);
 
   const currentDateKey = formatDateKey(new Date());
   const calendarSectionTitle = isRefereeUser
@@ -1247,7 +1277,7 @@ export default function RefereeDashboard() {
       )}
 
       {!isAdminDashboard && (
-        <DashboardStats stats={stats} highlightLabels={isRefereeUser} />
+        <DashboardStats stats={stats} highlightLabels={isRefereeUser || !isAdminDashboard} />
       )}
 
       <section className="dashboard-notifications-section">
@@ -1319,26 +1349,38 @@ export default function RefereeDashboard() {
 
           <div className="dashboard-role-overview-grid">
             <article className="dashboard-role-overview-card">
-              <h3>Account Role</h3>
+              <h3>Next Game</h3>
               <p className="dashboard-role-overview-value">
-                {user?.account_type_display || accountType || "Manager"}
+                {nextUploadedGameItem
+                  ? toDisplayDate(nextUploadedGameItem.date)
+                  : "No upcoming game"}
               </p>
               <p className="dashboard-role-overview-detail">
-                This dashboard is tailored to your uploader account.
-              </p>
-            </article>
-            <article className="dashboard-role-overview-card">
-              <h3>Managed Events</h3>
-              <p className="dashboard-role-overview-value">{myManagedEvents.length}</p>
-              <p className="dashboard-role-overview-detail">
-                Active upcoming events your account can manage.
+                {nextUploadedGameItem
+                  ? `${nextUploadedGameItem.title} - ${toDisplayTime(nextUploadedGameItem.time)}`
+                  : "No uploaded games scheduled."}
               </p>
             </article>
             <article className="dashboard-role-overview-card">
-              <h3>Next 7 Days</h3>
-              <p className="dashboard-role-overview-value">{upcomingWeekUploadCount}</p>
+              <h3>Games that require referees</h3>
+              <p className="dashboard-role-overview-value">{gamesRequiringRefereesCount}</p>
               <p className="dashboard-role-overview-detail">
-                Uploaded games scheduled in the coming week.
+                {gamesRequiringRefereesCount
+                  ? "These games still need referee coverage."
+                  : "All uploaded games are currently covered."}
+              </p>
+            </article>
+            <article className="dashboard-role-overview-card">
+              <h3>Next Event</h3>
+              <p className="dashboard-role-overview-value">
+                {nextUploadedEventItem
+                  ? toDisplayDate(nextUploadedEventItem.date)
+                  : "No upcoming event"}
+              </p>
+              <p className="dashboard-role-overview-detail">
+                {nextUploadedEventItem
+                  ? `${nextUploadedEventItem.title} - ${toDisplayTime(nextUploadedEventItem.time)}`
+                  : "No uploaded events scheduled."}
               </p>
             </article>
           </div>

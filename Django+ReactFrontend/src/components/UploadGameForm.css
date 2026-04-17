@@ -76,6 +76,13 @@
   border-color: var(--color-accent);
 }
 
+.form-field input[type="date"]::-webkit-calendar-picker-indicator,
+.form-field input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(16%) sepia(89%) saturate(4457%) hue-rotate(344deg) brightness(90%) contrast(93%);
+  opacity: 1;
+  cursor: pointer;
+}
+
 .radio-group {
   margin-bottom: 10px;
 }
@@ -203,20 +210,31 @@
 .upload-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .upload-actions button {
-  border: none;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 10px 14px;
   cursor: pointer;
   font-weight: 700;
+  background: var(--color-bg-panel);
+  color: var(--color-text);
+}
+
+.upload-actions button[type="submit"] {
+  border: none;
   background: var(--color-accent);
   color: var(--color-text-inverse);
 }
 
-.upload-actions button:hover {
+.upload-actions button[type="submit"]:hover {
   opacity: 0.95;
+}
+
+.upload-actions .upload-cancel-btn:hover {
+  border-color: var(--color-border-hover);
 }
 
 .upload-actions button:disabled {

@@ -26,6 +26,11 @@
 .dashboard-notifications-header h2 {
   margin: 0;
   font-size: 1.22rem;
+  color: var(--color-accent);
+}
+
+.dashboard-notifications-header .section-title-icon {
+  color: var(--color-accent);
 }
 
 .dashboard-ref-section-heading {
@@ -50,6 +55,10 @@
 .dashboard-notification-link {
   color: inherit;
   text-decoration: none;
+}
+
+.dashboard-notification-link:hover {
+  color: inherit;
 }
 
 .dashboard-notification-item {
@@ -108,6 +117,11 @@
 .dashboard-role-overview-header h2 {
   margin: 0;
   font-size: 1.22rem;
+  color: var(--color-accent);
+}
+
+.dashboard-role-overview-header .section-title-icon {
+  color: var(--color-accent);
 }
 
 .dashboard-role-overview-header p {
@@ -138,6 +152,7 @@
 .dashboard-role-overview-card h3 {
   margin: 0;
   font-size: 0.96rem;
+  color: var(--color-accent);
 }
 
 .dashboard-role-overview-value {
@@ -192,6 +207,11 @@
 .dashboard-calendar-header h2 {
   margin: 0;
   font-size: 1.3rem;
+  color: var(--color-accent);
+}
+
+.dashboard-calendar-header .section-title-icon {
+  color: var(--color-accent);
 }
 
 .dashboard-calendar-nav {

@@ -51,8 +51,6 @@ class EventSerializer(serializers.ModelSerializer):
         return obj.referee_assignments.count()
 
     def get_slots_left(self, obj: Event):
-        if obj.referees_required <= 0:
-            return None
         return max(obj.referees_required - obj.referee_assignments.count(), 0)
 
     def get_current_user_joined(self, obj: Event) -> bool:
@@ -91,6 +89,11 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
             "contact_information",
             "referees_required",
         ]
+        extra_kwargs = {
+            "referees_required": {
+                "min_value": 1,
+            }
+        }
 
     def validate(self, attrs):
         start_date = attrs.get("start_date")
@@ -114,9 +117,12 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
             )
 
         referees_required = attrs.get("referees_required")
-        if referees_required is not None and referees_required < 0:
+        if self.instance and referees_required is None:
+            referees_required = self.instance.referees_required
+
+        if referees_required is not None and referees_required < 1:
             raise serializers.ValidationError(
-                {"referees_required": "Referees required cannot be negative."}
+                {"referees_required": "Referees required must be at least 1."}
             )
 
         return attrs

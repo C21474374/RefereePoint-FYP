@@ -64,6 +64,7 @@ export default function UploadCoverRequestPanel({
         referee_slot: assignment.assignment_id,
         reason: reason.trim(),
       });
+      showToast("Cover request submitted successfully.", "success");
       onUploaded?.();
     } catch (error) {
       setErrorMessage("Failed to upload cover request.");

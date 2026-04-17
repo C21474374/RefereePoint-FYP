@@ -161,6 +161,35 @@ class EventJoinLeaveAPITests(TestCase):
             "Your account cannot upload events. Only approved Club, School, and College roles can upload events.",
         )
 
+    def test_create_event_requires_at_least_one_referee(self):
+        club_uploader = User.objects.create_user(
+            email="clubuploader_min@example.com",
+            password="password123",
+            first_name="Club",
+            last_name="UploaderMin",
+            bipin_number="3556",
+            account_type=User.AccountType.CLUB,
+            doa_approved=True,
+            bipin_verified=True,
+        )
+
+        self.client.force_authenticate(user=club_uploader)
+        payload = {
+            "event_type": "CLUB",
+            "start_date": "2026-07-01",
+            "end_date": "2026-07-03",
+            "venue": self.event.venue_id,
+            "description": "Invalid referee count",
+            "fee_per_game": "30.00",
+            "contact_information": "contact@example.com",
+            "referees_required": 0,
+        }
+
+        response = self.client.post(reverse("event-create"), payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("referees_required", response.data)
+
     def test_non_referee_cannot_create_event(self):
         non_ref_user = User.objects.create_user(
             email="noref@example.com",

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./UploadGameForm.css";
 import { getAccessToken } from "../services/auth";
+import { useToast } from "../context/ToastContext";
 
 type SimpleOption = {
   id: number;
@@ -32,6 +33,7 @@ type UploadGameFormProps = {
   canUploadGames: boolean;
   embedded?: boolean;
   onPosted?: () => void;
+  onCancel?: () => void;
 };
 
 type GameUploadType = "CLUB" | "SCHOOL" | "COLLEGE" | "FRIENDLY" | "DOA" | "NL";
@@ -143,7 +145,9 @@ export default function UploadGameForm({
   canUploadGames,
   embedded = false,
   onPosted,
+  onCancel,
 }: UploadGameFormProps) {
+  const { showToast } = useToast();
   const firstAllowedGameType = (allowedGameTypes[0] || "CLUB") as GameUploadType;
   const [form, setForm] = useState<FormState>(() => ({
     ...initialForm,
@@ -526,11 +530,13 @@ if (!token) {
         payment_type: defaultPaymentType(resetGameType),
       });
       setAvailability(null);
+      showToast("Game uploaded successfully.", "success");
       onPosted?.();
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : "Something went wrong while posting the game."
-      );
+      const message =
+        error instanceof Error ? error.message : "Something went wrong while posting the game.";
+      setErrorMessage(message);
+      showToast(message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -665,7 +671,7 @@ if (!token) {
 
       {isNonAppointedType ? (
         <section className="upload-section">
-          <h2>Referee Requirement</h2>
+          <h2>Referees Required</h2>
           <p className="upload-step-caption">Step 1: choose which team is requesting.</p>
 
           <div className="radio-group">
@@ -783,6 +789,16 @@ if (!token) {
         >
           {submitting ? "Posting..." : "Post Game"}
         </button>
+        {onCancel && (
+          <button
+            type="button"
+            className="upload-cancel-btn"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </form>
   );
