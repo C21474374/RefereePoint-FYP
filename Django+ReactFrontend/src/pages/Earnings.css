@@ -188,6 +188,10 @@
   color: var(--earnings-money-color);
 }
 
+.earnings-summary-card-total h3.earnings-summary-value-neutral {
+  color: var(--color-text);
+}
+
 .earnings-summary-card-pending-total h3 {
   color: var(--color-accent);
 }

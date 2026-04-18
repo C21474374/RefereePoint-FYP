@@ -46,6 +46,7 @@
   --color-error-border: rgba(210, 35, 42, 0.35);
   --color-accent-soft: rgba(210, 35, 42, 0.12);
   --color-accent-soft-strong: rgba(210, 35, 42, 0.2);
+  --color-accent-icon-filter: invert(16%) sepia(89%) saturate(4457%) hue-rotate(344deg) brightness(90%) contrast(93%);
 
   --app-background-image: none;
 }
@@ -81,6 +82,7 @@
   --color-error-border: rgba(210, 35, 42, 0.35);
   --color-accent-soft: rgba(210, 35, 42, 0.12);
   --color-accent-soft-strong: rgba(210, 35, 42, 0.2);
+  --color-accent-icon-filter: invert(16%) sepia(89%) saturate(4457%) hue-rotate(344deg) brightness(90%) contrast(93%);
 
   --app-background-image: none;
 }

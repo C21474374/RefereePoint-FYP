@@ -54,7 +54,7 @@ const Gameslist = ({
       )}
 
       {showRecommendations && otherOpportunities.length > 0 && (
-        <div className="games-list-section-header">
+        <div className="games-list-section-header games-list-section-header-more">
           <h3 className="section-title-with-icon">
             <AppIcon name="basketball" className="section-title-icon" />
             <span>More Opportunities</span>

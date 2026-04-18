@@ -236,6 +236,7 @@ export default function Games() {
   const [uploadedGames, setUploadedGames] = useState<UploadedGame[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<number | null>(null);
   const [selectedType, setSelectedType] = useState("ALL");
+  const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [claimingKey, setClaimingKey] = useState<string | null>(null);
@@ -285,6 +286,7 @@ export default function Games() {
       const parsed = JSON.parse(rawValue) as {
         selectedType?: string;
         selectedVenueId?: number | null;
+        selectedDate?: string;
         manageMonthFilter?: string;
         pastManageMonthFilter?: string;
         expandedSections?: Partial<Record<GamesSectionKey, boolean>>;
@@ -298,6 +300,9 @@ export default function Games() {
         typeof parsed.selectedVenueId === "number"
       ) {
         setSelectedVenueId(parsed.selectedVenueId ?? null);
+      }
+      if (typeof parsed.selectedDate === "string") {
+        setSelectedDate(parsed.selectedDate);
       }
       if (typeof parsed.manageMonthFilter === "string") {
         setManageMonthFilter(parsed.manageMonthFilter);
@@ -328,6 +333,7 @@ export default function Games() {
         JSON.stringify({
           selectedType,
           selectedVenueId,
+          selectedDate,
           manageMonthFilter,
           pastManageMonthFilter,
           expandedSections,
@@ -340,6 +346,7 @@ export default function Games() {
     expandedSections,
     manageMonthFilter,
     pastManageMonthFilter,
+    selectedDate,
     selectedType,
     selectedVenueId,
     user?.id,
@@ -767,6 +774,26 @@ export default function Games() {
     }
   };
 
+  const venueFilterOptions = useMemo(() => {
+    const byId = new Map<number, string>();
+    opportunities.forEach((item) => {
+      if (typeof item.venue_id !== "number") {
+        return;
+      }
+      const venueName = (item.venue_name || "").trim() || `Venue ${item.venue_id}`;
+      if (!byId.has(item.venue_id)) {
+        byId.set(item.venue_id, venueName);
+      }
+    });
+
+    return Array.from(byId.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [opportunities]);
+
+  const hasActiveOpportunityFilters =
+    selectedType !== "ALL" || selectedVenueId !== null || selectedDate !== "";
+
   const filteredOpportunities = useMemo(() => {
     let filtered = [...opportunities];
     if (selectedVenueId !== null) {
@@ -775,8 +802,11 @@ export default function Games() {
     if (selectedType !== "ALL") {
       filtered = filtered.filter((item) => item.type === selectedType);
     }
+    if (selectedDate) {
+      filtered = filtered.filter((item) => item.date === selectedDate);
+    }
     return filtered;
-  }, [opportunities, selectedVenueId, selectedType]);
+  }, [opportunities, selectedDate, selectedVenueId, selectedType]);
 
   const todayDateKey = useMemo(() => {
     const now = new Date();
@@ -906,6 +936,12 @@ export default function Games() {
     [editableTeamsForDivision, editForm.home_team]
   );
 
+  const handleClearOpportunityFilters = () => {
+    setSelectedType("ALL");
+    setSelectedVenueId(null);
+    setSelectedDate("");
+  };
+
   return (
     <div
       className={`games-page ${isClubSchoolCollegeUploader ? "games-page-org-uploader" : ""}`}
@@ -942,14 +978,41 @@ export default function Games() {
               <option value="COVER_REQUEST">Cover Requests</option>
               <option value="EVENT">Events</option>
             </select>
+            <select
+              value={selectedVenueId === null ? "ALL" : String(selectedVenueId)}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === "ALL") {
+                  setSelectedVenueId(null);
+                  return;
+                }
+                const parsedId = Number(value);
+                setSelectedVenueId(Number.isNaN(parsedId) ? null : parsedId);
+              }}
+              className="games-filter-select"
+            >
+              <option value="ALL">All Venues</option>
+              {venueFilterOptions.map((venue) => (
+                <option key={venue.id} value={venue.id}>
+                  {venue.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="games-filter-date"
+              aria-label="Filter opportunities by date"
+            />
             <button
-              className="clear-venue-btn"
-              onClick={() => setSelectedVenueId(null)}
-              disabled={selectedVenueId === null}
+              className="games-filter-clear"
+              onClick={handleClearOpportunityFilters}
+              disabled={!hasActiveOpportunityFilters}
             >
               <span className="button-with-icon">
                 <AppIcon name="filter" />
-                <span>Clear Venue</span>
+                <span>Clear Filters</span>
               </span>
             </button>
           </div>

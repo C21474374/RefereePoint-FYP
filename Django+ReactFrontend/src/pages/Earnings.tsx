@@ -206,6 +206,8 @@ export default function Earnings() {
   const gameTypeOptions: EarningsGameType[] = isAdminEarningsView
     ? [accountGameType]
     : ["DOA", "NL"];
+  const totalClaimAmountValue = Number(refereeReport?.totals.total_claim_amount || 0);
+  const hasPositiveTotalClaimAmount = totalClaimAmountValue > 0;
 
   return (
     <div className="earnings-page">
@@ -420,7 +422,9 @@ export default function Earnings() {
               </div>
               <div className="earnings-summary-card earnings-summary-card-total">
                 <p>Total Claim Amount</p>
-                <h3>€{refereeReport.totals.total_claim_amount}</h3>
+                <h3 className={hasPositiveTotalClaimAmount ? "" : "earnings-summary-value-neutral"}>
+                  €{refereeReport.totals.total_claim_amount}
+                </h3>
               </div>
             </div>
             {refereeReport.selected_month?.is_finalized && (

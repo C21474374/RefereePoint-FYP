@@ -223,6 +223,13 @@
   padding: 10px 12px;
 }
 
+.events-form-grid input[type="date"]::-webkit-calendar-picker-indicator,
+.events-form-grid input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: var(--color-accent-icon-filter);
+  opacity: 1;
+  cursor: pointer;
+}
+
 .events-form-wide {
   grid-column: 1 / -1;
 }

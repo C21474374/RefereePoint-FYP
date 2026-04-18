@@ -6,6 +6,8 @@ import {
   canAccessConfigurePage,
   canAccessEarningsPage,
   canAccessReportsPage,
+  hasEventUploadAccess,
+  hasGameUploadAccess,
   hasRefereeAccess,
 } from "../utils/access";
 import "./DashboardQuickActions.css";
@@ -62,6 +64,11 @@ export default function DashboardQuickActions() {
   const { user } = useAuth();
 
   const isRefereeUser = hasRefereeAccess(user);
+  const accountType = String(user?.account_type || "").toUpperCase();
+  const isClubSchoolCollegeUser =
+    !isRefereeUser && ["CLUB", "SCHOOL", "COLLEGE"].includes(accountType);
+  const canUploadGame = Boolean(user?.uploads_approved) && hasGameUploadAccess(user);
+  const canUploadEvent = Boolean(user?.uploads_approved) && hasEventUploadAccess(user);
   const hasEventManagerScope = Boolean(user?.allowed_upload_event_types?.length);
   const canApproveAccounts = Boolean(user?.can_approve_accounts);
   const canApproveCoverRequests = canAccessCoverRequestsPage(user) && !isRefereeUser;
@@ -69,6 +76,26 @@ export default function DashboardQuickActions() {
   const canViewReports = canAccessReportsPage(user);
   const canViewEarnings = canAccessEarningsPage(user);
   const managerActions = [
+    ...(isClubSchoolCollegeUser && canUploadGame
+      ? [
+          {
+            name: "Upload Game",
+            path: "/games?upload=game",
+            icon: "upload" as AppIconName,
+            description: "Open the game upload form for your organisation.",
+          },
+        ]
+      : []),
+    ...(isClubSchoolCollegeUser && canUploadEvent
+      ? [
+          {
+            name: "Upload Event",
+            path: "/events?upload=event",
+            icon: "upload" as AppIconName,
+            description: "Open the event upload form for your organisation.",
+          },
+        ]
+      : []),
     ...managerBaseActions.filter(
       (action) => hasEventManagerScope || action.path !== "/events"
     ),

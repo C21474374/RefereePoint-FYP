@@ -403,6 +403,22 @@ const TopNavBar: React.FC = () => {
   const canUploadEvent =
     Boolean(user?.uploads_approved) &&
     Boolean(user?.allowed_upload_event_types?.length);
+
+  useEffect(() => {
+    const uploadTarget = new URLSearchParams(location.search).get("upload");
+    if (uploadTarget === "game" && canUploadGame) {
+      setMenuOpen(false);
+      setUploadMenuOpen(false);
+      setActiveUploadModal("game");
+      return;
+    }
+    if (uploadTarget === "event" && canUploadEvent) {
+      setMenuOpen(false);
+      setUploadMenuOpen(false);
+      setActiveUploadModal("event");
+    }
+  }, [canUploadEvent, canUploadGame, location.search]);
+
   const showBulkGameUploadInGamesPage =
     !isRefereeUser && (user?.account_type === "DOA" || user?.account_type === "NL");
   const uploadItems: UploadMenuItem[] = [
@@ -439,7 +455,6 @@ const TopNavBar: React.FC = () => {
           </button>
           <Link to="/dashboard" className="nav-title">
             <span className="nav-title-content">
-              <AppIcon name="basketball" className="nav-title-icon" />
               <span>RefereePoint</span>
             </span>
           </Link>

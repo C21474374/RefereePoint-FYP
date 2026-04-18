@@ -346,11 +346,24 @@ class ClaimNonAppointedSlotAPIView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        slot.claimed_by = referee
-        slot.status = NonAppointedSlot.Status.CLAIMED
-        slot.claimed_at = timezone.now()
+        claimed_at = timezone.now()
+        updated = NonAppointedSlot.objects.filter(
+            pk=slot.pk,
+            is_active=True,
+            status=NonAppointedSlot.Status.OPEN,
+        ).update(
+            claimed_by=referee,
+            status=NonAppointedSlot.Status.CLAIMED,
+            claimed_at=claimed_at,
+            updated_at=claimed_at,
+        )
+        if updated == 0:
+            return Response(
+                {"detail": "This slot was just claimed by another referee."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        slot.save()
+        slot.refresh_from_db()
         try:
             notify_non_appointed_slot_claimed(slot, actor_user=request.user)
         except Exception:

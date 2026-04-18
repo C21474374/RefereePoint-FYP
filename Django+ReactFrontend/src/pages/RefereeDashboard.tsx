@@ -160,6 +160,10 @@ type AdminReportCounts = {
   unresolved: number;
 };
 
+type AdminCoverRequestListItem = {
+  status?: string | null;
+};
+
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -352,6 +356,7 @@ export default function RefereeDashboard() {
   const [recentNotificationUnreadCount, setRecentNotificationUnreadCount] = useState(0);
   const [adminUnreadReportsCount, setAdminUnreadReportsCount] = useState(0);
   const [adminUnresolvedReportsCount, setAdminUnresolvedReportsCount] = useState(0);
+  const [adminUnresolvedCoverRequestsCount, setAdminUnresolvedCoverRequestsCount] = useState(0);
 
   const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
@@ -387,6 +392,7 @@ export default function RefereeDashboard() {
           setRecentNotificationUnreadCount(0);
           setAdminUnreadReportsCount(0);
           setAdminUnresolvedReportsCount(0);
+          setAdminUnresolvedCoverRequestsCount(0);
           return;
         }
 
@@ -476,6 +482,7 @@ export default function RefereeDashboard() {
           setPendingApprovalCount(null);
           setAdminUnreadReportsCount(0);
           setAdminUnresolvedReportsCount(0);
+          setAdminUnresolvedCoverRequestsCount(0);
           return;
         }
 
@@ -515,6 +522,26 @@ export default function RefereeDashboard() {
               })
               .catch(() => ({ unread: 0, unresolved: 0 }))
           : Promise.resolve<AdminReportCounts>({ unread: 0, unresolved: 0 });
+        const adminCoverRequestCountsPromise = canApproveAccounts
+          ? fetch(`${API_BASE_URL}/cover-requests/`, {
+              headers: authHeaders,
+            })
+              .then(async (response): Promise<number> => {
+                if (!response.ok) {
+                  return 0;
+                }
+
+                const coverRequests = (await response.json()) as AdminCoverRequestListItem[];
+                return coverRequests.reduce((count, coverRequest) => {
+                  const statusValue = String(coverRequest.status || "").trim().toUpperCase();
+                  if (statusValue === "PENDING" || statusValue === "CLAIMED") {
+                    return count + 1;
+                  }
+                  return count;
+                }, 0);
+              })
+              .catch(() => 0)
+          : Promise.resolve(0);
         const eventsPromise = hasEventManagerScope
           ? fetch(`${API_BASE_URL}/events/?upcoming=true`, {
               headers: authHeaders,
@@ -527,6 +554,7 @@ export default function RefereeDashboard() {
           pendingApprovals,
           notificationsResponse,
           adminReportCounts,
+          unresolvedCoverRequestsCount,
         ] = await Promise.all([
           fetch(`${API_BASE_URL}/games/my-uploads/`, {
             headers: authHeaders,
@@ -535,6 +563,7 @@ export default function RefereeDashboard() {
           pendingApprovalsPromise,
           notificationsPromise,
           adminReportCountsPromise,
+          adminCoverRequestCountsPromise,
         ]);
 
         const uploadedGamesData = await uploadedGamesResponse.json();
@@ -563,6 +592,7 @@ export default function RefereeDashboard() {
         setPendingApprovalCount(pendingApprovals);
         setAdminUnreadReportsCount(adminReportCounts.unread);
         setAdminUnresolvedReportsCount(adminReportCounts.unresolved);
+        setAdminUnresolvedCoverRequestsCount(unresolvedCoverRequestsCount);
         if (notificationsResponse.ok) {
           const notificationsData =
             (await notificationsResponse.json()) as RecentNotificationsResponse;
@@ -584,6 +614,7 @@ export default function RefereeDashboard() {
         showToast(message, "error");
         setRecentNotifications([]);
         setRecentNotificationUnreadCount(0);
+        setAdminUnresolvedCoverRequestsCount(0);
       } finally {
         setLoadingDashboard(false);
       }
@@ -1236,7 +1267,7 @@ export default function RefereeDashboard() {
             <p>{roleOverviewCopy}</p>
           </div>
 
-          <div className="dashboard-role-overview-grid">
+          <div className="dashboard-role-overview-grid dashboard-role-overview-grid-admin">
             <article className="dashboard-role-overview-card">
               <h3>Approval Queue</h3>
               <p className="dashboard-role-overview-value">{pendingApprovalCount ?? 0}</p>
@@ -1269,6 +1300,19 @@ export default function RefereeDashboard() {
                 <span className="inline-icon-label">
                   <AppIcon name="reports" />
                   <span>Open Reports</span>
+                </span>
+              </Link>
+            </article>
+            <article className="dashboard-role-overview-card">
+              <h3>Unresolved Cover Requests</h3>
+              <p className="dashboard-role-overview-value">{adminUnresolvedCoverRequestsCount}</p>
+              <p className="dashboard-role-overview-detail">
+                Pending or claimed cover requests still awaiting resolution.
+              </p>
+              <Link className="dashboard-role-overview-link" to="/cover-requests">
+                <span className="inline-icon-label">
+                  <AppIcon name="whistle" />
+                  <span>Open Cover Requests</span>
                 </span>
               </Link>
             </article>

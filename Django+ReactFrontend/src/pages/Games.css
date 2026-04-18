@@ -9,8 +9,8 @@
 
 .games-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
   gap: 14px;
   margin-bottom: 14px;
 }
@@ -27,9 +27,11 @@
 
 .games-filters {
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
+  width: 100%;
 }
 
 .games-manage-filters {
@@ -62,7 +64,8 @@
 }
 
 .games-filter-select,
-.clear-venue-btn {
+.games-filter-date,
+.games-filter-clear {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--color-border);
@@ -71,7 +74,11 @@
   font-size: 0.92rem;
 }
 
-.clear-venue-btn {
+.games-filter-date {
+  min-width: 148px;
+}
+
+.games-filter-clear {
   cursor: pointer;
   font-weight: 600;
   border-color: var(--color-accent);
@@ -79,7 +86,7 @@
   color: var(--color-text-inverse);
 }
 
-.clear-venue-btn:disabled {
+.games-filter-clear:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
@@ -138,16 +145,24 @@
 }
 
 .games-list-section-header {
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: var(--color-bg-panel);
-  padding: 10px 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  margin: 6px 0 2px;
 }
 
 .games-list-section-header h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 1.48rem;
+  line-height: 1.15;
   color: var(--color-accent);
+}
+
+.games-list-section-header-more {
+  margin-top: 20px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-border);
 }
 
 .games-list-section-header p {

@@ -377,9 +377,23 @@ class OfferCoverAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        cover_request.replaced_by = referee
-        cover_request.status = CoverRequest.Status.CLAIMED
-        cover_request.save()
+        updated_at = timezone.now()
+        updated = CoverRequest.objects.filter(
+            pk=cover_request.pk,
+            status=CoverRequest.Status.PENDING,
+            replaced_by__isnull=True,
+        ).update(
+            replaced_by=referee,
+            status=CoverRequest.Status.CLAIMED,
+            updated_at=updated_at,
+        )
+        if updated == 0:
+            return Response(
+                {"detail": "Another referee has already claimed this game."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        cover_request.refresh_from_db()
         try:
             notify_cover_request_claimed(cover_request, actor_user=request.user)
         except Exception:
