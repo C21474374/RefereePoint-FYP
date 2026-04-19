@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import UploadGameForm from "./UploadGameForm";
+import { API_BASE_URL } from "../config/api";
 import { getAccessToken } from "../services/auth";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -50,13 +51,13 @@ export default function UploadGamePanel({
         }
 
         const [divisionsRes, venuesRes, teamsRes] = await Promise.all([
-          fetch("http://127.0.0.1:8000/api/clubs/divisions/", {
+          fetch(`${API_BASE_URL}/clubs/divisions/`, {
             headers: authHeaders,
           }),
-          fetch("http://127.0.0.1:8000/api/venues/venues/", {
+          fetch(`${API_BASE_URL}/venues/venues/`, {
             headers: authHeaders,
           }),
-          fetch("http://127.0.0.1:8000/api/clubs/teams/", {
+          fetch(`${API_BASE_URL}/clubs/teams/`, {
             headers: authHeaders,
           }),
         ]);

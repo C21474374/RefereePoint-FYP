@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AppIcon from "../components/AppIcon";
+import { API_BASE_URL } from "../config/api";
 import { useToast } from "../context/ToastContext";
 import "./Auth.css";
 
@@ -62,8 +63,6 @@ const initialForm: FormState = {
   manager_scope: "NONE",
   managed_team: "",
 };
-
-const API_BASE = "http://localhost:8000/api";
 
 const APPOINTED_AVAILABILITY_TEMPLATE: AvailabilityDayForm[] = [
   {
@@ -189,7 +188,7 @@ export default function RefereeSignup() {
     async function loadClubs() {
       try {
         setLoadingClubs(true);
-        const response = await fetch(`${API_BASE}/clubs/`);
+        const response = await fetch(`${API_BASE_URL}/clubs/`);
         if (!response.ok) {
           throw new Error("Failed to load clubs.");
         }
@@ -211,7 +210,7 @@ export default function RefereeSignup() {
     async function loadTeams() {
       try {
         setLoadingTeams(true);
-        const response = await fetch(`${API_BASE}/clubs/teams/`);
+        const response = await fetch(`${API_BASE_URL}/clubs/teams/`);
         if (!response.ok) {
           throw new Error("Failed to load teams.");
         }
@@ -424,7 +423,7 @@ export default function RefereeSignup() {
         }
       }
 
-      const response = await fetch(`${API_BASE}/users/register/`, {
+      const response = await fetch(`${API_BASE_URL}/users/register/`, {
         method: "POST",
         body: payload,
       });

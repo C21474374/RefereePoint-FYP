@@ -16,6 +16,7 @@ import {
   type TeamOption,
   type UploadedGame,
 } from "../services/games";
+import { API_BASE_URL } from "../config/api";
 import { hasGameUploadAccess, hasRefereeAccess } from "../utils/access";
 import { useToast } from "../context/ToastContext";
 import "./Games.css";
@@ -138,7 +139,6 @@ type FormOptions = {
   teams: TeamOption[];
 };
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
 // Persisted per-user UI state so filters/collapsed sections restore on revisit.
 const GAMES_PREFS_KEY_PREFIX = "refereepoint.games.prefs";
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./UploadGameForm.css";
+import { API_BASE_URL } from "../config/api";
 import { getAccessToken } from "../services/auth";
 import { useToast } from "../context/ToastContext";
 
@@ -219,7 +220,7 @@ export default function UploadGameForm({
               });
 
               const response = await fetch(
-                `http://127.0.0.1:8000/api/games/upload/check/?${params.toString()}`,
+                `${API_BASE_URL}/games/upload/check/?${params.toString()}`,
                 {
                   signal: controller.signal,
                 }
@@ -503,7 +504,7 @@ if (!token) {
   throw new Error("You must be logged in to upload a game.");
 }
 
-                const response = await fetch("http://127.0.0.1:8000/api/games/upload/", {
+                const response = await fetch(`${API_BASE_URL}/games/upload/`, {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",

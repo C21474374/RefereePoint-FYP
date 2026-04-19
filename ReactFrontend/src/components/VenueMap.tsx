@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import { useToast } from "../context/ToastContext";
+import { API_BASE_URL } from "../config/api";
 
 import 'leaflet/dist/leaflet.css';
 
@@ -14,8 +15,6 @@ interface Venue {
   lon: number;
   distance_km?: number;
 }
-
-const API_BASE = 'http://127.0.0.1:8000/api';
 
 // Component to recenter map
 function RecenterMap({ lat, lon }: { lat: number; lon: number }) {
@@ -179,7 +178,7 @@ export default function VenueMap() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/venues/`);
+      const res = await fetch(`${API_BASE_URL}/venues/`);
       if (!res.ok) throw new Error('Failed to fetch venues');
       const data = await res.json();
       setVenues(data);
@@ -205,7 +204,7 @@ export default function VenueMap() {
     setError(null);
     try {
       const res = await fetch(
-        `${API_BASE}/venues/nearby/?lat=${userLocation.lat}&lon=${userLocation.lon}&radius_km=${radiusKm}`
+        `${API_BASE_URL}/venues/nearby/?lat=${userLocation.lat}&lon=${userLocation.lon}&radius_km=${radiusKm}`
       );
       if (!res.ok) throw new Error('Failed to fetch nearby venues');
       const data = await res.json();
@@ -231,7 +230,7 @@ export default function VenueMap() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/venues/search/?name=${encodeURIComponent(searchName)}`);
+      const res = await fetch(`${API_BASE_URL}/venues/search/?name=${encodeURIComponent(searchName)}`);
       if (!res.ok) throw new Error('Failed to search venues');
       const data = await res.json();
       setVenues(data);

@@ -9,6 +9,7 @@ import GameDetailsModal, {
   type GameDetailsModalData,
 } from "../components/GameDetailsModal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { API_BASE_URL } from "../config/api";
 import { getAccessToken } from "../services/auth";
 import { fetchPendingApprovalAccounts } from "../services/approvals";
 import { useToast } from "../context/ToastContext";
@@ -164,7 +165,6 @@ type AdminCoverRequestListItem = {
   status?: string | null;
 };
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function formatDateKey(date: Date) {

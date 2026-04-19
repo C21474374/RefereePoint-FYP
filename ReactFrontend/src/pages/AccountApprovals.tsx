@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import AppIcon from "../components/AppIcon";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { API_HOST } from "../config/api";
 import {
   approvePendingAccount,
   disapprovePendingAccount,
@@ -10,8 +11,6 @@ import {
 } from "../services/approvals";
 import { useToast } from "../context/ToastContext";
 import "./AccountApprovals.css";
-
-const API_HOST = "http://localhost:8000";
 
 function getErrorMessage(error: unknown, fallback: string) {
   const maybe = error as {

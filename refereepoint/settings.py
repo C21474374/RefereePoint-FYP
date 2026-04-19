@@ -9,23 +9,79 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+import os
 from pathlib import Path
 from datetime import timedelta
+from urllib.parse import parse_qs, urlparse
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - fallback for environments without python-dotenv
+    def load_dotenv(*_args, **_kwargs):
+        return False
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+
+def _get_env_bool(name: str, default: bool = False) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_env_list(name: str, default: list[str] | None = None) -> list[str]:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return list(default) if default else []
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def _build_database_config() -> dict:
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if database_url:
+        parsed_url = urlparse(database_url)
+        config = {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": parsed_url.path.lstrip("/") or "refereepoint",
+            "USER": parsed_url.username or "",
+            "PASSWORD": parsed_url.password or "",
+            "HOST": parsed_url.hostname or "localhost",
+            "PORT": str(parsed_url.port or 5432),
+        }
+        sslmode = parse_qs(parsed_url.query).get("sslmode", [None])[0]
+        if sslmode:
+            config["OPTIONS"] = {"sslmode": sslmode}
+        return config
+
+    return {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "refereepoint"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5433"),
+    }
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zupgf!wl*j)n#87oiab+of^rt0*cnt%dg2p_!@6$0v6=45fpd-'
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "django-insecure-zupgf!wl*j)n#87oiab+of^rt0*cnt%dg2p_!@6$0v6=45fpd-",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _get_env_bool("DEBUG", default=True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = _get_env_list(
+    "ALLOWED_HOSTS",
+    [".onrender.com", "localhost", "127.0.0.1"],
+)
 
 
 # Application definition
@@ -59,28 +115,40 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'users.dev_auth_middleware.DevAutoLoginMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
+if _get_env_bool("ENABLE_DEV_AUTO_LOGIN", default=DEBUG):
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index('django.contrib.auth.middleware.AuthenticationMiddleware') + 1,
+        'users.dev_auth_middleware.DevAutoLoginMiddleware',
+    )
+
+_default_frontend_origins = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
+_frontend_url = os.getenv("FRONTEND_URL", "").strip()
+if _frontend_url:
+    _default_frontend_origins.insert(0, _frontend_url.rstrip("/"))
+
+CORS_ALLOWED_ORIGINS = _get_env_list("CORS_ALLOWED_ORIGINS", _default_frontend_origins)
 
 CORS_ALLOW_CREDENTIALS = True
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-]
+CSRF_TRUSTED_ORIGINS = _get_env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    CORS_ALLOWED_ORIGINS,
+)
 
 ROOT_URLCONF = 'refereepoint.urls'
-CORS_ALLOW_ALL_ORIGINS = True # for development purposes only
-# for deployment only allow fronteend origins
+CORS_ALLOW_ALL_ORIGINS = _get_env_bool("CORS_ALLOW_ALL_ORIGINS", default=DEBUG)
 
 TEMPLATES = [
     {
@@ -104,14 +172,7 @@ WSGI_APPLICATION = 'refereepoint.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'refereepoint',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
-        'PORT': '5433',
-    }
+    'default': _build_database_config()
 }
 
 
@@ -168,8 +229,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
