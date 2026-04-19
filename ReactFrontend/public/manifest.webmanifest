@@ -1,7 +1,7 @@
 {
   "name": "RefereePoint",
-  "short_name": "RefPoint",
-  "description": "Basketball referee platform for games, cover requests, events, reports, and earnings.",
+  "short_name": "RefereePoint",
+  "description": "Dublin basketball referee platform for games, cover requests, events, reports, and earnings.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
