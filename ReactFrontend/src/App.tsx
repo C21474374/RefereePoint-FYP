@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import PwaInstallPrompt from './components/PwaInstallPrompt'
 import RefereeSignup from './pages/RefereeSignup'
 import RefereeLogin from './pages/RefereeLogin'
 import LandingPage from './pages/Landing'
@@ -29,7 +30,7 @@ function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
-        <Routes>
+      <Routes>
         <Route path="/signup" element={<RefereeSignup />} />
         <Route path="/login" element={<RefereeLogin />} />
 
@@ -105,6 +106,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <PwaInstallPrompt />
     </BrowserRouter>
   </ThemeProvider>
 )}
