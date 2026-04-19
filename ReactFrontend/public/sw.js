@@ -1,10 +1,10 @@
-const CACHE_NAME = "refereepoint-cache-v1";
+const CACHE_NAME = "refereepoint-cache-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/manifest.webmanifest",
-  "/pwa-icon-192.svg",
-  "/pwa-icon-512.svg",
+  "/pwa-icon-192-v2.svg",
+  "/pwa-icon-512-v2.svg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -69,4 +69,3 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
-

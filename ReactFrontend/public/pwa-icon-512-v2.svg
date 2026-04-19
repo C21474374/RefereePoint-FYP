@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="RefereePoint icon">
+  <rect width="512" height="512" rx="96" fill="#000000" />
+  <text
+    x="196"
+    y="258"
+    fill="#ffffff"
+    font-family="Figtree, Segoe UI, Arial, sans-serif"
+    font-size="248"
+    font-weight="800"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >
+    R
+  </text>
+  <text
+    x="316"
+    y="258"
+    fill="#d2232a"
+    font-family="Figtree, Segoe UI, Arial, sans-serif"
+    font-size="248"
+    font-weight="800"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >
+    P
+  </text>
+</svg>
