@@ -1,4 +1,4 @@
-"""Notification API endpoints for list/read workflows."""
+# Notification API endpoints for list/read workflows.
 
 from django.utils import timezone
 from rest_framework import status

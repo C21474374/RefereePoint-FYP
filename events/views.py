@@ -1,4 +1,4 @@
-"""Event API endpoints for listing, management, and referee assignment actions."""
+# Event API endpoints for listing, management, and referee assignment actions.
 
 from django.db import transaction
 from django.utils import timezone

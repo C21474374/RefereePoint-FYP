@@ -1,4 +1,4 @@
-"""Game API endpoints for uploads, opportunities, assignments, and feed views."""
+#Game API endpoints for uploads, opportunities, assignments, and feed views.
 
 from rest_framework.views import APIView
 from rest_framework.response import Response

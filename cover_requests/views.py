@@ -1,4 +1,4 @@
-"""Cover request API endpoints for referee workflows and admin approvals."""
+# Cover request API endpoints for referee workflows and admin approvals.
 
 from django.db.models import Q
 from django.utils import timezone
