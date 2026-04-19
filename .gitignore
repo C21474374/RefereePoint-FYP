@@ -26,6 +26,7 @@ build/
 .env.local
 *.local
 deploy/render/*.env
+deploy/render/*.sql
 
 # IDE
 .vscode/
