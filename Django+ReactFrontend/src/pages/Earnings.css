@@ -398,7 +398,12 @@
     align-items: stretch;
   }
 
-  .earnings-type-toggle,
+  .earnings-type-toggle {
+    width: auto;
+    max-width: 100%;
+    align-self: flex-start;
+  }
+
   .earnings-month-select {
     width: 100%;
   }

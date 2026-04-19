@@ -136,9 +136,7 @@
 }
 
 .auth-checkbox input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-accent);
+  flex: 0 0 auto;
 }
 
 .auth-checkbox span {
@@ -188,9 +186,7 @@
 }
 
 .auth-availability-toggle input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--color-accent);
+  flex: 0 0 auto;
 }
 
 .auth-availability-toggle span {

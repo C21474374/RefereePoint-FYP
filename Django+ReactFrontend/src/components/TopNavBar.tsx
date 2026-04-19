@@ -711,7 +711,6 @@ const TopNavBar: React.FC = () => {
             <div className="mobile-drawer-header">
               <div className="mobile-drawer-title">
                 <span className="mobile-drawer-title-content">
-                  <AppIcon name="whistle" className="mobile-drawer-title-icon" />
                   <span>RefereePoint</span>
                 </span>
               </div>
@@ -749,16 +748,21 @@ const TopNavBar: React.FC = () => {
                   <div className={`mobile-upload ${uploadMenuOpen ? "open" : ""}`}>
                     <button
                       type="button"
-                      className="mobile-menu-action mobile-upload-trigger"
+                      className={`mobile-menu-action mobile-upload-trigger ${uploadMenuOpen ? "active" : ""}`}
                       onClick={handleUploadMenuToggle}
                       aria-expanded={uploadMenuOpen}
+                      aria-controls="mobile-upload-panel"
                     >
                       <span className="mobile-menu-action-content">
                         <AppIcon name="upload" className="mobile-menu-link-icon" />
                         <span>Upload</span>
                       </span>
+                      <span className="mobile-upload-trigger-right" aria-hidden="true">
+                        <span className="mobile-upload-trigger-count">{uploadItems.length}</span>
+                        <span className="mobile-upload-caret">{uploadMenuOpen ? "▴" : "▾"}</span>
+                      </span>
                     </button>
-                    <div className="mobile-upload-panel">
+                    <div id="mobile-upload-panel" className="mobile-upload-panel">
                       {uploadItems.map((item) => (
                         item.kind === "modal" ? (
                           <button

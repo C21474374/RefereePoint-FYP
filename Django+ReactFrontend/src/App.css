@@ -1175,19 +1175,13 @@ body :is(
   .mobile-drawer-title {
     font-size: 1.04rem;
     font-weight: 700;
-    color: var(--color-text);
+    color: var(--color-accent);
   }
 
   .mobile-drawer-title-content {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-  }
-
-  .mobile-drawer-title-icon {
-    width: 16px;
-    height: 16px;
-    color: var(--color-accent);
+    gap: 0;
   }
 
   .mobile-drawer-divider {
@@ -1244,19 +1238,70 @@ body :is(
   .mobile-upload-panel {
     display: none;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     margin-top: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: var(--color-bg-secondary);
+    padding: 7px;
   }
 
   .mobile-upload.open .mobile-upload-panel {
     display: flex;
   }
 
+  .mobile-upload-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-upload-trigger.active {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-link-hover);
+  }
+
+  .mobile-upload-trigger-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .mobile-upload-trigger.active .mobile-upload-trigger-right {
+    color: var(--color-link-hover);
+  }
+
+  .mobile-upload-trigger-count {
+    min-width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-panel);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .mobile-upload-trigger.active .mobile-upload-trigger-count {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+  }
+
+  .mobile-upload-caret {
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+
   .mobile-upload-item {
     display: block;
     width: 100%;
     border: 1px solid var(--color-border);
-    background: var(--color-card);
+    background: var(--color-bg-panel);
     color: var(--color-text);
     text-decoration: none;
     border-radius: 10px;
@@ -1264,6 +1309,11 @@ body :is(
     text-align: left;
     font-size: 0.88rem;
     font-weight: 600;
+  }
+
+  .mobile-upload-item:hover {
+    border-color: var(--color-border-hover);
+    background: var(--color-bg-panel-2);
   }
 
   .mobile-upload-item-content {
