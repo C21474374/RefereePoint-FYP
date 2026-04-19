@@ -74,8 +74,36 @@
   font-size: 0.92rem;
 }
 
+.games-filter-select,
+.games-filter-date {
+  min-width: 0;
+}
+
 .games-filter-date {
   min-width: 148px;
+  color-scheme: dark;
+  position: relative;
+  --games-filter-date-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background-image: var(--games-filter-date-icon);
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+  padding-right: 40px;
+}
+
+:root[data-theme='light'] .games-filter-date {
+  color-scheme: light;
+  --games-filter-date-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f1115' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+
+.games-filter-date::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
 }
 
 .games-filter-clear {
@@ -741,6 +769,31 @@
   .games-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .games-filters {
+    justify-content: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .games-filter-select {
+    width: 100%;
+  }
+
+  .games-filter-date {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+
+  .games-filter-clear {
+    width: 100%;
+    grid-column: 1 / -1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .games-manage-section {

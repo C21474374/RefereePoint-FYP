@@ -1127,8 +1127,12 @@ body :is(
   }
 
   .notifications-menu-panel {
-    right: -8px;
-    width: min(360px, calc(100vw - 18px));
+    position: fixed;
+    top: 64px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
     max-height: 62vh;
   }
 
