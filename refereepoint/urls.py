@@ -35,6 +35,9 @@ urlpatterns = [
     # API routes
     path("api/users/", include("users.urls")),
     path("api/clubs/", include("clubs.urls")),
+    path("api/schools/", include("schools.urls")),
+    path("api/college/", include("college.urls")),
+    path("api/colleges/", include("college.urls")),
     path("api/venues/", include("venues.urls")),
     path("api/games/", include("games.urls")),
     path("api/events/", include("events.urls")),

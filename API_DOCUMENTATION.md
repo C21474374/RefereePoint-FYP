@@ -90,7 +90,45 @@ Configure endpoints (DOA/NL admin scope):
 - `POST /api/clubs/configure/teams/`
 - `PATCH /api/clubs/configure/teams/{team_id}/`
 
-## 4.3 Venues (`/api/venues/`)
+## 4.3 Schools & Configure (`/api/schools/`)
+Public/reference data:
+- `GET /api/schools/`
+- `GET /api/schools/{school_id}/`
+- `GET /api/schools/divisions/`  
+  Optional query: `include_inactive=true|false`
+- `GET /api/schools/divisions/{division_id}/`
+- `GET /api/schools/teams/`  
+  Optional query: `school_id`, `division_id`, `include_inactive`
+- `GET /api/schools/teams/{team_id}/`
+
+Configure endpoints (DOA/NL admin scope):
+- `GET /api/schools/configure/bootstrap/`
+- `POST /api/schools/configure/divisions/`
+- `PATCH /api/schools/configure/divisions/{division_id}/`
+- `POST /api/schools/configure/teams/`
+- `PATCH /api/schools/configure/teams/{team_id}/`
+
+## 4.4 College & Configure (`/api/college/` and `/api/colleges/`)
+Both prefixes route to the same endpoints (alias support).
+
+Public/reference data:
+- `GET /api/college/` or `GET /api/colleges/`
+- `GET /api/college/{college_id}/` or `GET /api/colleges/{college_id}/`
+- `GET /api/college/divisions/` or `GET /api/colleges/divisions/`  
+  Optional query: `include_inactive=true|false`
+- `GET /api/college/divisions/{division_id}/` or `GET /api/colleges/divisions/{division_id}/`
+- `GET /api/college/teams/` or `GET /api/colleges/teams/`  
+  Optional query: `college_id`, `division_id`, `include_inactive`
+- `GET /api/college/teams/{team_id}/` or `GET /api/colleges/teams/{team_id}/`
+
+Configure endpoints (DOA/NL admin scope):
+- `GET /api/college/configure/bootstrap/` (alias: `/api/colleges/configure/bootstrap/`)
+- `POST /api/college/configure/divisions/` (alias: `/api/colleges/configure/divisions/`)
+- `PATCH /api/college/configure/divisions/{division_id}/` (alias available)
+- `POST /api/college/configure/teams/` (alias: `/api/colleges/configure/teams/`)
+- `PATCH /api/college/configure/teams/{team_id}/` (alias available)
+
+## 4.5 Venues (`/api/venues/`)
 Note: paths are currently namespaced twice by design in routing:
 
 - `GET /api/venues/venues/`
@@ -101,7 +139,7 @@ Note: paths are currently namespaced twice by design in routing:
 - `PUT /api/venues/venues/{venue_id}/update/`
 - `DELETE /api/venues/venues/{venue_id}/delete/`
 
-## 4.4 Games (`/api/games/`)
+## 4.6 Games (`/api/games/`)
 Games and assignments:
 - `GET /api/games/`  
   Optional filters: `game_type`, `division`, `date`, `venue`, `status`, `payment_type`
@@ -132,7 +170,7 @@ Opportunity and personal feeds:
 Utility:
 - `GET /api/games/csrf/`
 
-## 4.5 Cover Requests (`/api/cover-requests/`)
+## 4.7 Cover Requests (`/api/cover-requests/`)
 - `GET /api/cover-requests/`
 - `GET /api/cover-requests/{id}/`
 - `POST /api/cover-requests/create/`
@@ -144,7 +182,7 @@ Utility:
 - `POST /api/cover-requests/{id}/approve/`
 - `GET /api/cover-requests/my-upcoming-assignments/`
 
-## 4.6 Events (`/api/events/`)
+## 4.8 Events (`/api/events/`)
 - `GET /api/events/`  
   Optional query: `upcoming`, `venue`, `event_type`, `joined`
 - `GET /api/events/{id}/`
@@ -155,14 +193,14 @@ Utility:
 - `POST /api/events/{id}/join/`
 - `POST /api/events/{id}/leave/`
 
-## 4.7 Reports (`/api/reports/`)
+## 4.9 Reports (`/api/reports/`)
 - `GET /api/reports/reportable-games/`
 - `POST /api/reports/create/`
 - `GET /api/reports/my/`
 - `GET /api/reports/admin/`  
   Optional query: `status=PENDING|REVIEWED|RESOLVED`
 
-## 4.8 Expenses / Earnings (`/api/expenses/`)
+## 4.10 Expenses / Earnings (`/api/expenses/`)
 - `GET /api/expenses/earnings/`  
   Query:
   - `period=month` (required mode)
@@ -170,11 +208,11 @@ Utility:
   - `year=<YYYY>`
   - `month=<1-12>`
 
-## 4.9 Recommendations (`/api/recommendations/`)
+## 4.11 Recommendations (`/api/recommendations/`)
 - `GET /api/recommendations/opportunities/`  
   Returns ranked opportunities with recommendation scores/reasons (referee accounts).
 
-## 4.10 Notifications (`/api/notifications/`)
+## 4.12 Notifications (`/api/notifications/`)
 - `GET /api/notifications/`  
   Optional query: `limit`
 - `GET /api/notifications/recent/`  
@@ -224,6 +262,9 @@ Content-Type: application/json
 - Use `/api/users/me/` after login to drive role-based UI rendering.
 - Prefer recommendation feed endpoint for referee opportunities:
   - `/api/recommendations/opportunities/`
+- For school/college account flows, use source-specific taxonomy endpoints:
+  - `/api/schools/divisions/`, `/api/schools/teams/`
+  - `/api/college/divisions/`, `/api/college/teams/` (or `/api/colleges/...`)
 - Keep token refresh flow active using `/api/token/refresh/`.
 - For debug role switching, only use `/api/users/me/testing-role/` in development.
 
