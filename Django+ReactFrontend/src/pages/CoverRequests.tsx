@@ -245,7 +245,16 @@ export default function CoverRequestsPage() {
               : "Request cover for your games or claim open cover requests from other referees."}
           </p>
         </div>
-        {isRefereeView && (
+      </div>
+
+      {loading && (
+        <p className="cover-requests-page-message">Loading cover requests...</p>
+      )}
+
+      {error && <p className="cover-requests-page-error">{error}</p>}
+
+      {isRefereeView && !loading && (
+        <div className="cover-requests-primary-action-row">
           <button
             type="button"
             className="cover-request-create-btn"
@@ -259,14 +268,8 @@ export default function CoverRequestsPage() {
               <span>Request Cover</span>
             </span>
           </button>
-        )}
-      </div>
-
-      {loading && (
-        <p className="cover-requests-page-message">Loading cover requests...</p>
+        </div>
       )}
-
-      {error && <p className="cover-requests-page-error">{error}</p>}
 
       {!loading && (
         <>

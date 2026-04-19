@@ -230,11 +230,9 @@ const GameDetailsModal = ({
         <div className="game-details-modal-header">
           <div>
             <h2 className="section-title-with-icon">
-              <AppIcon name="basketball" className="section-title-icon" />
               <span>{details.title}</span>
             </h2>
             <p className="inline-icon-label">
-              <AppIcon name="opportunities" />
               <span>{details.typeLabel || "Game Opportunity"}</span>
             </p>
           </div>

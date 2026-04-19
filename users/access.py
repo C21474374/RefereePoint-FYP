@@ -20,12 +20,7 @@ def has_referee_role(user) -> bool:
 
 
 def get_effective_account_roles(user) -> set[str]:
-    """
-    Returns the union of roles that should be considered active for access control.
-
-    This supports multi-role behavior such as:
-    - account_type=REFEREE + manager_scope=CLUB => {"REFEREE", "CLUB"}
-    """
+    """Return a set of effective account roles for the user, including inferred roles."""
     if not user or not getattr(user, "is_authenticated", False):
         return set()
 

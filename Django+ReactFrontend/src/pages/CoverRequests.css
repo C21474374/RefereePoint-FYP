@@ -37,6 +37,12 @@
   white-space: nowrap;
 }
 
+.cover-requests-primary-action-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .cover-requests-page-message,
 .cover-requests-page-error {
   border-radius: 12px;
@@ -146,6 +152,14 @@
   .cover-requests-page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .cover-requests-primary-action-row {
+    justify-content: stretch;
+  }
+
+  .cover-request-create-btn {
+    width: 100%;
   }
 
   .cover-requests-section {
