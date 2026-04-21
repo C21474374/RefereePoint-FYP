@@ -482,6 +482,10 @@ body :is(
   display: flex;
 }
 
+.profile-menu.suppress-hover:hover .profile-menu-panel {
+  display: none;
+}
+
 .profile-menu.open .profile-menu-panel {
   display: flex;
 }

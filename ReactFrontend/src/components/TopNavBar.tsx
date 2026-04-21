@@ -91,6 +91,7 @@ const TopNavBar: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [suppressProfileHover, setSuppressProfileHover] = useState(false);
   const [notificationsMenuOpen, setNotificationsMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -181,6 +182,11 @@ const TopNavBar: React.FC = () => {
     setUploadMenuOpen(false);
     setProfileMenuOpen(false);
     setNotificationsMenuOpen(false);
+  };
+
+  const handleAccountSettingsClick = () => {
+    handleLinkClick();
+    setSuppressProfileHover(true);
   };
 
   const handleLogout = () => {
@@ -643,7 +649,10 @@ const TopNavBar: React.FC = () => {
                 </div>
               </div>
 
-              <div className={`profile-menu ${profileMenuOpen ? "open" : ""}`}>
+              <div
+                className={`profile-menu ${profileMenuOpen ? "open" : ""} ${suppressProfileHover ? "suppress-hover" : ""}`}
+                onMouseLeave={() => setSuppressProfileHover(false)}
+              >
                 <button
                   className="profile-menu-trigger"
                   onClick={handleProfileToggle}
@@ -660,7 +669,7 @@ const TopNavBar: React.FC = () => {
                 <div className="profile-menu-panel" role="menu">
                   <Link
                     to="/account-settings"
-                    onClick={handleLinkClick}
+                    onClick={handleAccountSettingsClick}
                     className="profile-menu-link"
                     role="menuitem"
                   >
