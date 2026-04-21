@@ -458,6 +458,15 @@ def _compute_item_score(
     now_local: datetime,
 ) -> tuple[float, list[str]]:
     reasons: list[str] = []
+    reason_values: set[str] = set()
+
+    def add_reason(reason_text: str | None) -> None:
+        if not reason_text:
+            return
+        if reason_text in reason_values:
+            return
+        reasons.append(reason_text)
+        reason_values.add(reason_text)
 
     distance_km = None
     distance_score = 50.0
@@ -529,10 +538,12 @@ def _compute_item_score(
     venue_division_score = _clamp_score((0.6 * venue_score) + (0.4 * division_score))
 
     urgency_score = 50.0
+    urgency_hours_until: float | None = None
     if item["type"] == "COVER_REQUEST":
         item_time: time = item["time"]
         item_dt = timezone.make_aware(datetime.combine(item["date"], item_time))
         hours_until = (item_dt - now_local).total_seconds() / 3600
+        urgency_hours_until = hours_until
         if hours_until <= 6:
             urgency_score = 100.0
         elif hours_until <= 24:
@@ -556,30 +567,79 @@ def _compute_item_score(
 
     if distance_score >= 75:
         if distance_km is not None:
-            reasons.append(f"Near home ({distance_km:.1f} km)")
+            if distance_km <= 5:
+                add_reason(f"Very close to home ({distance_km:.1f} km)")
+            elif distance_km <= 15:
+                add_reason(f"Close to home ({distance_km:.1f} km)")
+            else:
+                add_reason(f"Reasonable travel distance ({distance_km:.1f} km)")
         else:
-            reasons.append("Near home")
+            add_reason("Good location fit")
 
     if time_fit_score >= 70:
-        reasons.append("Matches your usual time/day")
+        weekday_label = item_date.strftime("%a")
+        if item["type"] == "EVENT":
+            add_reason(f"Matches your usual {weekday_label} availability")
+        else:
+            item_time_text = item["time"].strftime("%H:%M")
+            if day_score >= 0.8 and hour_score >= 0.8:
+                add_reason(f"Strong time fit ({weekday_label} {item_time_text})")
+            elif day_score >= 0.8:
+                add_reason(f"{weekday_label} is one of your usual days")
+            elif hour_score >= 0.8:
+                add_reason(f"{item_time_text} matches your usual game times")
+            else:
+                add_reason("Good day/time fit")
 
     if type_preference_score >= 70:
-        reasons.append(f"You often take {TYPE_LABEL.get(item['type'], 'similar opportunities')}")
+        if item["type"] == "NON_APPOINTED_SLOT":
+            add_reason("You often take similar game opportunities")
+        elif item["type"] == "COVER_REQUEST":
+            add_reason("You often accept cover opportunities")
+        elif item["type"] == "EVENT":
+            add_reason("You often join events")
+        else:
+            add_reason(f"You often take {TYPE_LABEL.get(item['type'], 'similar opportunities')}")
 
     if venue_division_score >= 70:
         if item.get("venue_id") and venue_counts.get(item["venue_id"], 0) > 0:
-            reasons.append("Familiar venue")
+            venue_name = item.get("venue_name")
+            if venue_name:
+                add_reason(f"Familiar venue ({venue_name})")
+            else:
+                add_reason("Familiar venue")
         elif division_key and division_counts.get(division_key, 0) > 0:
-            reasons.append("Familiar division")
+            division_name = item.get("division_name")
+            if division_name:
+                add_reason(f"Familiar division ({division_name})")
+            else:
+                add_reason("Familiar division")
 
     if item["type"] == "COVER_REQUEST" and urgency_score >= 85:
-        reasons.append("Urgent cover request")
+        if urgency_hours_until is not None:
+            if urgency_hours_until <= 6:
+                add_reason("Urgent: game starts very soon")
+            elif urgency_hours_until <= 24:
+                add_reason("Urgent: starts within 24 hours")
+            else:
+                add_reason("Urgent cover request")
+        else:
+            add_reason("Urgent cover request")
 
     if item["type"] != "EVENT" and item["date"] == now_local.date():
-        reasons.append("Today opportunity")
+        today_time_text = item["time"].strftime("%H:%M")
+        add_reason(f"Today ({today_time_text})")
+
+    if item["type"] == "EVENT":
+        slots_left = item.get("slots_left")
+        if isinstance(slots_left, int) and slots_left > 0 and slots_left <= 2:
+            if slots_left == 1:
+                add_reason("Only 1 referee slot left")
+            else:
+                add_reason(f"Only {slots_left} referee slots left")
 
     if not reasons:
-        reasons.append("Good overall match")
+        add_reason("High overall match score")
 
     return final_score, reasons[:3]
 
